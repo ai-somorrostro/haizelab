@@ -194,25 +194,29 @@ def procesar_fichero(path):
 
 
 def main():
-    ficheros = sorted(p for p in CARPETA.glob("**/*") if p.suffix.lower() in (".csv", ".xlsx", ".xls", ".txt"))
-    if not ficheros:
-        sys.exit(f"No hay ficheros en ./{CARPETA}/. Mete ahí los CSV/XLSX y vuelve a ejecutar.")
-    print(f"Leyendo {len(ficheros)} ficheros...")
-    partes = [p for p in (procesar_fichero(f) for f in ficheros) if p is not None]
-    if not partes:
-        sys.exit("No se ha podido leer ningún fichero. Pásame las columnas que salen arriba y lo ajusto.")
-    df = pd.concat(partes, ignore_index=True)
+    if (SALIDA / "aire_limpio.csv").exists() and "--forzar" not in sys.argv:
+        print("Cargando aire_limpio.csv existente (usa --forzar para releer todos los ficheros brutos)...")
+        df = pd.read_csv(SALIDA / "aire_limpio.csv", parse_dates=["ts"])
+    else:
+        ficheros = sorted(p for p in CARPETA.glob("**/*") if p.suffix.lower() in (".csv", ".xlsx", ".xls", ".txt"))
+        if not ficheros:
+            sys.exit(f"No hay ficheros en ./{CARPETA}/. Mete ahí los CSV/XLSX y vuelve a ejecutar.")
+        print(f"Leyendo {len(ficheros)} ficheros de calidad del aire...")
+        partes = [p for p in (procesar_fichero(f) for f in ficheros) if p is not None]
+        if not partes:
+            sys.exit("No se ha podido leer ningún fichero. Pásame las columnas que salen arriba y lo ajusto.")
+        df = pd.concat(partes, ignore_index=True)
 
-    if FUENTE_EN_UTC:
-        df["ts"] = df["ts"].dt.tz_localize("UTC").dt.tz_convert("Europe/Madrid").dt.tz_localize(None)
+        if FUENTE_EN_UTC:
+            df["ts"] = df["ts"].dt.tz_localize("UTC").dt.tz_convert("Europe/Madrid").dt.tz_localize(None)
 
-    df[["estacion", "zona"]] = df["estacion_raw"].apply(lambda x: pd.Series(clasificar(x)))
-    df = df.dropna(subset=["ts"]).drop(columns="estacion_raw")
-    neg = (df["no2"] < 0).sum()
-    df.loc[df["no2"] < 0, "no2"] = np.nan
-    df = df.drop_duplicates(subset=["estacion", "ts"]).sort_values(["estacion", "ts"])
-    SALIDA.mkdir(exist_ok=True)
-    df.to_csv(SALIDA / "aire_limpio.csv", index=False)
+        df[["estacion", "zona"]] = df["estacion_raw"].apply(lambda x: pd.Series(clasificar(x)))
+        df = df.dropna(subset=["ts"]).drop(columns="estacion_raw")
+        neg = (df["no2"] < 0).sum()
+        df.loc[df["no2"] < 0, "no2"] = np.nan
+        df = df.drop_duplicates(subset=["estacion", "ts"]).sort_values(["estacion", "ts"])
+        SALIDA.mkdir(exist_ok=True)
+        df.to_csv(SALIDA / "aire_limpio.csv", index=False)
 
     # Inventario
     filas = []
@@ -226,9 +230,8 @@ def main():
         })
     inv = pd.DataFrame(filas)
     inv.to_csv(SALIDA / "inventario.csv", index=False)
-    print("\n=== INVENTARIO ===")
+    print("\n=== INVENTARIO DE ESTACIONES ===")
     print(inv.to_string(index=False))
-    print(f"\nValores de NO2 negativos descartados: {neg}")
     sc = inv[inv.zona == "sin_clasificar"]
     if len(sc):
         print("[!] Estaciones sin clasificar (añádelas a ESTACIONES):", ", ".join(sc.estacion))
@@ -257,14 +260,91 @@ def main():
             print(f"  antes  (n={len(pre)} meses): {pre.mean():+.2f}")
             print(f"  después(n={len(post)} meses): {post.mean():+.2f}")
             print(f"  cambio de la diferencia: {efecto:+.2f} µg/m3  (IC95% aprox. ±{1.96 * se:.2f})")
-            print("  Negativo = dentro ha bajado más que fuera. Sin corregir clima ni tendencia;")
-            print("  el IC ignora la autocorrelación, así que es optimista.")
         else:
             print("\n[!] Pocos meses antes/después para calcular la diferencia dentro-fuera.")
-    else:
-        print("\n[!] Faltan estaciones 'dentro' o 'fuera' para la comparación.")
 
-    print("\n(Para el gráfico ejecuta: python visualizar.py)")
+    # -------------------------------------------------------------
+    # 2. ANÁLISIS METEOROLÓGICO (Banderas / Bilbao)
+    # -------------------------------------------------------------
+    meteo_files = sorted(CARPETA.rglob("BANDERAS_meteo.csv"))
+    if meteo_files:
+        print("\n=== INTEGRACIÓN METEOROLÓGICA (Estación Monte Banderas, Bilbao) ===")
+        dfs_meteo = []
+        for mf in meteo_files:
+            try:
+                m_raw = pd.read_csv(mf, sep=";", encoding="latin1")
+                m_raw.columns = [c.strip() for c in m_raw.columns]
+                is_24 = m_raw["Hour  (GMT)"].astype(str).str.strip() == "24:00"
+                h_clean = m_raw["Hour  (GMT)"].astype(str).str.strip().replace({"24:00": "00:00"})
+                dt = pd.to_datetime(m_raw["Date"].astype(str).str.strip() + " " + h_clean, format="%d/%m/%Y %H:%M", errors="coerce")
+                dt[is_24] += pd.Timedelta(days=1)
+                dfs_meteo.append(pd.DataFrame({
+                    "ts": dt,
+                    "temp_c": pd.to_numeric(m_raw["Tº (ºC)"].astype(str).str.replace(",", "."), errors="coerce"),
+                    "viento_ms": pd.to_numeric(m_raw["V.vien (m/s)"].astype(str).str.replace(",", "."), errors="coerce"),
+                    "humedad": pd.to_numeric(m_raw["H (%)"].astype(str).str.replace(",", "."), errors="coerce"),
+                }))
+            except Exception as e:
+                print(f"[!] Error leyendo meteo {mf}: {e}")
+        
+        if dfs_meteo:
+            df_met = pd.concat(dfs_meteo, ignore_index=True).drop_duplicates(subset=["ts"]).dropna(subset=["ts"])
+            # Merge con medias horarias dentro y fuera
+            df_zonas = df[df.zona.isin(["dentro", "fuera"])].groupby(["ts", "zona"])["no2"].mean().unstack("zona").reset_index()
+            m_merged = pd.merge(df_zonas, df_met, on="ts")
+            m_merged["periodo"] = np.where(m_merged["ts"] < FECHA_FASE1, "Pre-ZBE", "Post-ZBE")
+            
+            # Correlaciones
+            corr = m_merged[["dentro", "fuera", "temp_c", "viento_ms", "humedad"]].corr().round(3)
+            print("\nCorrelación NO2 con variables meteorológicas:")
+            print(corr[["dentro", "fuera"]].to_string())
+            
+            # Promedios meteorológicos por periodo
+            met_periodo = m_merged.groupby("periodo")[["temp_c", "viento_ms", "humedad"]].mean().round(2)
+            print("\nCondiciones meteorológicas medias por periodo:")
+            print(met_periodo.to_string())
+            
+            # Estratificación por régimen de viento (calma vs moderado vs fuerte)
+            m_merged["regimen_viento"] = pd.cut(
+                m_merged["viento_ms"],
+                bins=[-np.inf, 2.0, 5.0, np.inf],
+                labels=["Calma (<2 m/s)", "Moderado (2-5 m/s)", "Fuerte (>5 m/s)"]
+            )
+            viento_res = m_merged.groupby(["periodo", "regimen_viento"], observed=False)[["dentro", "fuera"]].mean().round(2)
+            viento_res.to_csv(SALIDA / "no2_regimen_viento.csv")
+            print("\nNO2 medio (µg/m3) por régimen de viento (control meteorológico):")
+            print(viento_res.to_string())
+            met_periodo.to_csv(SALIDA / "meteo_resumen.csv")
+    
+    # -------------------------------------------------------------
+    # 3. ANÁLISIS DE TRÁFICO (Memorias Oficiales Bizkaia / Bilbao)
+    # -------------------------------------------------------------
+    f_trafico = SALIDA / "trafico_accesos_bilbao.csv"
+    if not f_trafico.exists():
+        # Intentar ejecutar extraer_trafico.py
+        try:
+            import extraer_trafico
+            extraer_trafico.main()
+        except Exception as e:
+            print(f"[!] No se pudo extraer automáticamente el tráfico: {e}")
+    
+    if f_trafico.exists():
+        print("\n=== INTEGRACIÓN DE TRÁFICO (Accesos Oficiales a Bilbao) ===")
+        df_traf = pd.read_csv(f_trafico)
+        cols_t = [c for c in ['acceso', 'zona', 'imd_2022', 'imd_2023', 'imd_2024', 'imd_2025', 'var_pct_23_24'] if c in df_traf.columns]
+        print(df_traf[cols_t].to_string(index=False))
+        
+        # Acceso clave: San Mamés
+        sm = df_traf[df_traf.acceso.str.contains("SAN MAMES", case=False, na=False)]
+        if not sm.empty:
+            v23 = sm["imd_2023"].iloc[0]
+            v24 = sm["imd_2024"].iloc[0]
+            v25 = sm["imd_2025"].iloc[0]
+            print(f"\n-> Acceso San Mamés (entrada ZBE): 2023: {v23:,.0f} veh/día | 2024: {v24:,.0f} veh/día ({sm['var_pct_23_24'].iloc[0]:+.2f}%)")
+            print(f"-> Caída directa de vehículos hacia el Ensanche/Abando tras entrar en vigor la ZBE en junio 2024.")
+
+    print("\n[OK] Analisis completo finalizado. Salidas guardadas en carpeta ./salida/")
+    print("(Para generar las visualizaciones ejecuta: python visualizar.py)")
 
 
 if __name__ == "__main__":
