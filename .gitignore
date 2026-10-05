@@ -1,0 +1,25 @@
+﻿# --- Datos brutos (pesados, se obtienen de Open Data Euskadi) ---
+datos/
+
+# --- Salidas generadas (se regeneran con analisis.py) ---
+salida/aire_limpio.csv
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+dist/
+build/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editores ---
+.vscode/
+.idea/
+*.swp
