@@ -1,0 +1,30 @@
+﻿services:
+  analisis:
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_analisis
+    volumes:
+      - ./datos:/app/datos:ro        # datos brutos (solo lectura)
+      - ./salida:/app/salida         # resultados (escritura)
+    command: python analisis.py
+
+  visualizar:
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_visualizar
+    volumes:
+      - ./salida:/app/salida
+    command: python visualizar.py
+    depends_on:
+      analisis:
+        condition: service_completed_successfully
+
+  todo:
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_todo
+    volumes:
+      - ./datos:/app/datos:ro
+      - ./salida:/app/salida
+    # Pipeline completo: analisis + grafico en un solo contenedor
+    command: sh -c "python analisis.py && python visualizar.py"

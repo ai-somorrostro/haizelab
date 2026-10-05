@@ -1,0 +1,17 @@
+﻿# No copiar datos al contexto de build (se montan como volumen)
+datos/
+salida/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,4 +1,4 @@
-﻿# HaizeLab — Análisis del impacto de la ZBE de Bilbao en la calidad del aire
+# HaizeLab — Análisis del impacto de la ZBE de Bilbao en la calidad del aire
 
 Análisis exploratorio del efecto de la **Zona de Bajas Emisiones (ZBE) de Bilbao** sobre los niveles de NO₂, usando datos horarios de la red de calidad del aire del Gobierno Vasco (Open Data Euskadi).
 
@@ -39,6 +39,19 @@ Descárgalos de **Open Data Euskadi → Calidad del Aire**:
 python analisis.py     # genera salida/
 python visualizar.py   # genera salida/no2_mensual_2022_2026.png
 ```
+
+### Opción B — Docker (sin instalar nada en local)
+
+```bash
+# Pipeline completo (análisis + gráfico) en un solo comando
+docker compose run --rm todo
+
+# O por separado
+docker compose run --rm analisis
+docker compose run --rm visualizar
+```
+
+Los resultados quedan en `salida/` de tu máquina (volumen montado).
 
 ## Resultados preliminares (sin corrección meteorológica)
 
