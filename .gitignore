@@ -19,3 +19,11 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# --- Infraestructura: variables de entorno y credenciales ---
+.env
+nodered/credentials.json
+
+# --- Datos reducidos de demo (generados por ingesta/preparar_datos_demo.py) ---
+# Se regeneran localmente; no se suben si pesan mas de unos MB
+ingesta/no2_demo_reducido.csv
