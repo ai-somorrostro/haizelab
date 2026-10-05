@@ -219,6 +219,13 @@ def main():
     df.to_csv(f_limpio, index=False)
     print(f"-> Guardado dataset horario limpio: {f_limpio} ({len(df):,} filas)")
 
+    # Comprimir en ZIP para permitir versionado ligero en GitHub (< 10 MB)
+    import zipfile
+    f_zip = DIR_PROCESADOS / "no2_horario_limpio.zip"
+    with zipfile.ZipFile(f_zip, "w", zipfile.ZIP_DEFLATED, 9) as zf:
+        zf.write(f_limpio, arcname=f_limpio.name)
+    print(f"-> Guardada versión comprimida para Git: {f_zip} ({f_zip.stat().st_size / (1024*1024):.1f} MB)")
+
     # 1. Inventario
     filas = []
     for est, g in df.groupby("estacion"):
