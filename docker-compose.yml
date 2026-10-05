@@ -157,7 +157,7 @@ services:
       - ./ingesta/no2_demo_reducido.csv:/data/no2_demo_reducido.csv:ro
       - influxdb_tokens:/tokens:ro
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:1880/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:1880/"]
       interval: 15s
       timeout: 5s
       retries: 5
