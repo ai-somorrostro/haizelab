@@ -1,283 +1,148 @@
-# Arquitectura de Infraestructura: InfluxDB 2 y Node-RED en HaizeLab
+# Infraestructura en Tiempo Real: InfluxDB 2, Node-RED y Grafana en HaizeLab
 
-Este documento detalla todas las decisiones técnicas, arquitectónicas y de seguridad adoptadas para la capa de streaming e ingesta en tiempo real del proyecto **HaizeLab**. Está diseñado tanto como registro de ingeniería como material de estudio riguroso para evaluaciones técnicas en administración de sistemas (ASIR), bases de datos de series temporales (TSDB) y pipelines de datos.
+He preparado este documento para explicar paso a paso cómo he montado y conectado toda la infraestructura de datos en tiempo real para el proyecto **HaizeLab**. 
 
----
-
-## 1. Visión General y Diagrama de Arquitectura
-
-El proyecto HaizeLab analiza el impacto causal de la Zona de Bajas Emisiones (ZBE) de Bilbao sobre la concentración de dióxido de nitrógeno ($NO_2$). Para complementar los scripts analíticos por lotes (batch) existentes en `scripts/`, esta infraestructura añade una plataforma de procesamiento continuo basada en contenedores Docker:
-
-1. **Almacenamiento temporal**: Base de datos de series temporales InfluxDB 2.x.
-2. **Orquestación de ingesta**: Node-RED con flujos periódicos para meteorología, tráfico y reproducción acelerada de calidad del aire.
-3. **Aprovisionamiento automatizado**: Contenedor efímero de inicialización que asegura el despliegue con un solo comando (`docker compose up -d --build`).
-
-```
-                              ┌────────────────────────────────────────────────────────┐
-                              │                 HOST (127.0.0.1)                       │
-                              │                                                        │
-                              │  Navegador Web / Cliente HTTP                         │
-                              │   ├── http://localhost:8086 (InfluxDB UI)              │
-                              │   └── http://localhost:1880 (Node-RED Editor)          │
-                              └───────────────┬────────────────────────┬───────────────┘
-                                              │ :8086                  │ :1880
-                                              ▼                        ▼
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ Docker Network (Bridge interno: haizelab_default)                                      │
-│                                                                                        │
-│   ┌──────────────────────────┐                      ┌──────────────────────────────┐   │
-│   │   haizelab_influxdb      │                      │      haizelab_nodered        │   │
-│   │   (influxdb:2.9.1)       │                      │   (haizelab_nodered:latest)  │   │
-│   │                          │◀─── Escribe datos ───│                              │   │
-│   │   - Bucket: aire         │      (meteo/trafico/ │   - Flujo meteo (15 min)     │   │
-│   │   - Bucket: meteo        │       aire_demo)     │   - Flujo trafico (5 min)    │   │
-│   │   - Bucket: trafico      │   http://influxdb    │   - Flujo aire_demo (5 s)    │   │
-│   │   - Bucket: aire_demo    │        :8086         │                              │   │
-│   └─────────────┬────────────┘                      └──────────────▲───────────────┘   │
-│                 │                                                  │                   │
-│                 │ depends_on: healthy                              │ depends_on:       │
-│                 ▼                                                  │ completed         │
-│   ┌──────────────────────────┐                                     │                   │
-│   │  haizelab_influxdb_setup │                                     │                   │
-│   │   (contenedor efímero)   │                                     │                   │
-│   │                          │                                     │                   │
-│   │   1. Crea buckets        │                                     │                   │
-│   │   2. Genera tokens       │                                     │                   │
-│   │   3. Escribe tokens.env  ├──────────────┐                      │                   │
-│   └──────────────────────────┘              │                      │                   │
-│                                             ▼                      │                   │
-│                           ┌───────────────────────────────────┐    │                   │
-│                           │ Volumen compartido:               │────┘                   │
-│                           │ influxdb_tokens (/tokens)         │    Lee tokens en       │
-│                           │   └── tokens.env                  │    entrypoint.sh       │
-│                           └───────────────────────────────────┘    (solo lectura)      │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
+La idea principal era sencilla: queríamos complementar los scripts de análisis histórico que ya teníamos en Python con un sistema que simulara y capturara datos en tiempo real (calidad del aire, el tiempo que hace en Bilbao y el estado del tráfico), todo metido en contenedores Docker para que cualquiera del equipo pueda levantarlo con un único comando sin volverse loco instalando cosas.
 
 ---
 
-## 2. InfluxDB 2: Justificación y Modelado de Series Temporales
+## 1. ¿Qué he montado exactamente?
 
-### 2.1. Elección de InfluxDB frente a Alternativas
+He configurado cuatro servicios en Docker Compose que trabajan juntos:
 
-| Tecnología | Evaluación en este contexto | Decisión |
-|---|---|---|
-| **InfluxDB 2.x** | Diseñada específicamente para series temporales. Soporta retenciones nativas por bucket, consultas en Flux, interfaz gráfica integrada para depuración rápida y bajo consumo de recursos (<200 MB RAM). | **Seleccionada** |
-| **InfluxDB 1.8** | Modelo legado basado en bases de datos y usuarios tradicionales. Carece de interfaz web integrada y no permite control granular por tokens modernos basados en organizaciones. | Descartada |
-| **InfluxDB 3.x** | Basada en Apache Arrow, DataFusion y formato Parquet. Desde septiembre de 2026 la etiqueta `latest` apunta a InfluxDB 3; sin embargo, no incluye la interfaz web embebida de la versión 2, su modelo de inicialización por variables de entorno difiere notablemente y aún no cuenta con soporte consolidado en todos los nodos comunitarios de Node-RED. | Descartada |
-| **TimescaleDB (PostgreSQL)** | Excelente para unificar datos relacionales y series temporales, pero su huella en disco y memoria es significativamente mayor y requiere migraciones de esquema SQL continuas ante cambios en sensores. | Descartada |
-| **MongoDB** | Aunque soporta colecciones de series temporales desde la versión 5.0, la gestión de retención automática y el procesamiento temporal por ventanas deslizantes añade complejidad frente a un motor nativo TSDB. | Descartada |
+1. **InfluxDB 2 (puerto 8086)**: La base de datos donde guardamos todas las mediciones temporales.
+2. **Setup automático de InfluxDB (`influxdb_setup`)**: Un contenedor pequeñito que solo arranca una vez, crea los buckets necesarios y genera las contraseñas/tokens de acceso para que nadie tenga que entrar a la web a configurar nada a mano.
+3. **Node-RED (puerto 1880)**: El "cerebro" que va a buscar los datos a internet (APIs de Open-Meteo y del Ayuntamiento de Bilbao) y que también reproduce los datos históricos de NO₂ como si estuvieran ocurriendo ahora mismo.
+4. **Grafana (puerto 3000)**: La pantalla visual donde he dejado montado un cuadro de mando con gráficas y semáforos para ver cómo afecta el tráfico y el clima a la contaminación dentro y fuera de la ZBE de Bilbao.
 
-### 2.2. Fijado Estricto de Versión (`influxdb:2.9.1`)
+### El esquema de cómo se conectan:
+```
+  [ Navegador en mi PC: http://localhost ]
+       │                │               │
+       │ :8086          │ :1880         │ :3000
+       ▼                ▼               ▼
+ ┌───────────┐    ┌───────────┐   ┌───────────┐
+ │ InfluxDB  │◀───│ Node-RED  │   │  Grafana  │
+ │ (BD TSDB) │    │ (Flujos)  │   │ (Paneles) │
+ └───────────┘    └───────────┘   └───────────┘
+       ▲                                │
+       │       Lee con token read-all   │
+       └────────────────────────────────┘
+```
 
-Se utiliza la imagen `influxdb:2.9.1` de forma explícita. Nunca debe emplearse `latest` en entornos productivos ni académicos reproducibles:
-- Previene roturas involuntarias por cambios mayores de versión (como el salto a InfluxDB 3).
-- Garantiza que cualquier miembro del equipo o evaluador obtenga exactamente el mismo comportamiento, binarios y sintaxis de CLI (`influx bucket`, `influx auth`).
-
-### 2.3. Esquema de Buckets y Políticas de Retención
-
-InfluxDB 2 organiza los datos en **Buckets**, cada uno con su propia política de retención (*Retention Policy*):
-
-| Bucket | Measurement | Retención | Justificación de Retención |
-|---|---|---|---|
-| `aire` | *(Histórico ZBE)* | **Infinita** (`0s`) | Contiene los datos maestros oficiales de 2022 a 2026. Es la base del estudio científico y del análisis de decisión ejecutiva; su borrado accidental invalidaría el proyecto. |
-| `meteo` | `clima` | **90 días** (`7776000s`) | Suficiente para correlacionar episodios de alta contaminación con regímenes de viento recientes y variabilidad estacional sin consumir espacio indefinido. |
-| `trafico` | `estado` | **30 días** (`2592000s`) | Con 81 secciones de tráfico emitiendo cada 5 minutos ($81 \times 12 \times 24 = 23.328$ puntos diarios), 30 días acumulan ~700.000 puntos, volumen óptimo para patrones semanales y laborales sin sobrecargar el índice TSM. |
-| `aire_demo` | `contaminantes` | **7 días** (`604800s`) | Flujo de demostración en bucle acelerado (1 tick cada 5 segundos). Genera 17.280 puntos diarios destinados a ilustrar el funcionamiento en tiempo real, por lo que una semana es más que suficiente. |
-
-### 2.4. Modelado: Tags frente a Fields (Control de Cardinalidad)
-
-En los motores de series temporales con índice invertido (Time Series Index - TSI), la **cardinalidad** es el producto cartesiano del número de valores únicos de todos los tags. Una cardinalidad descontrolada provoca consumo masivo de memoria RAM (*Out Of Memory*).
-
-- **Tags (Indexados)**: Metadatos con número finito y reducido de valores únicos:
-  - `ubicacion` (`bilbao`), `fuente` (`open-meteo`).
-  - `codigo_seccion` (81 tramos fijos de la red viaria de Bilbao).
-  - `estacion` (4 estaciones fijas: Mazarredo, Mª Díaz de Haro, Europa, Arraiz), `zona` (`dentro`, `fuera`, `fondo`).
-- **Fields (No Indexados)**: Valores numéricos continuos medidos en el tiempo:
-  - `temp_c`, `viento_kmh`, `viento_dir`, `lluvia_mm`, `humedad`.
-  - `intensidad`, `ocupacion`, `velocidad`.
-  - `no2`, `fecha_original`.
-
-*Regla crítica aplicada*: Jamás se almacena un valor continuo (como la velocidad o el $NO_2$) como tag. Hacerlo crearía una serie temporal nueva por cada medición, degradando el rendimiento de InfluxDB.
+Todo se ejecuta en una red interna privada de Docker (`haizelab_default`) y solo abro al exterior (`127.0.0.1`) los puertos necesarios en local para no dejar la base de datos abierta a toda la red del instituto o de casa.
 
 ---
 
-## 3. Aprovisionamiento Automatizado e Idempotencia (`influxdb_setup`)
+## 2. InfluxDB 2: ¿Por qué no usar MySQL o PostgreSQL normal?
 
-### 3.1. Por qué un Contenedor Efímero de Inicialización
+Cuando empezamos a plantear esto, la primera duda era: ¿por qué no meter todo en una tabla de MySQL o Postgres que ya conocemos de ASIR?
 
-La imagen oficial de InfluxDB en modo `setup` automático mediante variables de entorno (`DOCKER_INFLUXDB_INIT_*`) solo permite definir **un único bucket inicial** y **un único token administrador maestro**. No ofrece mecanismos nativos para:
-- Crear múltiples buckets complementarios con diferentes retenciones.
-- Generar tokens secundarios con permisos restringidos de solo lectura o escritura segmentada.
+La razón es práctica:
+- En este proyecto estamos metiendo datos de 4 estaciones cada 5 segundos para la demo, más decenas de tramos de tráfico cada 5 minutos.
+- Una base de datos relacional tradicional guarda filas y tiene que actualizar índices B-Tree en cada inserción. Con tantas escrituras seguidas se acaba saturando el disco y bloqueando tablas.
+- Además, si queremos borrar datos viejos (por ejemplo, guardar solo 30 días de tráfico), en SQL hay que hacer `DELETE FROM ...` que fragmenta el disco. En InfluxDB le dices la retención al crear el bucket (ej. 30 días) y el motor va tirando bloques viejos enteros de golpe sin despeinarse.
 
-Para resolver esto sin intervención manual, se diseñó el servicio `influxdb_setup`:
-1. Utiliza la misma imagen `influxdb:2.9.1` con la CLI `influx` ya instalada.
-2. Espera mediante `depends_on: condition: service_healthy` a que el motor de InfluxDB responda con código 200 en su endpoint de salud (`influx ping`).
-3. Ejecuta `influxdb/init-influxdb.sh` para crear los buckets restantes y los tokens específicos.
-4. Finaliza su ejecución (`restart: "no"`).
+### Cómo he organizado los datos (Buckets):
 
-### 3.2. Idempotencia y Persistencia en Reinicios
+He creado 4 buckets separados para no mezclar churras con merinas:
 
-Un sistema es **idempotente** si ejecutarlo varias veces produce el mismo estado que ejecutarlo una sola vez.
-
-En `influxdb/init-influxdb.sh`:
-```sh
-if [ -f "$TOKENS_FILE" ]; then
-  echo "[setup] $TOKENS_FILE ya existe, saltando creacion de buckets y tokens."
-  exit 0
-fi
-```
-- **Primer arranque (`docker compose up -d --build`)**: El volumen `influxdb_tokens` está vacío. El script crea los buckets si no existen, genera los tokens con permisos mínimos y escribe `/tokens/tokens.env`.
-- **Reinicios cotidianos (`docker compose up -d`)**: InfluxDB arranca con los datos intactos en `influxdb_data`. `influxdb_setup` detecta que `tokens.env` ya existe en el volumen y termina de inmediato sin duplicar tokens ni arrojar errores.
-- **Limpieza total (`docker compose down -v`)**: Los volúmenes se eliminan y el siguiente arranque vuelve a configurarlo todo de manera transparente.
+1. **`aire`**: Aquí guardaremos los datos históricos oficiales consolidados de la ZBE (retención infinita).
+2. **`meteo`**: Datos meteorológicos de Bilbao (temperatura, lluvia, viento, humedad). Retención de 90 días.
+3. **`trafico`**: Estado de los 81 tramos de tráfico de Bilbao (intensidad de coches, ocupación y velocidad media). Retención de 30 días.
+4. **`aire_demo`**: El banco de pruebas para la demo en clase. Lee datos históricos reales y los emite cada 5 segundos para ver cómo se mueven las gráficas en directo. Retención de 7 días.
 
 ---
 
-## 4. Seguridad: Mínimo Privilegio y Entrega Segura de Tokens
+## 3. Seguridad y Tokens: No meter contraseñas en Git
 
-### 4.1. Separación de Responsabilidades y Tokens
+Uno de los mayores fallos cuando se empieza con Docker es meter tokens de administrador en los ficheros que luego subes a GitHub. Para evitar eso y seguir buenas prácticas de seguridad:
 
-El principio de mínimo privilegio (*Principle of Least Privilege*) exige que cada componente de software posea únicamente las autorizaciones estrictamente indispensables para cumplir su labor.
+1. **Token de Administrador**: Solo se usa durante la instalación inicial en local.
+2. **Token de Node-RED (`nodered-write`)**: Solo tiene permiso para **escribir** en `meteo`, `trafico` y `aire_demo`. Si alguien consiguiera hackear el Node-RED, **no podría borrar ni modificar** el histórico oficial de `aire` porque InfluxDB le rechaza con un error 403 Forbidden.
+3. **Token de Grafana (`read-all`)**: Solo tiene permiso para **leer**. Aunque toques algo en Grafana, es imposible que borre o altere ninguna medición.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│ InfluxDB Authorization Matrix                                                   │
-├────────────────────┬──────────┬───────────┬────────────┬─────────────┬──────────┤
-│ Token              │ aire     │ meteo     │ trafico    │ aire_demo   │ Admin    │
-├────────────────────┼──────────┼───────────┼────────────┼─────────────┼──────────┤
-│ Admin Master       │ Read/Wr  │ Read/Wr   │ Read/Wr    │ Read/Wr     │ SI       │
-│ nodered-write      │ DENEGADO │ ESCRITURA │ ESCRITURA  │ ESCRITURA   │ NO       │
-│ read-all           │ LECTURA  │ LECTURA   │ LECTURA    │ LECTURA     │ NO       │
-└────────────────────┴──────────┴───────────┴────────────┴─────────────┴──────────┘
-```
-
-1. **Token Maestro (`INFLUXDB_ADMIN_TOKEN`)**:
-   - Definido en `.env`.
-   - Utilizado exclusivamente por `influxdb` para el arranque inicial y por `influxdb_setup` para emitir los tokens restringidos.
-   - **Nunca se le entrega a Node-RED ni a los dashboards de visualización**.
-2. **Token de Escritura de Node-RED (`INFLUXDB_NODERED_WRITE_TOKEN`)**:
-   - Generado dinámicamente con permisos de escritura limitados a los IDs de los buckets `meteo`, `trafico` y `aire_demo`.
-   - **No tiene permiso de escritura sobre `aire`**: esto garantiza matemáticamente que ningún bug, inyección o fallo en los flujos de Node-RED pueda corromper o sobrescribir los datos maestros del proyecto.
-3. **Token de Lectura (`INFLUXDB_READ_TOKEN`)**:
-   - Generado con permiso exclusivo de solo lectura sobre los 4 buckets.
-   - Pensado para servidores externos de métricas, agentes de IA (protocolo MCP) o paneles de Grafana que solo necesitan realizar consultas analíticas.
-
-### 4.2. Cómo Viaja el Token a Node-RED (Sin Git y Sin Pasos Manuales)
-
-#### Solución implementada: Volumen compartido interno + Script de entrada (`entrypoint.sh`)
-1. El contenedor `influxdb_setup` escribe en `/tokens/tokens.env` dentro del volumen nombrado `influxdb_tokens`.
-2. El contenedor `nodered` monta dicho volumen en modo solo lectura (`influxdb_tokens:/tokens:ro`).
-3. El script `nodered/entrypoint.sh` se ejecuta antes de Node-RED:
-   - Espera en bucle hasta que `/tokens/tokens.env` esté disponible (con timeout de seguridad).
-   - Exporta `INFLUXDB_NODERED_WRITE_TOKEN` e `INFLUXDB_READ_TOKEN` como variables de entorno del proceso.
-   - Ejecuta Node-RED mediante `exec node ...`, heredando dichas variables de forma nativa.
-4. En los flujos de Node-RED, los nodos de función inyectan el token dinámicamente mediante `msg.token = env.get('INFLUXDB_NODERED_WRITE_TOKEN')`.
-
-#### Alternativas analizadas y descartadas
-
-| Alternativa | Descripción | Causa del descarte |
-|---|---|---|
-| **Token estático en `.env`** | Definir el token de Node-RED manualmente en el fichero `.env`. | En InfluxDB 2, los tokens asociados a buckets específicos requieren conocer el ID del bucket, que se genera aleatoriamente durante el primer arranque. Obligaría al usuario a iniciar InfluxDB, obtener los IDs por CLI, generar el token y copiarlo a `.env` a mano, incumpliendo el requisito de despliegue en un solo comando. |
-| **Configurar token en la UI de Node-RED** | Arrancar Node-RED y que el usuario pegue el token en el nodo InfluxDB mediante la web. | Proceso manual propenso a errores humanos que rompe la reproducibilidad e infraestructura como código (IaC). |
-| **Almacenar token en un fichero versionado en Git** | Guardar los tokens generados en un archivo del repositorio. | **Vulnerabilidad crítica de seguridad**. Nunca se deben comitear credenciales en el control de versiones. |
-| **Docker Secrets (Swarm)** | Uso de la directiva `secrets` nativa de Docker Swarm. | Requiere inicializar un cluster Docker Swarm (`docker swarm init`), introduciendo una sobrecarga innecesaria para un entorno de desarrollo local con Docker Compose estándar. |
+### ¿Cómo se pasan estos tokens entre contenedores sin subirlos a Git?
+He usado un volumen compartido (`influxdb_tokens`):
+- El contenedor `influxdb_setup` genera los tokens aleatorios dentro de InfluxDB.
+- Guarda un fichero `tokens.env` en ese volumen compartido (que solo existe dentro de Docker en mi máquina).
+- Al arrancar Node-RED y Grafana, sus scripts de inicio leen ese archivo y se configuran solos. Cero contraseñas en Git.
 
 ---
 
-## 5. Diseño y Funcionamiento de los Flujos de Node-RED
+## 4. Los flujos de Node-RED (paso a paso)
 
-### 5.1. Flujo 1: Meteorología (`meteo`)
-- **Frecuencia**: Cada 15 minutos (`repeat: 900`).
-- **Endpoint**: API pública de Open-Meteo para las coordenadas del centro de Bilbao ($43.263^\circ\text{N}, -2.935^\circ\text{W}$):
-  `https://api.open-meteo.com/v1/forecast?latitude=43.263&longitude=-2.935&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=Europe%2FMadrid`
-- **Modelado en InfluxDB**:
-  - Measurement: `clima`
-  - Tags: `ubicacion="bilbao"`, `fuente="open-meteo"`
-  - Fields: `temp_c`, `viento_kmh`, `viento_dir`, `lluvia_mm`, `humedad`
-- **Nota técnica sobre unidades**: El histórico en disco `datos/procesados/meteorologia/meteo_bilbao_horario.csv` registra el viento en **m/s**. En cambio, el API en tiempo real se configuró en **km/h** (`wind_speed_unit=kmh`). Si en el futuro se consolida el histórico en el bucket `meteo`, debe aplicarse la conversión:
-  $$\text{velocidad}_{\text{km/h}} = \text{velocidad}_{\text{m/s}} \times 3.6$$
+En Node-RED he organizado el trabajo en tres pestañas limpias y alineadas para que cualquiera que abra la interfaz entienda qué hace cada nodo:
 
-### 5.2. Flujo 2: Tráfico en Tiempo Real (`trafico`)
-- **Frecuencia**: Cada 5 minutos (`repeat: 300`).
-- **Fuente**: Dataset GeoJSON oficial del Ayuntamiento de Bilbao en tiempo real:
-  `https://www.bilbao.eus/aytoonline/srvDatasetTrafico?formato=geojson`
-- **Estructura real del dataset**:
-  - Contiene 81 tramos (`features`) monitorizados por espiras electromagnéticas.
-  - Campos inspeccionados: `CodigoSeccion` (código numérico identificativo de la vía), `Intensidad` (vehículos/hora), `Ocupacion` (porcentaje 0–100%) y `Velocidad` (km/h estimada).
-- **Modelado en InfluxDB**:
-  - Measurement: `estado`
-  - Tag: `codigo_seccion` (identificador único del tramo)
-  - Fields: `intensidad` (int), `ocupacion` (int), `velocidad` (int)
-- **Frecuencia elegida**: 5 minutos coincide exactamente con el intervalo de cálculo y publicación de las espiras de tráfico del Ayuntamiento, evitando consultas redundantes a la API municipal.
+### 1. Pestaña `meteo` (cada 15 minutos)
+- Un nodo **Inject** dispara la consulta cada 15 min.
+- Hace un `GET` a la API gratuita de Open-Meteo con las coordenadas de Bilbao (43.263, -2.935).
+- Una función en JavaScript extrae la temperatura, velocidad del viento, dirección, humedad y lluvia.
+- Lo escribe en InfluxDB en el measurement `clima`.
+- Si internet se cae o la API falla, un nodo **Catch** captura el error, avisa por consola y no tira el flujo abajo.
 
-### 5.3. Flujo 3: Simulación Acelerada de Calidad del Aire (`aire_demo`)
-- **Frecuencia**: Cada 5 segundos (`repeat: 5`).
-- **Origen de datos**: Generado por el script `ingesta/preparar_datos_demo.py` a partir de `datos/procesados/calidad_aire/no2_horario_limpio.zip`.
-  - Filtra estrictamente las cuatro estaciones clave del estudio:
-    1. **Mazarredo**: Dentro de la ZBE.
-    2. **Mª Díaz de Haro**: Dentro de la ZBE (en los datos crudos aparecía con el identificador `M_DIAZ_HARO` sin clasificar; el script de ingesta la clasifica como `dentro` sin alterar el histórico original).
-    3. **Europa**: Control urbano fuera de la ZBE.
-    4. **Arraiz**: Fondo regional / periurbano.
-  - Produce un CSV reducido de 6.5 MB y 158.901 filas ordenadas cronológicamente (2022–2026).
-- **Mecanismo de reproducción**:
-  - El nodo de función carga el CSV reducido en memoria una sola vez en el arranque (`flow.set('demo_por_ts', ...)`).
-  - En cada ciclo de 5 segundos, avanza un puntero temporal (`demo_idx`), extrae los registros de las cuatro estaciones correspondientes a esa hora y los emite en lote (*batch*).
-  - Al alcanzar el final de la serie histórica, el puntero se reinicia automáticamente a cero, garantizando una demostración continua ininterrumpida.
-- **Modelado en InfluxDB**:
-  - Measurement: `contaminantes`
-  - Tags: `estacion`, `zona`
-  - Fields: `no2` (valor numérico medido), `fecha_original` (timestamp de la fecha real en 2022-2026).
-  - Marca de tiempo: La marca temporal del punto en InfluxDB es el instante actual de escritura (`new Date()`), permitiendo que las herramientas de visualización y alertas detecten los datos como eventos en vivo.
+### 2. Pestaña `trafico` (cada 5 minutos)
+- Consulta el servicio GeoJSON oficial del Ayuntamiento de Bilbao (`srvDatasetTrafico`).
+- Nos devuelve los datos de los 81 tramos de la ciudad en tiempo real.
+- Filtramos y guardamos:
+  - `intensidad`: coches por hora.
+  - `ocupacion`: porcentaje de calle ocupada (0-100%).
+  - `velocidad`: velocidad media en km/h.
+- Se guarda en el bucket `trafico` con el tag del tramo (`codigo_seccion`).
 
-### 5.4. Resiliencia y Tolerancia a Fallos de Red
-Todos los flujos implementan defensas activas para garantizar que caídas externas no detengan Node-RED ni corrompan la base de datos:
-1. **Bloques `try / catch` exhaustivos**: Cualquier error en el parseo de JSON o en la estructura de propiedades es interceptado localmente.
-2. **Validación de respuestas HTTP**: Si una API externa devuelve un código de error o un cuerpo vacío, el flujo emite un aviso con `node.warn()`, actualiza el indicador visual del nodo (`node.status({fill:'red', ...})`) y retorna `null`, **impidiendo la escritura de registros nulos o campos vacíos en InfluxDB**.
-3. **Nodos `catch` dedicados**: Capturan excepciones no controladas de las llamadas HTTP y de los nodos InfluxDB, redirigiendo la traza a la consola de depuración sin provocar la caída del contenedor.
+### 3. Pestaña `aire_demo` (cada 5 segundos)
+- Para no depender de si las estaciones de aire emiten justo cuando estamos en clase, he preparado un script en Python (`ingesta/preparar_datos_demo.py`) que cogió los datos reales de 2022 a 2026 de 4 estaciones clave:
+  - **Mazarredo**: Dentro de la ZBE.
+  - **Mª Díaz de Haro**: Dentro de la ZBE (corrigiendo el nombre que venía en sucio como `M_DIAZ_HARO`).
+  - **Europa**: Fuera de la ZBE (control urbano).
+  - **Arraiz**: Fondo natural.
+- El flujo carga ese CSV comprimido en memoria al arrancar.
+- Cada 5 segundos, coge los datos de una hora real y los escribe en InfluxDB con la fecha y hora de este momento, de modo que parece que las estaciones están emitiendo en riguroso directo. Cuando llega al final del dataset, vuelve a empezar en bucle.
 
 ---
 
-## 6. Configuración de Red y Seguridad Perimetral en Docker
+## 5. Grafana: Visualización sencilla sin tocar nada a mano
 
-### 6.1. Vinculación Estricta a `127.0.0.1`
+Para ver los datos no quería tener que crear paneles a mano cada vez que se reiniciara el contenedor. Así que he usado la función de **provisioning** de Grafana:
 
-En `docker-compose.yml`, los puertos de cara al host se declaran explícitamente:
-```yaml
-ports:
-  - "127.0.0.1:8086:8086"
-  - "127.0.0.1:1880:1880"
-  - "127.0.0.1:3000:3000"
-```
-
-**Justificación técnica**:
-Si se utiliza la sintaxis común `8086:8086`, Docker en sistemas Linux manipula directamente las reglas de `iptables` creando reglas de reenvío en la cadena `PREROUTING`. Esto expone el puerto en `0.0.0.0` (todas las interfaces de red), haciendo accesible la base de datos y Node-RED a cualquier equipo conectado a la red local (Wi-Fi de la universidad, red doméstica o internet si el host posee IP pública), eludiendo el firewall del sistema operativo. Al forzar `127.0.0.1`, los servicios solo son accesibles desde el equipo local.
-
-### 6.2. Comunicación Inter-Contenedor vía DNS Interno
-
-Los contenedores se comunican a través de la red puente (*bridge*) creada automáticamente por Docker Compose. Node-RED y Grafana se conectan a InfluxDB mediante el nombre del servicio:
-```
-http://influxdb:8086
-```
-- **Nunca `localhost`**: Dentro del contenedor `haizelab_nodered` o `haizelab_grafana`, `localhost` o `127.0.0.1` apunta al propio contenedor, donde InfluxDB no está escuchando.
-- El servidor DNS integrado de Docker resuelve automáticamente el nombre de servicio `influxdb` a la dirección IP virtual asignada al contenedor en la red bridge.
+- He configurado un archivo YAML para que Grafana añada InfluxDB como origen de datos automáticamente al arrancar.
+- He programado un script en Python (`grafana/generate_dashboard.py`) que genera el JSON del cuadro de mando:
+  - **Calidad del aire**: Unos relojes con colores tipo semáforo (verde < 25, amarillo 25-40, rojo > 40 µg/m³ según las normas europeas) y la gráfica temporal comparando dentro vs fuera de la ZBE.
+  - **Clima**: Gráfica de temperatura y humedad, y otra de viento y lluvia.
+  - **Tráfico**: Cuántos coches se mueven por Bilbao y a qué velocidad media van.
+- He dejado el acceso directo activado en `localhost:3000`: entras con el navegador y ya tienes el panel en pantalla sin tener que loguearte.
 
 ---
 
-## 7. Preguntas Clave para Examen Técnico
+## 6. Problemas reales con los que me he pegado y cómo los he resuelto
 
-Esta sección resume conceptos de arquitectura comúnmente evaluados en exámenes de administración de sistemas e infraestructura Big Data:
+No todo fue coser y cantar a la primera; estos fueron los problemas principales que salieron durante las pruebas y cómo los solucioné:
 
-### P1: ¿Por qué no usar PostgreSQL estándar para registrar datos de sensores cada 5 segundos?
-**Respuesta**: Las bases de datos relacionales tradicionales almacenan datos en páginas en disco organizadas por filas y mantienen árboles B (*B-Trees*) para los índices. Con tasas de ingesta elevadas, las inserciones concurrentes fragmentan los árboles B y generan altos costes de I/O en disco. Además, las políticas de borrado (retención) en bases relacionales requieren ejecutar sentencias `DELETE`, que generan sobrecarga de bloqueo y fragmentación de tablas (necesidad de `VACUUM`). Las TSDB como InfluxDB emplean motores estructurados por bloques temporales (*Time-Structured Merge Tree* - TSM): escriben secuencialmente en ficheros inmutables y descartan bloques temporales completos instantáneamente al expirar su retención, sin coste de fragmentación.
+1. **Docker Compose daba error al construir (`already exists`)**:
+   - Varios servicios batch antiguos (`extraer`, `analisis`, `visualizar`) compartían la misma etiqueta `image: haizelab:latest`. Al hacer `build` en paralelo, Docker BuildKit se quejaba de colisión.
+   - *Solución*: Les puse el perfil `profiles: ["pipeline"]` en `docker-compose.yml` para que al hacer `docker compose up -d` solo levante los servicios de la infraestructura en tiempo real, sin pisar los scripts de análisis.
+2. **Node-RED aparecía con los nodos amontonados en la esquina**:
+   - Al generar los flujos por código, se me olvidó poner las propiedades `x` e `y`. Node-RED por defecto los apilaba todos en la posición (0, 0).
+   - *Solución*: Añadí coordenadas automáticas con separación limpia de 220 píxeles horizontales y la fila de errores debajo.
+3. **El triángulo rojo en el nodo de InfluxDB en Node-RED**:
+   - Node-RED mostraba una advertencia de validación en el nodo de salida porque la librería esperaba obligatoriamente los campos `protocol: http` y un nombre de base de datos por defecto. Se los configuré en el JSON y la advertencia desapareció.
+4. **Error en InfluxDB `unsupported input type for mean aggregate: string`**:
+   - Al mirar en el Data Explorer de InfluxDB, salía este fallo. La razón es que InfluxDB intenta calcular la media (`mean()`) de los campos seleccionados, y habíamos marcado el campo `fecha_original` (que es texto, ej. "2022-01-01"). Al desmarcar ese y marcar `no2` (que sí es un número flotante), la gráfica funcionó perfecta.
+5. **Permisos y shells en Linux/Windows**:
+   - En Windows los ficheros a veces se guardaban con saltos de línea CRLF, lo que rompía los scripts bash dentro de Alpine (`/bin/sh^M: not found`). Lo dejé blindado con `.gitattributes` para que siempre se guarden en formato LF de Linux.
 
-### P2: ¿Qué sucede si se almacena el campo `velocidad` o `temp_c` como un Tag en lugar de un Field en InfluxDB?
-**Respuesta**: Se produce una **explosión de cardinalidad**. Los tags se almacenan en el índice invertido (TSI) en memoria RAM para permitir filtrados rápidos. Como la velocidad y la temperatura son valores continuos con miles de variaciones posibles, el índice TSI generaría millones de series temporales distintas, agotando rápidamente la memoria RAM del servidor y degradando drásticamente el rendimiento de las consultas.
+---
 
-### P3: ¿Por qué es una mala práctica inyectar el token de administrador en el contenedor de Node-RED o Grafana?
-**Respuesta**: Viola el principio de mínimo privilegio. Si Node-RED tuviese el token de administrador y sufriese una vulnerabilidad de ejecución remota de código (RCE) o un flujo mal configurado, el atacante o el script defectuoso podría borrar buckets críticos (como el histórico `aire`), alterar configuraciones de la organización o crear nuevos usuarios. Con un token restringido a escritura en buckets específicos (para Node-RED) o un token de solo lectura `read-all` (para Grafana), el radio de impacto de cualquier incidente queda estrictamente acotado y se impide cualquier mutación accidental o maliciosa de los datos.
+## 7. Preguntas típicas que nos pueden hacer en clase o en un examen
 
-### P4: ¿Por qué separar `docker compose down` de `docker compose down -v`?
-**Respuesta**: El comando `docker compose down` detiene y elimina los contenedores y la red virtual, pero **mantiene intactos los volúmenes de datos con nombre**. Esto permite reiniciar o actualizar imágenes sin perder el histórico acumulado en InfluxDB. El modificador `-v` (*volumes*) elimina explícitamente los volúmenes, destruyendo toda la base de datos persistida; solo debe emplearse cuando se desee reconstruir el entorno íntegramente desde cero.
+### P1: ¿Por qué no usar PostgreSQL para registrar datos cada pocos segundos?
+Porque las bases de datos relacionales tradicionales sufren mucho con escrituras masivas continuas: tienen que reordenar árboles de índices (B-Trees) en disco y borrar datos viejos requiere sentencias `DELETE` pesadas que fragmentan las tablas. Las TSDB como InfluxDB escriben en ficheros secuenciales ordenados por tiempo (TSM) y descartan bloques enteros cuando expira la retención, sin coste de rendimiento.
 
-### P5: ¿Cómo se logra la reproducibilidad de cuadros de mando e integración de datos sin configuración manual en Grafana?
-**Respuesta**: Mediante el mecanismo de **provisioning declarativo** (`/etc/grafana/provisioning/`). En lugar de requerir que el usuario configure manualmente el origen de datos y dibuje los paneles desde el navegador, se definen manifiestos YAML para el datasource (apuntando a `http://influxdb:8086` con token `read-all`) y ficheros JSON para los cuadros de mando (*Dashboards as Code*). Al arrancar el contenedor, Grafana compila automáticamente la infraestructura visual sin intervención humana, garantizando que el entorno sea 100% reproducible en cualquier máquina.
+### P2: ¿Por qué en InfluxDB la velocidad o la temperatura van en Fields y no en Tags?
+Porque si pones una variable continua (como temperatura o velocidad, que tienen miles de decimales o valores distintos) como Tag, provocas una **explosión de cardinalidad**. Los Tags se indexan en memoria RAM; si creas millones de combinaciones de tags, te quedas sin memoria en el servidor en un par de horas.
+
+### P3: ¿Por qué darle a Node-RED un token con permisos justos y no el de administrador?
+Por el principio de mínimo privilegio. Si alguien consiguiera explotar una vulnerabilidad en Node-RED o en alguna librería npm que hayamos instalado, solo podría escribir en los buckets de prueba y meteo. No podría borrar la base de datos histórica `aire` ni robarnos el control del servidor InfluxDB.
+
+### P4: ¿Cuál es la diferencia entre `docker compose down` y `docker compose down -v`?
+El primero apaga y borra los contenedores, pero **mantiene guardados los datos** en los volúmenes de Docker (no pierdes las mediciones). Si le añades el `-v`, borras también los volúmenes y la base de datos se borra por completo, obligando a reconstruir todo desde cero.

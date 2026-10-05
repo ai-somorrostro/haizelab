@@ -41,6 +41,12 @@ haizelab/
 │   ├── flows.json                     # Flujos declarativos (meteo, tráfico, aire_demo)
 │   └── settings.js                    # Configuración de runtime y módulos externos
 │
+├── grafana/                           # Servicio de visualización y dashboards
+│   ├── entrypoint.sh                  # Inyección automática del token read-all en datasource
+│   ├── generate_dashboard.py          # Script generador del cuadro de mando en JSON
+│   ├── dashboards/                    # Manifiesto del dashboard ZBE Bilbao
+│   └── provisioning/                  # Configuración de auto-aprovisionamiento
+│
 ├── scripts/                           # Scripts modulares y descriptivos
 │   ├── 01_extraer_calidad_aire.py     # Limpia y clasifica NO2 horario (Dentro / Fuera / Fondo)
 │   ├── 02_extraer_meteorologia.py     # Estandariza fechas y variables climáticas de Bilbao
@@ -142,16 +148,16 @@ Librerías principales: `pandas>=2.0`, `numpy>=1.24`, `matplotlib>=3.7`, `scipy>
 
 ---
 
-## 🐳 Infraestructura: InfluxDB y Node-RED
+## 🐳 Infraestructura: InfluxDB, Node-RED y Grafana
 
-Esta seccion describe la capa de datos en tiempo real anadida en `feature/infra-influxdb-nodered`.
-Permite visualizar metricas de aire, meteorologia y trafico en vivo.
+En esta sección explico cómo funciona la capa de datos en tiempo real que he añadido al proyecto.
+Permite consultar y visualizar métricas de calidad del aire, meteorología y tráfico en directo.
 
 ### Requisitos previos
 
 - Docker >= 24 con Docker Compose v2 (incluido en Docker Desktop)
 - 2 GB de RAM libres para los contenedores
-- Puerto 8086 y 1880 disponibles en localhost
+- Puertos 8086, 1880 y 3000 disponibles en localhost (`127.0.0.1`)
 
 ### Primer arranque (desde cero)
 
