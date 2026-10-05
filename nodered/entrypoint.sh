@@ -32,6 +32,18 @@ done < "$TOKENS_FILE"
 TOKEN_PREVIEW=$(printf "%s" "$INFLUXDB_NODERED_WRITE_TOKEN" | cut -c 1-8)
 echo "[haizelab-entrypoint] Token NR cargado (primeros 8 chars): ${TOKEN_PREVIEW}..."
 
+# Generar fichero de credenciales para el nodo de InfluxDB
+if [ -n "$INFLUXDB_NODERED_WRITE_TOKEN" ]; then
+  cat <<EOF > /data/flows_cred.json
+{
+  "influx_cfg_haizelab": {
+    "token": "$INFLUXDB_NODERED_WRITE_TOKEN"
+  }
+}
+EOF
+  echo "[haizelab-entrypoint] Credenciales inyectadas en /data/flows_cred.json"
+fi
+
 # Copiar settings.js al directorio de datos si no existe
 if [ ! -f "/data/settings.js" ]; then
   cp /usr/src/node-red/settings.js /data/settings.js 2>/dev/null || true

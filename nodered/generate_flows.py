@@ -59,7 +59,7 @@ flows.append({'id': 'out_meteo', 'type': 'influxdb batch', 'z': T1,
     'influxdb': CFG, 'name': 'Escribir > meteo',
     'precision': 'ms', 'retentionPolicy': '', 'database': 'meteo',
     'precisionV18FluxV20': 'ms', 'retentionPolicyV18Flux': '',
-    'org': '', 'bucket': 'meteo', 'wires': []})
+    'org': 'haizenlab', 'bucket': 'meteo', 'wires': []})
 flows.append({'id': 'catch_meteo', 'type': 'catch', 'z': T1,
     'name': 'Catch meteo', 'scope': ['out_meteo', 'req_meteo'],
     'uncaught': False, 'wires': [['dbg_meteo']]})
@@ -116,7 +116,7 @@ flows.append({'id': 'out_trafico', 'type': 'influxdb batch', 'z': T2,
     'influxdb': CFG, 'name': 'Escribir > trafico',
     'precision': 'ms', 'retentionPolicy': '', 'database': 'trafico',
     'precisionV18FluxV20': 'ms', 'retentionPolicyV18Flux': '',
-    'org': '', 'bucket': 'trafico', 'wires': []})
+    'org': 'haizenlab', 'bucket': 'trafico', 'wires': []})
 flows.append({'id': 'catch_trafico', 'type': 'catch', 'z': T2,
     'name': 'Catch trafico', 'scope': ['out_trafico', 'req_trafico'],
     'uncaught': False, 'wires': [['dbg_trafico']]})
@@ -187,7 +187,7 @@ flows.append({'id': 'out_demo', 'type': 'influxdb batch', 'z': T3,
     'influxdb': CFG, 'name': 'Escribir > aire_demo',
     'precision': 'ms', 'retentionPolicy': '', 'database': 'aire_demo',
     'precisionV18FluxV20': 'ms', 'retentionPolicyV18Flux': '',
-    'org': '', 'bucket': 'aire_demo', 'wires': []})
+    'org': 'haizenlab', 'bucket': 'aire_demo', 'wires': []})
 flows.append({'id': 'catch_demo', 'type': 'catch', 'z': T3,
     'name': 'Catch aire_demo', 'scope': ['out_demo'],
     'uncaught': False, 'wires': [['dbg_demo']]})

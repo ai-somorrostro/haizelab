@@ -99,7 +99,7 @@
     "database": "meteo",
     "precisionV18FluxV20": "ms",
     "retentionPolicyV18Flux": "",
-    "org": "",
+    "org": "haizenlab",
     "bucket": "meteo",
     "wires": []
   },
@@ -202,7 +202,7 @@
     "database": "trafico",
     "precisionV18FluxV20": "ms",
     "retentionPolicyV18Flux": "",
-    "org": "",
+    "org": "haizenlab",
     "bucket": "trafico",
     "wires": []
   },
@@ -288,7 +288,7 @@
     "database": "aire_demo",
     "precisionV18FluxV20": "ms",
     "retentionPolicyV18Flux": "",
-    "org": "",
+    "org": "haizenlab",
     "bucket": "aire_demo",
     "wires": []
   },
