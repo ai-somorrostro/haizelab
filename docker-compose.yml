@@ -28,6 +28,7 @@ services:
   # Servicios originales de analisis (sin modificar)
   # ────────────────────────────────────────────────────────────────────────────
   extraer:
+    profiles: ["pipeline"]
     build: .
     image: haizelab:latest
     container_name: haizelab_extraer
@@ -37,6 +38,7 @@ services:
     command: sh -c "python scripts/01_extraer_calidad_aire.py && python scripts/02_extraer_meteorologia.py && python scripts/03_extraer_trafico.py"
 
   analisis:
+    profiles: ["pipeline"]
     build: .
     image: haizelab:latest
     container_name: haizelab_analisis
@@ -46,6 +48,7 @@ services:
     command: sh -c "python scripts/04_unificar_datos.py && python scripts/05_analisis_impacto_zbe.py"
 
   visualizar:
+    profiles: ["pipeline"]
     build: .
     image: haizelab:latest
     container_name: haizelab_visualizar
@@ -55,6 +58,7 @@ services:
     command: python scripts/06_visualizar_decision.py
 
   todo:
+    profiles: ["pipeline"]
     build: .
     image: haizelab:latest
     container_name: haizelab_todo

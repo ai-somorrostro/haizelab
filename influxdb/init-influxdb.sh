@@ -12,7 +12,7 @@
 #
 # Si /tokens/tokens.env ya existe (reinicio sin -v), sale sin recrear nada.
 
-set -euo pipefail
+set -eu
 
 HOST="http://influxdb:8086"
 ORG="${DOCKER_INFLUXDB_INIT_ORG}"
