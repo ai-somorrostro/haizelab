@@ -25,6 +25,22 @@ haizelab/
 │       ├── trafico/                   # trafico_accesos_bilbao.csv, trafico_circunvalacion.csv
 │       └── unificados/                # dataset_unificado_horario.csv, sintesis_ejecutiva_zbe.csv
 │
+├── docs/                              # Documentación técnica y arquitectura
+│   └── infraestructura-explicada.md   # Justificación y decisiones técnicas de InfluxDB y Node-RED
+│
+├── influxdb/                          # Configuración y provisión de InfluxDB 2
+│   └── init-influxdb.sh               # Provisión de buckets y tokens de mínimo privilegio
+│
+├── ingesta/                           # Pipelines de preparación para ingesta continua
+│   ├── preparar_datos_demo.py         # Extracción de subconjunto de demo de NO2
+│   └── no2_demo_reducido.csv          # Dataset local para demo (ignorado en git)
+│
+├── nodered/                           # Servicio de flujos Node-RED
+│   ├── Dockerfile                     # Imagen personalizada con node-red-contrib-influxdb
+│   ├── entrypoint.sh                  # Inyección segura de tokens sin persistencia en git
+│   ├── flows.json                     # Flujos declarativos (meteo, tráfico, aire_demo)
+│   └── settings.js                    # Configuración de runtime y módulos externos
+│
 ├── scripts/                           # Scripts modulares y descriptivos
 │   ├── 01_extraer_calidad_aire.py     # Limpia y clasifica NO2 horario (Dentro / Fuera / Fondo)
 │   ├── 02_extraer_meteorologia.py     # Estandariza fechas y variables climáticas de Bilbao
@@ -122,3 +138,130 @@ Instalación rápida en local:
 pip install -r requirements.txt
 ```
 Librerías principales: `pandas>=2.0`, `numpy>=1.24`, `matplotlib>=3.7`, `scipy>=1.11`, `pymupdf>=1.24`, `openpyxl>=3.1`.
+
+
+---
+
+## 🐳 Infraestructura: InfluxDB y Node-RED
+
+Esta seccion describe la capa de datos en tiempo real anadida en `feature/infra-influxdb-nodered`.
+Permite visualizar metricas de aire, meteorologia y trafico en vivo.
+
+### Requisitos previos
+
+- Docker >= 24 con Docker Compose v2 (incluido en Docker Desktop)
+- 2 GB de RAM libres para los contenedores
+- Puerto 8086 y 1880 disponibles en localhost
+
+### Primer arranque (desde cero)
+
+```bash
+# 1. Copiar el fichero de variables de entorno y editar con credenciales reales
+cp .env.example .env
+# Editar .env con un editor de texto
+
+# 2. Generar el CSV reducido para la demo de NO2 (solo la primera vez)
+python ingesta/preparar_datos_demo.py
+
+# 3. Arrancar todos los servicios
+docker compose up -d --build
+
+# 4. Comprobar estado (esperar ~60 s al primer arranque)
+docker compose ps
+```
+
+### Reinicio (sin borrar datos)
+
+```bash
+docker compose up -d
+```
+
+### Borrar todo (incluidos datos de InfluxDB)
+
+```bash
+docker compose down -v
+```
+
+### Variables de entorno (.env)
+
+| Variable | Descripcion | Ejemplo |
+|---|---|---|
+| `INFLUXDB_ORG` | Nombre de la organizacion en InfluxDB | `haizenlab` |
+| `INFLUXDB_BUCKET_PRINCIPAL` | Bucket principal (datos historicos ZBE) | `aire` |
+| `INFLUXDB_ADMIN_USER` | Usuario administrador de InfluxDB | `admin` |
+| `INFLUXDB_ADMIN_PASSWORD` | Contrasena del administrador | *(segura)* |
+| `INFLUXDB_ADMIN_TOKEN` | Token maestro de InfluxDB | *(aleatorio largo)* |
+| `INFLUXDB_RETENTION_METEO` | Retencion bucket meteo (segundos) | `7776000` (90 dias) |
+| `INFLUXDB_RETENTION_TRAFICO` | Retencion bucket trafico (segundos) | `2592000` (30 dias) |
+| `INFLUXDB_RETENTION_AIRE_DEMO` | Retencion bucket aire_demo (segundos) | `604800` (7 dias) |
+
+Los tokens `INFLUXDB_NODERED_WRITE_TOKEN` e `INFLUXDB_READ_TOKEN` se generan
+automaticamente en el primer arranque y se almacenan en el volumen `influxdb_tokens`
+(nunca en git).
+
+### Buckets de InfluxDB
+
+| Bucket | Measurement | Tags | Fields | Retencion |
+|---|---|---|---|---|
+| `aire` | *(datos historicos ZBE)* | — | — | Infinita |
+| `meteo` | `clima` | `ubicacion`, `fuente` | `temp_c`, `viento_kmh`, `viento_dir`, `lluvia_mm`, `humedad` | 90 dias |
+| `trafico` | `estado` | `codigo_seccion` | `intensidad`, `ocupacion`, `velocidad` | 30 dias |
+| `aire_demo` | `contaminantes` | `estacion`, `zona` | `no2`, `fecha_original` | 7 dias |
+
+> **Nota sobre el viento**: El historico `datos/procesados/meteorologia/meteo_bilbao_horario.csv`
+> guarda el viento en **m/s**. El flujo `meteo` solicita a Open-Meteo los datos en **km/h**
+> (`wind_speed_unit=kmh`). Si en el futuro se carga el historico en InfluxDB,
+> multiplicar la columna de viento por 3.6 antes de ingresarla.
+
+### Tokens y permisos
+
+| Token | Permisos | Usado por |
+|---|---|---|
+| Admin (`INFLUXDB_ADMIN_TOKEN`) | Todo | Solo docker-compose (setup inicial) |
+| nodered-write | Escritura en `meteo`, `trafico`, `aire_demo` (no en `aire`) | Node-RED |
+| read-all | Lectura en los 4 buckets | Grafana (futuro), MCP (futuro) |
+
+### Flujos de Node-RED
+
+| Flujo | Frecuencia | Fuente | Destino |
+|---|---|---|---|
+| **meteo** | Cada 15 min | [Open-Meteo API](https://api.open-meteo.com) (Bilbao 43.263,-2.935) | `meteo` → `clima` |
+| **trafico** | Cada 5 min | [Bilbao Open Data](https://www.bilbao.eus/aytoonline/srvDatasetTrafico?formato=geojson) (81 tramos) | `trafico` → `estado` |
+| **aire_demo** | Cada 5 s | `ingesta/no2_demo_reducido.csv` (4 estaciones, 2022-2026) | `aire_demo` → `contaminantes` |
+
+**Campos del API de trafico Bilbao** (verificados 2026-10-05):
+- `CodigoSeccion`: identificador unico del tramo (81 valores)
+- `Intensidad`: vehiculos/hora (integer)
+- `Ocupacion`: porcentaje de ocupacion de la via 0-100 (integer)
+- `Velocidad`: velocidad media km/h (integer)
+- `FechaHora`: timestamp de la ultima medicion del sensor
+
+**Estaciones flujo aire_demo**:
+- `Mazarredo` (zona: dentro ZBE)
+- `MDiazDeHaro` (zona: dentro ZBE — reclasificacion de M_DIAZ_HARO)
+- `Europa` (zona: fuera ZBE)
+- `Arraiz` (zona: fondo regional)
+
+### Como comprobar que llegan datos
+
+```bash
+# Ver estado de los contenedores
+docker compose ps
+
+# Logs en tiempo real
+docker compose logs -f nodered
+docker compose logs -f influxdb
+
+# Consultar datos con la CLI de InfluxDB (dentro del contenedor)
+docker exec haizelab_influxdb influx query \
+  --org haizenlab \
+  --token <INFLUXDB_ADMIN_TOKEN> \
+  'from(bucket:"meteo") |> range(start:-1h) |> limit(n:5)'
+
+# Interfaz web de InfluxDB
+# Abrir http://localhost:8086 en el navegador
+# Usuario: admin, Contrasena: la de .env
+
+# Editor de flujos de Node-RED
+# Abrir http://localhost:1880 en el navegador
+```
