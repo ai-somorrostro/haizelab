@@ -1,0 +1,36 @@
+services:
+  extraer:
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_extraer
+    volumes:
+      - ./datos:/app/datos
+      - ./salida:/app/salida
+    command: sh -c "python scripts/01_extraer_calidad_aire.py && python scripts/02_extraer_meteorologia.py && python scripts/03_extraer_trafico.py"
+
+  analisis:
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_analisis
+    volumes:
+      - ./datos:/app/datos
+      - ./salida:/app/salida
+    command: sh -c "python scripts/04_unificar_datos.py && python scripts/05_analisis_impacto_zbe.py"
+
+  visualizar:
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_visualizar
+    volumes:
+      - ./datos:/app/datos
+      - ./salida:/app/salida
+    command: python scripts/06_visualizar_decision.py
+
+  todo:
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_todo
+    volumes:
+      - ./datos:/app/datos
+      - ./salida:/app/salida
+    command: python ejecutar_todo.py
