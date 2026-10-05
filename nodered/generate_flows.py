@@ -6,9 +6,10 @@ flows = []
 CFG = 'influx_cfg_haizelab'
 flows.append({
     'id': CFG, 'type': 'influxdb', 'name': 'InfluxDB-HaizeLab',
-    'hostname': '127.0.0.1', 'port': '8086', 'database': '',
-    'usetls': False, 'tls': '', 'influxdbVersion': '2.0',
-    'url': 'http://influxdb:8086', 'rejectUnauthorized': True
+    'hostname': 'influxdb', 'port': '8086', 'protocol': 'http',
+    'database': 'haizenlab', 'usetls': False, 'tls': '',
+    'influxdbVersion': '2.0', 'url': 'http://influxdb:8086',
+    'timeout': 10, 'rejectUnauthorized': True
 })
 
 # --- FLUJO METEO ---
