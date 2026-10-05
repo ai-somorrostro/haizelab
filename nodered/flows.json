@@ -37,7 +37,9 @@
       [
         "fn_meteo_url"
       ]
-    ]
+    ],
+    "x": 160,
+    "y": 160
   },
   {
     "id": "fn_meteo_url",
@@ -53,7 +55,9 @@
       [
         "req_meteo"
       ]
-    ]
+    ],
+    "x": 360,
+    "y": 160
   },
   {
     "id": "req_meteo",
@@ -70,7 +74,9 @@
       [
         "fn_meteo_parse"
       ]
-    ]
+    ],
+    "x": 580,
+    "y": 160
   },
   {
     "id": "fn_meteo_parse",
@@ -86,7 +92,9 @@
       [
         "out_meteo"
       ]
-    ]
+    ],
+    "x": 800,
+    "y": 160
   },
   {
     "id": "out_meteo",
@@ -101,7 +109,9 @@
     "retentionPolicyV18Flux": "",
     "org": "haizenlab",
     "bucket": "meteo",
-    "wires": []
+    "wires": [],
+    "x": 1020,
+    "y": 160
   },
   {
     "id": "catch_meteo",
@@ -117,7 +127,9 @@
       [
         "dbg_meteo"
       ]
-    ]
+    ],
+    "x": 800,
+    "y": 280
   },
   {
     "id": "dbg_meteo",
@@ -129,7 +141,9 @@
     "console": true,
     "complete": "true",
     "targetType": "full",
-    "wires": []
+    "wires": [],
+    "x": 1020,
+    "y": 280
   },
   {
     "id": "tab_trafico",
@@ -156,7 +170,9 @@
       [
         "req_trafico"
       ]
-    ]
+    ],
+    "x": 160,
+    "y": 160
   },
   {
     "id": "req_trafico",
@@ -173,7 +189,9 @@
       [
         "fn_trafico_parse"
       ]
-    ]
+    ],
+    "x": 380,
+    "y": 160
   },
   {
     "id": "fn_trafico_parse",
@@ -189,7 +207,9 @@
       [
         "out_trafico"
       ]
-    ]
+    ],
+    "x": 620,
+    "y": 160
   },
   {
     "id": "out_trafico",
@@ -204,7 +224,9 @@
     "retentionPolicyV18Flux": "",
     "org": "haizenlab",
     "bucket": "trafico",
-    "wires": []
+    "wires": [],
+    "x": 880,
+    "y": 160
   },
   {
     "id": "catch_trafico",
@@ -220,7 +242,9 @@
       [
         "dbg_trafico"
       ]
-    ]
+    ],
+    "x": 620,
+    "y": 280
   },
   {
     "id": "dbg_trafico",
@@ -232,7 +256,9 @@
     "console": true,
     "complete": "true",
     "targetType": "full",
-    "wires": []
+    "wires": [],
+    "x": 880,
+    "y": 280
   },
   {
     "id": "tab_demo",
@@ -259,7 +285,9 @@
       [
         "fn_demo"
       ]
-    ]
+    ],
+    "x": 160,
+    "y": 160
   },
   {
     "id": "fn_demo",
@@ -275,7 +303,9 @@
       [
         "out_demo"
       ]
-    ]
+    ],
+    "x": 400,
+    "y": 160
   },
   {
     "id": "out_demo",
@@ -290,7 +320,9 @@
     "retentionPolicyV18Flux": "",
     "org": "haizenlab",
     "bucket": "aire_demo",
-    "wires": []
+    "wires": [],
+    "x": 680,
+    "y": 160
   },
   {
     "id": "catch_demo",
@@ -305,7 +337,9 @@
       [
         "dbg_demo"
       ]
-    ]
+    ],
+    "x": 400,
+    "y": 280
   },
   {
     "id": "dbg_demo",
@@ -317,6 +351,8 @@
     "console": true,
     "complete": "true",
     "targetType": "full",
-    "wires": []
+    "wires": [],
+    "x": 680,
+    "y": 280
   }
 ]

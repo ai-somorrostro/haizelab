@@ -17,18 +17,21 @@ flows.append({'id': T1, 'type': 'tab', 'label': 'meteo', 'disabled': False})
 flows.append({'id': 'inj_meteo', 'type': 'inject', 'z': T1,
     'name': 'Cada 15 min', 'props': [{'p': 'payload'}],
     'repeat': '900', 'once': True, 'onceDelay': '3',
-    'payload': '', 'payloadType': 'date', 'wires': [['fn_meteo_url']]})
+    'payload': '', 'payloadType': 'date', 'wires': [['fn_meteo_url']],
+    'x': 160, 'y': 160})
 
 FUNC_METEO_URL = """msg.url = 'https://api.open-meteo.com/v1/forecast?latitude=43.263&longitude=-2.935&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=Europe%2FMadrid';
 return msg;"""
 flows.append({'id': 'fn_meteo_url', 'type': 'function', 'z': T1,
     'name': 'URL Open-Meteo', 'func': FUNC_METEO_URL,
     'outputs': 1, 'noerr': 0, 'initialize': '', 'finalize': '',
-    'wires': [['req_meteo']]})
+    'wires': [['req_meteo']],
+    'x': 360, 'y': 160})
 flows.append({'id': 'req_meteo', 'type': 'http request', 'z': T1,
     'name': 'GET Open-Meteo', 'method': 'GET', 'ret': 'obj',
     'paytoqs': 'ignore', 'url': '', 'tls': '', 'persist': False,
-    'wires': [['fn_meteo_parse']]})
+    'wires': [['fn_meteo_parse']],
+    'x': 580, 'y': 160})
 
 FUNC_METEO_PARSE = """try {
     var p = msg.payload;
@@ -54,18 +57,22 @@ FUNC_METEO_PARSE = """try {
 flows.append({'id': 'fn_meteo_parse', 'type': 'function', 'z': T1,
     'name': 'Parsear meteo', 'func': FUNC_METEO_PARSE,
     'outputs': 1, 'noerr': 0, 'initialize': '', 'finalize': '',
-    'wires': [['out_meteo']]})
+    'wires': [['out_meteo']],
+    'x': 800, 'y': 160})
 flows.append({'id': 'out_meteo', 'type': 'influxdb batch', 'z': T1,
     'influxdb': CFG, 'name': 'Escribir > meteo',
     'precision': 'ms', 'retentionPolicy': '', 'database': 'meteo',
     'precisionV18FluxV20': 'ms', 'retentionPolicyV18Flux': '',
-    'org': 'haizenlab', 'bucket': 'meteo', 'wires': []})
+    'org': 'haizenlab', 'bucket': 'meteo', 'wires': [],
+    'x': 1020, 'y': 160})
 flows.append({'id': 'catch_meteo', 'type': 'catch', 'z': T1,
     'name': 'Catch meteo', 'scope': ['out_meteo', 'req_meteo'],
-    'uncaught': False, 'wires': [['dbg_meteo']]})
+    'uncaught': False, 'wires': [['dbg_meteo']],
+    'x': 800, 'y': 280})
 flows.append({'id': 'dbg_meteo', 'type': 'debug', 'z': T1,
     'name': 'Log error meteo', 'active': True, 'tosidebar': True, 'console': True,
-    'complete': 'true', 'targetType': 'full', 'wires': []})
+    'complete': 'true', 'targetType': 'full', 'wires': [],
+    'x': 1020, 'y': 280})
 
 # --- FLUJO TRAFICO ---
 T2 = 'tab_trafico'
@@ -73,12 +80,14 @@ flows.append({'id': T2, 'type': 'tab', 'label': 'trafico', 'disabled': False})
 flows.append({'id': 'inj_trafico', 'type': 'inject', 'z': T2,
     'name': 'Cada 5 min', 'props': [{'p': 'payload'}],
     'repeat': '300', 'once': True, 'onceDelay': '5',
-    'payload': '', 'payloadType': 'date', 'wires': [['req_trafico']]})
+    'payload': '', 'payloadType': 'date', 'wires': [['req_trafico']],
+    'x': 160, 'y': 160})
 flows.append({'id': 'req_trafico', 'type': 'http request', 'z': T2,
     'name': 'GET Trafico GeoJSON', 'method': 'GET', 'ret': 'obj',
     'paytoqs': 'ignore',
     'url': 'https://www.bilbao.eus/aytoonline/srvDatasetTrafico?formato=geojson',
-    'tls': '', 'persist': False, 'wires': [['fn_trafico_parse']]})
+    'tls': '', 'persist': False, 'wires': [['fn_trafico_parse']],
+    'x': 380, 'y': 160})
 
 FUNC_TRAFICO = """try {
     var geo = msg.payload;
@@ -111,18 +120,22 @@ FUNC_TRAFICO = """try {
 flows.append({'id': 'fn_trafico_parse', 'type': 'function', 'z': T2,
     'name': 'Parsear tramos', 'func': FUNC_TRAFICO,
     'outputs': 1, 'noerr': 0, 'initialize': '', 'finalize': '',
-    'wires': [['out_trafico']]})
+    'wires': [['out_trafico']],
+    'x': 620, 'y': 160})
 flows.append({'id': 'out_trafico', 'type': 'influxdb batch', 'z': T2,
     'influxdb': CFG, 'name': 'Escribir > trafico',
     'precision': 'ms', 'retentionPolicy': '', 'database': 'trafico',
     'precisionV18FluxV20': 'ms', 'retentionPolicyV18Flux': '',
-    'org': 'haizenlab', 'bucket': 'trafico', 'wires': []})
+    'org': 'haizenlab', 'bucket': 'trafico', 'wires': [],
+    'x': 880, 'y': 160})
 flows.append({'id': 'catch_trafico', 'type': 'catch', 'z': T2,
     'name': 'Catch trafico', 'scope': ['out_trafico', 'req_trafico'],
-    'uncaught': False, 'wires': [['dbg_trafico']]})
+    'uncaught': False, 'wires': [['dbg_trafico']],
+    'x': 620, 'y': 280})
 flows.append({'id': 'dbg_trafico', 'type': 'debug', 'z': T2,
     'name': 'Log error trafico', 'active': True, 'tosidebar': True, 'console': True,
-    'complete': 'true', 'targetType': 'full', 'wires': []})
+    'complete': 'true', 'targetType': 'full', 'wires': [],
+    'x': 880, 'y': 280})
 
 # --- FLUJO AIRE_DEMO ---
 T3 = 'tab_demo'
@@ -130,7 +143,8 @@ flows.append({'id': T3, 'type': 'tab', 'label': 'aire_demo', 'disabled': False})
 flows.append({'id': 'inj_demo', 'type': 'inject', 'z': T3,
     'name': 'Cada 5 s', 'props': [{'p': 'payload'}],
     'repeat': '5', 'once': True, 'onceDelay': '10',
-    'payload': '', 'payloadType': 'date', 'wires': [['fn_demo']]})
+    'payload': '', 'payloadType': 'date', 'wires': [['fn_demo']],
+    'x': 160, 'y': 160})
 
 FUNC_DEMO = """var fs = global.get('fs') || require('fs');
 if (!flow.get('demo_cargado')) {
@@ -182,18 +196,22 @@ return msg;"""
 flows.append({'id': 'fn_demo', 'type': 'function', 'z': T3,
     'name': 'Siguiente hora NO2', 'func': FUNC_DEMO,
     'outputs': 1, 'noerr': 0, 'initialize': '', 'finalize': '',
-    'wires': [['out_demo']]})
+    'wires': [['out_demo']],
+    'x': 400, 'y': 160})
 flows.append({'id': 'out_demo', 'type': 'influxdb batch', 'z': T3,
     'influxdb': CFG, 'name': 'Escribir > aire_demo',
     'precision': 'ms', 'retentionPolicy': '', 'database': 'aire_demo',
     'precisionV18FluxV20': 'ms', 'retentionPolicyV18Flux': '',
-    'org': 'haizenlab', 'bucket': 'aire_demo', 'wires': []})
+    'org': 'haizenlab', 'bucket': 'aire_demo', 'wires': [],
+    'x': 680, 'y': 160})
 flows.append({'id': 'catch_demo', 'type': 'catch', 'z': T3,
     'name': 'Catch aire_demo', 'scope': ['out_demo'],
-    'uncaught': False, 'wires': [['dbg_demo']]})
+    'uncaught': False, 'wires': [['dbg_demo']],
+    'x': 400, 'y': 280})
 flows.append({'id': 'dbg_demo', 'type': 'debug', 'z': T3,
     'name': 'Log error demo', 'active': True, 'tosidebar': True, 'console': True,
-    'complete': 'true', 'targetType': 'full', 'wires': []})
+    'complete': 'true', 'targetType': 'full', 'wires': [],
+    'x': 680, 'y': 280})
 
 from pathlib import Path
 ruta_flows = Path(__file__).resolve().parent / 'flows.json'
