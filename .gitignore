@@ -1,25 +1,21 @@
-﻿# --- Datos brutos (pesados, se obtienen de Open Data Euskadi) ---
-datos/
+# --- Datos crudos (pesados: CSVs y PDFs originales) ---
+datos/crudo/
 
-# --- Salidas generadas (se regeneran con analisis.py) ---
+# --- Datasets horarios voluminosos (se regeneran con los scripts) ---
+datos/procesados/calidad_aire/no2_horario_limpio.csv
+datos/procesados/unificados/dataset_unificado_horario.csv
 salida/aire_limpio.csv
 
-# --- Python ---
+# --- Python / Entornos virtuales ---
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
 venv/
 env/
-dist/
-build/
 
-# --- OS ---
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# --- Editores ---
+# --- IDE / Sistema Operativo ---
 .vscode/
 .idea/
-*.swp
+.DS_Store
+Thumbs.db
