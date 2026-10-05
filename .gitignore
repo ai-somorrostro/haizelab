@@ -1,9 +1,9 @@
-# --- Datos crudos (pesados: CSVs y PDFs originales) ---
+# --- Datos crudos originales (excluidos para mantener el repo ligero) ---
 datos/crudo/
 
-# --- Datasets horarios voluminosos (se regeneran con los scripts) ---
+# --- Datasets descomprimidos de gran tamaño (> 50 MB) ---
+# Se utiliza en su lugar la versión comprimida .zip (< 10 MB, compatible con GitHub)
 datos/procesados/calidad_aire/no2_horario_limpio.csv
-datos/procesados/unificados/dataset_unificado_horario.csv
 salida/aire_limpio.csv
 
 # --- Python / Entornos virtuales ---

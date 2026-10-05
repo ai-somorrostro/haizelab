@@ -43,14 +43,16 @@ def main():
 
     DIR_UNIFICADOS.mkdir(parents=True, exist_ok=True)
 
-    f_aire = DIR_AIRE / "no2_horario_limpio.csv"
+    f_aire_csv = DIR_AIRE / "no2_horario_limpio.csv"
+    f_aire_zip = DIR_AIRE / "no2_horario_limpio.zip"
+    f_aire = f_aire_csv if f_aire_csv.exists() else f_aire_zip
     f_meteo = DIR_METEO / "meteo_bilbao_horario.csv"
     f_traf = DIR_TRAFICO / "trafico_accesos_bilbao.csv"
 
     if not f_aire.exists() or not f_meteo.exists() or not f_traf.exists():
         sys.exit("ERROR: Faltan archivos procesados. Ejecuta antes los scripts 01, 02 y 03.")
 
-    print("Cargando datasets procesados...")
+    print(f"Cargando datasets procesados ({f_aire.name})...")
     df_aire = pd.read_csv(f_aire, parse_dates=["ts"])
     df_meteo = pd.read_csv(f_meteo, parse_dates=["ts"])
     df_traf = pd.read_csv(f_traf)
