@@ -138,39 +138,46 @@ if (!flow.get('demo_cargado')) {
     try { var contenido = fs.readFileSync(csvPath, 'utf8'); }
     catch(e) { node.error('[aire_demo] No se puede leer '+csvPath+': '+e.message); return null; }
     var lineas = contenido.trim().split('\\n');
-    var cab = lineas[0].split(',');
-    var iTs=cab.indexOf('ts'), iEst=cab.indexOf('estacion'), iZon=cab.indexOf('zona'), iNo2=cab.indexOf('no2');
+    var cab = lineas[0].split(',').map(function(c) { return c.trim(); });
+    var iTs = cab.indexOf('ts'), iEst = cab.indexOf('estacion'), iZon = cab.indexOf('zona'), iNo2 = cab.indexOf('no2');
     var porTs = {};
-    for (var i=1; i<lineas.length; i++) {
-        var cols = lineas[i].split(',');
-        var ts = (cols[iTs]||'').trim();
+    for (var i = 1; i < lineas.length; i++) {
+        var linea = lineas[i].trim();
+        if (!linea) continue;
+        var cols = linea.split(',').map(function(c) { return c.trim(); });
+        var ts = cols[iTs] || '';
         if (!ts) continue;
         var n = parseFloat(cols[iNo2]);
         if (isNaN(n)) continue;
         if (!porTs[ts]) porTs[ts] = [];
-        porTs[ts].push({estacion:(cols[iEst]||'').trim(), zona:(cols[iZon]||'').trim(), no2:n});
+        porTs[ts].push({estacion: cols[iEst] || '', zona: cols[iZon] || '', no2: n});
     }
     var ticks = Object.keys(porTs).sort();
     flow.set('demo_por_ts', porTs); flow.set('demo_ticks', ticks);
     flow.set('demo_idx', 0); flow.set('demo_cargado', true);
     node.log('[aire_demo] CSV cargado: '+ticks.length+' ticks');
 }
-var porTs=flow.get('demo_por_ts'), ticks=flow.get('demo_ticks');
-var idx = parseInt(flow.get('demo_idx'))||0;
-if (idx >= ticks.length) { idx=0; node.warn('[aire_demo] Reiniciando historico'); }
+var porTs = flow.get('demo_por_ts'), ticks = flow.get('demo_ticks');
+if (!ticks || ticks.length === 0) {
+    node.warn('[aire_demo] No hay ticks disponibles'); return null;
+}
+var idx = parseInt(flow.get('demo_idx')) || 0;
+if (idx >= ticks.length) { idx = 0; node.warn('[aire_demo] Reiniciando historico'); }
 var tsOrig = ticks[idx], filas = porTs[tsOrig];
-flow.set('demo_idx', idx+1);
+flow.set('demo_idx', idx + 1);
+if (!filas || filas.length === 0) {
+    node.warn('[aire_demo] Sin filas para tick: '+tsOrig); return null;
+}
 var ahora = new Date();
 var puntos = filas.map(function(f) {
-    return {measurement:'contaminantes', tags:{estacion:f.estacion, zona:f.zona},
-            fields:{no2:f.no2, fecha_original:tsOrig}, timestamp:ahora};
+    return {measurement: 'contaminantes', tags: {estacion: f.estacion, zona: f.zona},
+            fields: {no2: f.no2, fecha_original: tsOrig}, timestamp: ahora};
 });
-if (puntos.length===0) { node.warn('[aire_demo] Sin puntos: '+tsOrig); return null; }
 msg.payload = puntos;
 msg.token  = env.get('INFLUXDB_NODERED_WRITE_TOKEN');
 msg.bucket = 'aire_demo';
 msg.org    = env.get('INFLUXDB_ORG');
-node.status({fill:'green',shape:'dot',text:(idx+1)+'/'+ticks.length+' | '+tsOrig.substring(0,16)});
+node.status({fill:'green', shape:'dot', text:(idx+1)+'/'+ticks.length+' | '+tsOrig.substring(0,16)});
 return msg;"""
 flows.append({'id': 'fn_demo', 'type': 'function', 'z': T3,
     'name': 'Siguiente hora NO2', 'func': FUNC_DEMO,

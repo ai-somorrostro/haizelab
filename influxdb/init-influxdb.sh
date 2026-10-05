@@ -63,7 +63,7 @@ crear_bucket "aire_demo" "${INFLUXDB_RETENTION_AIRE_DEMO}" "Reproduccion acelera
 # Obtener IDs de los buckets
 get_id() {
   influx bucket find --name "$1" --org "$ORG" \
-    --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | awk '{print $1}'
+    --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | cut -f 1
 }
 ID_METEO=$(get_id "meteo")
 ID_TRAFICO=$(get_id "trafico")
@@ -78,7 +78,7 @@ TOKEN_NR=$(influx auth create \
   --write-bucket "$ID_METEO" \
   --write-bucket "$ID_TRAFICO" \
   --write-bucket "$ID_DEMO" \
-  --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | awk '{print $3}')
+  --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | cut -f 3)
 echo "[setup] Token escritura Node-RED generado."
 
 # Token lectura para Grafana/MCP (todos los buckets, solo lectura)
@@ -89,7 +89,7 @@ TOKEN_READ=$(influx auth create \
   --read-bucket "$ID_METEO" \
   --read-bucket "$ID_TRAFICO" \
   --read-bucket "$ID_DEMO" \
-  --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | awk '{print $3}')
+  --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | cut -f 3)
 echo "[setup] Token lectura generado."
 
 # Guardar en volumen compartido (no accesible desde git)
