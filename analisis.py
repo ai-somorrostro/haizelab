@@ -264,23 +264,8 @@ def main():
     else:
         print("\n[!] Faltan estaciones 'dentro' o 'fuera' para la comparación.")
 
-    # Gráfico
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        ax = mensual.plot(figsize=(11, 5), marker="o", ms=3)
-        for f, et in ((FECHA_FASE1, "Fase 1"), (FECHA_FASE2, "Fase 2")):
-            ax.axvline(f, color="k", ls="--", lw=1)
-            ax.text(f, ax.get_ylim()[1], et, va="top", ha="right", fontsize=9)
-        ax.set_ylabel("NO2 medio mensual (µg/m3)")
-        ax.set_title("NO2 por zona respecto a la ZBE de Bilbao")
-        plt.tight_layout()
-        plt.savefig(SALIDA / "no2_mensual.png", dpi=150)
-        print(f"\nGráfico guardado en {SALIDA / 'no2_mensual.png'}")
-    except ImportError:
-        print("\n(matplotlib no instalado: se omite el gráfico)")
+    print("\n(Para el gráfico ejecuta: python visualizar.py)")
 
 
 if __name__ == "__main__":
-    main()
+    main()

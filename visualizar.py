@@ -1,4 +1,4 @@
-﻿import pandas as pd
+import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -6,7 +6,7 @@ import matplotlib.dates as mdates
 from pathlib import Path
 
 CSV   = Path("salida/aire_limpio.csv")
-OUT   = Path("salida/no2_mensual_2022_2026.png")
+OUT   = Path("salida/no2_mensual.png")
 FASE1 = pd.Timestamp("2024-06-15")
 FASE2 = pd.Timestamp("2025-06-16")
 LIMITE = pd.Timestamp("2026-12-31")
