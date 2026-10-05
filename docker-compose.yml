@@ -163,6 +163,45 @@ services:
       retries: 5
       start_period: 40s
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Grafana 11.2.0
+  # Visualizacion analitica en tiempo real para calidad del aire, clima y trafico
+  # Autenticacion: Token de solo lectura 'read-all' inyectado via entrypoint.sh
+  # Dashboard auto-provisionado: HaizeLab — Monitor ZBE Bilbao
+  # ────────────────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: haizelab_grafana
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      influxdb_setup:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${INFLUXDB_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${INFLUXDB_ADMIN_PASSWORD:-haizelab2024seguro}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/haizelab-overview.json
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-haizenlab}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/entrypoint.sh:/entrypoint.sh:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - influxdb_tokens:/tokens:ro
+    entrypoint: ["sh", "/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
 # ────────────────────────────────────────────────────────────────────────────
 # Volumenes con nombre
 # ────────────────────────────────────────────────────────────────────────────
@@ -171,3 +210,4 @@ volumes:
   influxdb_config:   # configuracion interna de InfluxDB
   influxdb_tokens:   # tokens.env generado por influxdb_setup (no accesible desde git)
   nodered_data:      # datos internos de Node-RED (credenciales cifradas, estado)
+  grafana_data:      # configuracion persistente de Grafana

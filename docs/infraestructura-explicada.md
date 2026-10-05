@@ -246,6 +246,7 @@ En `docker-compose.yml`, los puertos de cara al host se declaran explícitamente
 ports:
   - "127.0.0.1:8086:8086"
   - "127.0.0.1:1880:1880"
+  - "127.0.0.1:3000:3000"
 ```
 
 **Justificación técnica**:
@@ -253,11 +254,11 @@ Si se utiliza la sintaxis común `8086:8086`, Docker en sistemas Linux manipula 
 
 ### 6.2. Comunicación Inter-Contenedor vía DNS Interno
 
-Los contenedores se comunican a través de la red puente (*bridge*) creada automáticamente por Docker Compose. Node-RED se conecta a InfluxDB mediante el nombre del servicio:
+Los contenedores se comunican a través de la red puente (*bridge*) creada automáticamente por Docker Compose. Node-RED y Grafana se conectan a InfluxDB mediante el nombre del servicio:
 ```
 http://influxdb:8086
 ```
-- **Nunca `localhost`**: Dentro del contenedor `haizelab_nodered`, `localhost` o `127.0.0.1` apunta al propio contenedor Node-RED, donde InfluxDB no está escuchando.
+- **Nunca `localhost`**: Dentro del contenedor `haizelab_nodered` o `haizelab_grafana`, `localhost` o `127.0.0.1` apunta al propio contenedor, donde InfluxDB no está escuchando.
 - El servidor DNS integrado de Docker resuelve automáticamente el nombre de servicio `influxdb` a la dirección IP virtual asignada al contenedor en la red bridge.
 
 ---
@@ -272,8 +273,11 @@ Esta sección resume conceptos de arquitectura comúnmente evaluados en exámene
 ### P2: ¿Qué sucede si se almacena el campo `velocidad` o `temp_c` como un Tag en lugar de un Field en InfluxDB?
 **Respuesta**: Se produce una **explosión de cardinalidad**. Los tags se almacenan en el índice invertido (TSI) en memoria RAM para permitir filtrados rápidos. Como la velocidad y la temperatura son valores continuos con miles de variaciones posibles, el índice TSI generaría millones de series temporales distintas, agotando rápidamente la memoria RAM del servidor y degradando drásticamente el rendimiento de las consultas.
 
-### P3: ¿Por qué es una mala práctica inyectar el token de administrador en el contenedor de Node-RED?
-**Respuesta**: Viola el principio de mínimo privilegio. Si Node-RED tuviese el token de administrador y sufriese una vulnerabilidad de ejecución remota de código (RCE) o un flujo mal configurado, el atacante o el script defectuoso podría borrar buckets críticos (como el histórico `aire`), alterar configuraciones de la organización o crear nuevos usuarios. Con un token restringido a escritura en buckets específicos, el radio de impacto de cualquier incidente queda estrictamente acotado.
+### P3: ¿Por qué es una mala práctica inyectar el token de administrador en el contenedor de Node-RED o Grafana?
+**Respuesta**: Viola el principio de mínimo privilegio. Si Node-RED tuviese el token de administrador y sufriese una vulnerabilidad de ejecución remota de código (RCE) o un flujo mal configurado, el atacante o el script defectuoso podría borrar buckets críticos (como el histórico `aire`), alterar configuraciones de la organización o crear nuevos usuarios. Con un token restringido a escritura en buckets específicos (para Node-RED) o un token de solo lectura `read-all` (para Grafana), el radio de impacto de cualquier incidente queda estrictamente acotado y se impide cualquier mutación accidental o maliciosa de los datos.
 
 ### P4: ¿Por qué separar `docker compose down` de `docker compose down -v`?
 **Respuesta**: El comando `docker compose down` detiene y elimina los contenedores y la red virtual, pero **mantiene intactos los volúmenes de datos con nombre**. Esto permite reiniciar o actualizar imágenes sin perder el histórico acumulado en InfluxDB. El modificador `-v` (*volumes*) elimina explícitamente los volúmenes, destruyendo toda la base de datos persistida; solo debe emplearse cuando se desee reconstruir el entorno íntegramente desde cero.
+
+### P5: ¿Cómo se logra la reproducibilidad de cuadros de mando e integración de datos sin configuración manual en Grafana?
+**Respuesta**: Mediante el mecanismo de **provisioning declarativo** (`/etc/grafana/provisioning/`). En lugar de requerir que el usuario configure manualmente el origen de datos y dibuje los paneles desde el navegador, se definen manifiestos YAML para el datasource (apuntando a `http://influxdb:8086` con token `read-all`) y ficheros JSON para los cuadros de mando (*Dashboards as Code*). Al arrancar el contenedor, Grafana compila automáticamente la infraestructura visual sin intervención humana, garantizando que el entorno sea 100% reproducible en cualquier máquina.

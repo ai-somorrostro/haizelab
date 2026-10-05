@@ -219,7 +219,18 @@ automaticamente en el primer arranque y se almacenan en el volumen `influxdb_tok
 |---|---|---|
 | Admin (`INFLUXDB_ADMIN_TOKEN`) | Todo | Solo docker-compose (setup inicial) |
 | nodered-write | Escritura en `meteo`, `trafico`, `aire_demo` (no en `aire`) | Node-RED |
-| read-all | Lectura en los 4 buckets | Grafana (futuro), MCP (futuro) |
+| read-all | Lectura en los 4 buckets | Grafana (puerto 3000), MCP (futuro) |
+
+### Visualización en Grafana (Puerto 3000)
+
+Grafana 11.2.0 está integrado en Docker Compose con auto-provisionamiento completo:
+- **URL:** [http://localhost:3000](http://localhost:3000)
+- **Acceso:** Acceso directo habilitado (o usuario `admin` con la contraseña configurada en `.env`).
+- **Datasource:** `InfluxDB-HaizeLab` (Flux, organización `haizenlab`, token de lectura `read-all` inyectado dinámicamente).
+- **Dashboard:** `HaizeLab — Monitor ZBE Bilbao en Tiempo Real` cargado por defecto:
+  - **Calidad del Aire (ZBE):** Indicadores y calibradores (*gauges*) con umbrales de alerta y evolución temporal de NO₂ comparando dentro vs fuera de la ZBE.
+  - **Meteorología:** Series temporales de temperatura, humedad, viento y lluvia en Bilbao.
+  - **Tráfico:** Intensidad vehicular media, ocupación de vías y velocidad.
 
 ### Flujos de Node-RED
 
