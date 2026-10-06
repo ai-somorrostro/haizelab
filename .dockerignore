@@ -1,6 +1,9 @@
-﻿# No copiar datos al contexto de build (se montan como volumen)
+# No copiar datos al contexto de build (se montan como volumen)
 datos/
 salida/
+data/raw/
+data/clean/dataset_integrado_zbe.csv
+data/clean/calidad_aire_limpio.csv
 
 # Python
 __pycache__/

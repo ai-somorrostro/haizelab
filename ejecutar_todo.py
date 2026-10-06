@@ -47,7 +47,30 @@ def ejecutar_script(ruta_script: str, descripcion: str):
 def main():
     parser = argparse.ArgumentParser(description="Orquestador del pipeline HaizeLab")
     parser.add_argument("--paso", type=int, choices=range(1, 7), help="Ejecutar solo el paso indicado (1-6)")
+    parser.add_argument("--sbd", action="store_true", help="Ejecutar el pipeline SBD (ingesta, limpieza y notebook)")
+    parser.add_argument("--notebook", action="store_true", help="Ejecutar el notebook notebooks/zbe_bilbao.ipynb")
     args = parser.parse_args()
+
+    if args.sbd:
+        print("\n" + "#" * 80)
+        print("  HAIZELAB — PIPELINE COMPLETO SBD RETO 0 (INGESTA + NOTEBOOK)")
+        print("#" * 80)
+        ejecutar_script("ingesta/descargar_y_limpiar.py", "Pipeline de Ingesta, Auditoría y Limpieza SBD")
+        ejecutar_script("scripts/generar_notebook.py", "Generación y renderizado de zbe_bilbao.ipynb")
+        print("\n" + "#" * 80)
+        print("  [EXITO] Pipeline SBD completado con éxito. Notebook listo en ./notebooks/")
+        print("#" * 80 + "\n")
+        return
+
+    if args.notebook:
+        print("\n" + "#" * 80)
+        print("  HAIZELAB — EJECUCIÓN Y VALIDACIÓN DEL NOTEBOOK SBD")
+        print("#" * 80)
+        cmd = [sys.executable, "-c", "import nbformat; from nbclient import NotebookClient; nb = nbformat.read('notebooks/zbe_bilbao.ipynb', as_version=4); NotebookClient(nb, timeout=600, kernel_name='python3').execute(); nbformat.write(nb, 'notebooks/zbe_bilbao.ipynb'); print('[OK] Notebook ejecutado con exito')"]
+        res = subprocess.run(cmd)
+        if res.returncode != 0:
+            sys.exit(res.returncode)
+        return
 
     if args.paso:
         pasos_a_ejecutar = [p for p in PASOS if p[0] == args.paso]
