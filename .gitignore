@@ -1,10 +1,13 @@
 # --- Datos crudos originales (excluidos para mantener el repo ligero) ---
 datos/crudo/
+data/raw/
 
 # --- Datasets descomprimidos de gran tamaño (> 50 MB) ---
 # Se utiliza en su lugar la versión comprimida .zip (< 10 MB, compatible con GitHub)
 datos/procesados/calidad_aire/no2_horario_limpio.csv
 salida/aire_limpio.csv
+data/clean/dataset_integrado_zbe.csv
+data/clean/calidad_aire_limpio.csv
 
 # --- Python / Entornos virtuales ---
 __pycache__/
