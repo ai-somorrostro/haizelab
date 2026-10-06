@@ -98,11 +98,12 @@ TOKEN_NR=$(influx auth create \
   --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | cut -f 3)
 echo "[setup] Token 1 (nodered-write) generado."
 
-# Token 2: escritura carga historica (SOLO bucket aire; no puede tocar tiempo real)
+# Token 2: escritura carga historica (buckets aire y meteo; no puede tocar trafico ni aire_demo)
 TOKEN_BATCH=$(influx auth create \
   --org "$ORG" \
-  --description "batch-write: carga historica aire" \
+  --description "batch-write: carga historica aire y meteo" \
   --write-bucket "$ID_AIRE" \
+  --write-bucket "$ID_METEO" \
   --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | cut -f 3)
 echo "[setup] Token 2 (batch-write) generado."
 
