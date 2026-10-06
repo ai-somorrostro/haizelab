@@ -132,11 +132,203 @@ dashboard = {
         },
 
         # ──────────────────────────────────────────────────────────────────────
-        # FILA 2: METEOROLOGIA (OPEN-METEO BILBAO)
+        # FILA 2: ESTADÍSTICAS CON FLUX — MEDIAS Y MEDIAS MÓVILES
         # ──────────────────────────────────────────────────────────────────────
         {
             "collapsed": False,
             "gridPos": {"h": 1, "w": 24, "x": 0, "y": 9},
+            "id": 150,
+            "title": "📊 Estadísticas NO₂ — Medias, Medias Móviles y Percentiles",
+            "type": "row"
+        },
+        {
+            # Panel: media simple vs media móvil (timedMovingAverage Flux)
+            "id": 10,
+            "title": "NO₂ — Media Instantánea vs Media Móvil (1 h)",
+            "description": (
+                "Compara la media simple (azul) con la media móvil de 1 hora (naranja) "
+                "calculada con timedMovingAverage de Flux. "
+                "La media móvil suaviza los picos y revela la tendencia real."
+            ),
+            "type": "timeseries",
+            "gridPos": {"h": 8, "w": 16, "x": 0, "y": 10},
+            "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
+            "targets": [
+                {
+                    # Media simple agregada por ventana
+                    "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
+                    "query": (
+                        'from(bucket: "aire_demo")\n'
+                        '  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n'
+                        '  |> filter(fn: (r) => r["_measurement"] == "contaminantes")\n'
+                        '  |> filter(fn: (r) => r["_field"] == "no2")\n'
+                        '  |> group(columns: ["_field"])\n'
+                        '  |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)\n'
+                        '  |> yield(name: "media_simple")'
+                    ),
+                    "refId": "A"
+                },
+                {
+                    # Media móvil de 1 hora usando timedMovingAverage
+                    "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
+                    "query": (
+                        'from(bucket: "aire_demo")\n'
+                        '  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n'
+                        '  |> filter(fn: (r) => r["_measurement"] == "contaminantes")\n'
+                        '  |> filter(fn: (r) => r["_field"] == "no2")\n'
+                        '  |> group(columns: ["_field"])\n'
+                        '  |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)\n'
+                        '  |> timedMovingAverage(every: 5m, period: 1h)\n'
+                        '  |> yield(name: "media_movil_1h")'
+                    ),
+                    "refId": "B"
+                },
+                {
+                    # Media móvil de 3 horas
+                    "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
+                    "query": (
+                        'from(bucket: "aire_demo")\n'
+                        '  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n'
+                        '  |> filter(fn: (r) => r["_measurement"] == "contaminantes")\n'
+                        '  |> filter(fn: (r) => r["_field"] == "no2")\n'
+                        '  |> group(columns: ["_field"])\n'
+                        '  |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)\n'
+                        '  |> timedMovingAverage(every: 5m, period: 3h)\n'
+                        '  |> yield(name: "media_movil_3h")'
+                    ),
+                    "refId": "C"
+                }
+            ],
+            "options": {
+                "legend": {
+                    "calcs": ["mean", "max", "lastNotNull"],
+                    "displayMode": "table",
+                    "placement": "bottom",
+                    "showLegend": True
+                },
+                "tooltip": {"mode": "multi", "sort": "desc"}
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "µg/m³",
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineInterpolation": "smooth",
+                        "lineWidth": 2,
+                        "spanNulls": True
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {"id": "byFrameRefID", "options": "A"},
+                        "properties": [
+                            {"id": "displayName", "value": "Media simple (5 min)"},
+                            {"id": "color", "value": {"fixedColor": "#5794F2", "mode": "fixed"}},
+                            {"id": "custom.lineWidth", "value": 1},
+                            {"id": "custom.lineStyle", "value": {"dash": [4, 4], "fill": "dash"}}
+                        ]
+                    },
+                    {
+                        "matcher": {"id": "byFrameRefID", "options": "B"},
+                        "properties": [
+                            {"id": "displayName", "value": "Media móvil 1 h"},
+                            {"id": "color", "value": {"fixedColor": "#FF9830", "mode": "fixed"}},
+                            {"id": "custom.lineWidth", "value": 2}
+                        ]
+                    },
+                    {
+                        "matcher": {"id": "byFrameRefID", "options": "C"},
+                        "properties": [
+                            {"id": "displayName", "value": "Media móvil 3 h"},
+                            {"id": "color", "value": {"fixedColor": "#F2495C", "mode": "fixed"}},
+                            {"id": "custom.lineWidth", "value": 3}
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            # Panel stat: estadísticas resumen — media, percentil 90, máximo
+            "id": 11,
+            "title": "Estadísticas NO₂ — Resumen Sesión",
+            "description": "Media, percentil 90 y máximo global del periodo seleccionado en todas las estaciones.",
+            "type": "stat",
+            "gridPos": {"h": 8, "w": 8, "x": 16, "y": 10},
+            "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
+            "targets": [
+                {
+                    "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
+                    "query": (
+                        'from(bucket: "aire_demo")\n'
+                        '  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n'
+                        '  |> filter(fn: (r) => r["_measurement"] == "contaminantes")\n'
+                        '  |> filter(fn: (r) => r["_field"] == "no2")\n'
+                        '  |> group()\n'
+                        '  |> mean()\n'
+                        '  |> map(fn: (r) => ({r with _field: "Media NO2"}))\n'
+                        '  |> yield(name: "media")'
+                    ),
+                    "refId": "A"
+                },
+                {
+                    "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
+                    "query": (
+                        'from(bucket: "aire_demo")\n'
+                        '  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n'
+                        '  |> filter(fn: (r) => r["_measurement"] == "contaminantes")\n'
+                        '  |> filter(fn: (r) => r["_field"] == "no2")\n'
+                        '  |> group()\n'
+                        '  |> quantile(q: 0.9)\n'
+                        '  |> map(fn: (r) => ({r with _field: "Percentil 90"}))\n'
+                        '  |> yield(name: "p90")'
+                    ),
+                    "refId": "B"
+                },
+                {
+                    "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
+                    "query": (
+                        'from(bucket: "aire_demo")\n'
+                        '  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n'
+                        '  |> filter(fn: (r) => r["_measurement"] == "contaminantes")\n'
+                        '  |> filter(fn: (r) => r["_field"] == "no2")\n'
+                        '  |> group()\n'
+                        '  |> max()\n'
+                        '  |> map(fn: (r) => ({r with _field: "Máximo"}))\n'
+                        '  |> yield(name: "max")'
+                    ),
+                    "refId": "C"
+                }
+            ],
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "vertical",
+                "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False}
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "µg/m³",
+                    "decimals": 1,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {"color": "green", "value": None},
+                            {"color": "#EAB839", "value": 25},
+                            {"color": "red", "value": 40}
+                        ]
+                    }
+                },
+                "overrides": []
+            }
+        },
+
+        # ──────────────────────────────────────────────────────────────────────
+        # FILA 3: METEOROLOGIA (OPEN-METEO BILBAO)
+        # ──────────────────────────────────────────────────────────────────────
+        {
+            "collapsed": False,
+            "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18},
             "id": 200,
             "title": "🌦️ Meteorología en Tiempo Real (Bilbao — Open-Meteo)",
             "type": "row"
@@ -145,7 +337,7 @@ dashboard = {
             "id": 3,
             "title": "Temperatura y Humedad Relativa",
             "type": "timeseries",
-            "gridPos": {"h": 7, "w": 12, "x": 0, "y": 10},
+            "gridPos": {"h": 7, "w": 12, "x": 0, "y": 19},
             "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
             "targets": [
                 {
@@ -191,7 +383,7 @@ dashboard = {
             "id": 4,
             "title": "Velocidad del Viento y Precipitación",
             "type": "timeseries",
-            "gridPos": {"h": 7, "w": 12, "x": 12, "y": 10},
+            "gridPos": {"h": 7, "w": 12, "x": 12, "y": 19},
             "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
             "targets": [
                 {
@@ -231,11 +423,11 @@ dashboard = {
         },
 
         # ──────────────────────────────────────────────────────────────────────
-        # FILA 3: TRAFICO (BILBAO OPEN DATA) - DISEÑO LIMPIO Y SIN SPAGHETTI
+        # FILA 4: TRAFICO (BILBAO OPEN DATA) - DISEÑO LIMPIO Y SIN SPAGHETTI
         # ──────────────────────────────────────────────────────────────────────
         {
             "collapsed": False,
-            "gridPos": {"h": 1, "w": 24, "x": 0, "y": 17},
+            "gridPos": {"h": 1, "w": 24, "x": 0, "y": 26},
             "id": 300,
             "title": "🚗 Estado del Tráfico Urbano (Bilbao Open Data — 81 Tramos)",
             "type": "row"
@@ -245,7 +437,7 @@ dashboard = {
             "title": "Intensidad Global de Tráfico",
             "description": "Volumen medio actual de vehículos por hora en los accesos y vías de Bilbao.",
             "type": "stat",
-            "gridPos": {"h": 7, "w": 6, "x": 0, "y": 18},
+            "gridPos": {"h": 7, "w": 6, "x": 0, "y": 27},
             "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
             "targets": [
                 {
@@ -280,7 +472,7 @@ dashboard = {
             "title": "Evolución del Tráfico: Ocupación (%) vs Velocidad (km/h)",
             "description": "Medias globales agregadas de toda la red de Bilbao. Muestra la correlación directa: a mayor ocupación, menor velocidad de circulación.",
             "type": "timeseries",
-            "gridPos": {"h": 7, "w": 12, "x": 6, "y": 18},
+            "gridPos": {"h": 7, "w": 12, "x": 6, "y": 27},
             "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
             "targets": [
                 {
@@ -336,7 +528,7 @@ dashboard = {
             "title": "Top 5 Tramos con Mayor Retención",
             "description": "Tramos de Bilbao con mayor nivel de ocupación actual (en % sobre su capacidad).",
             "type": "bargauge",
-            "gridPos": {"h": 7, "w": 6, "x": 18, "y": 18},
+            "gridPos": {"h": 7, "w": 6, "x": 18, "y": 27},
             "datasource": {"type": "influxdb", "uid": "InfluxDB-HaizeLab"},
             "targets": [
                 {
@@ -381,7 +573,7 @@ dashboard = {
     "timezone": "browser",
     "title": "HaizeLab — Monitor ZBE Bilbao en Tiempo Real",
     "uid": "haizelab-overview",
-    "version": 2
+    "version": 3
 }
 
 dest_dir = Path("grafana/dashboards")
