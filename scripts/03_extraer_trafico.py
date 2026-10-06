@@ -155,7 +155,16 @@ def main():
     pdf_2025 = DIR_CRUDO / "2025.pdf"
 
     if not pdf_2025.exists() or not pdf_2023.exists():
-        sys.exit(f"ERROR: Se necesitan {pdf_2023} y {pdf_2025} en {DIR_CRUDO}")
+        print("\n" + "=" * 70)
+        print("AVISO: Las memorias de tráfico oficiales en PDF no están presentes en:")
+        print(f"  {DIR_CRUDO}")
+        print("Los documentos PDF originales están excluidos del repositorio para mantenerlo ligero.")
+        print("Los datos procesados de aforos y accesos ya están disponibles en:")
+        print(f"  {DIR_PROCESADOS / 'trafico_accesos_bilbao.csv'}")
+        print("Puedes ejecutar directamente el análisis cruzado con:")
+        print("  python scripts/04_unificar_datos.py")
+        print("=" * 70 + "\n")
+        return
 
     print(f"Extrayendo accesos a Bilbao desde:\n  - {pdf_2023.name}\n  - {pdf_2025.name}")
     df_accesos = extraer_accesos(pdf_2023, pdf_2025)

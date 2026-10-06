@@ -201,8 +201,17 @@ def main():
     DIR_PROCESADOS.mkdir(parents=True, exist_ok=True)
     ficheros = sorted(p for p in DIR_CRUDO.glob("**/*") if p.suffix.lower() in (".csv", ".xlsx", ".xls", ".txt"))
 
-    if not ficheros:
-        sys.exit(f"ERROR: No se han encontrado ficheros en {DIR_CRUDO}")
+    if not DIR_CRUDO.exists() or not ficheros:
+        print("\n" + "=" * 70)
+        print("AVISO: La carpeta con datos originales brutos no está presente:")
+        print(f"  {DIR_CRUDO}")
+        print("Los datos crudos están excluidos del repositorio para mantenerlo ligero.")
+        print("El dataset horario limpio ya está procesado y disponible en:")
+        print(f"  {DIR_PROCESADOS / 'no2_horario_limpio.zip'}")
+        print("Puedes ejecutar directamente el análisis cruzado con:")
+        print("  python scripts/04_unificar_datos.py")
+        print("=" * 70 + "\n")
+        return
 
     print(f"Leyendo {len(ficheros)} ficheros de calidad del aire...")
     partes = [p for p in (procesar_fichero(f) for f in ficheros) if p is not None]
