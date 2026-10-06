@@ -2,19 +2,22 @@
 # ==================
 # Orquestacion del proyecto HaizeLab.
 #
-# Servicios de analisis (originales, no modificados):
-#   extraer, analisis, visualizar, todo
-#
 # Servicios de infraestructura de datos en tiempo real:
-#   influxdb     — base de datos de series temporales (InfluxDB 2.9.1)
-#   influxdb_setup — contenedor efimero: crea buckets y tokens en el primer arranque
-#   nodered      — flujos meteo, trafico, aire_demo
+#   influxdb       — base de datos de series temporales (InfluxDB 2.9.1)
+#   influxdb_setup — contenedor efimero: crea buckets y 3 tokens (primer arranque)
+#   nodered        — flujos meteo, trafico, aire_demo
+#   grafana        — dashboards con aprovisionamiento automatico
+#
+# Servicios de analisis batch (perfil "pipeline"):
+#   extraer, analisis, visualizar
 #
 # Arranque completo desde cero (PRIMER USO):
-#   1. cp .env.example .env
-#   2. Editar .env con credenciales seguras
-#   3. python ingesta/preparar_datos_demo.py   (genera el CSV reducido)
-#   4. docker compose up -d --build
+#   1. cp .env.example .env  && editar con credenciales seguras
+#   2. docker compose up -d --build
+#      (el CSV de demo esta incluido en ingesta/no2_demo_reducido.csv)
+#
+# Carga historica en InfluxDB (opcional, bucket 'aire'):
+#   python ingesta/carga_historica.py --bucket all
 #
 # Reinicio sin borrar datos:
 #   docker compose up -d
@@ -57,15 +60,7 @@ services:
       - ./salida:/app/salida
     command: python scripts/06_visualizar_decision.py
 
-  todo:
-    profiles: ["pipeline"]
-    build: .
-    image: haizelab:latest
-    container_name: haizelab_todo
-    volumes:
-      - ./datos:/app/datos
-      - ./salida:/app/salida
-    command: python ejecutar_todo.py
+
 
   # ────────────────────────────────────────────────────────────────────────────
   # InfluxDB 2.9.1

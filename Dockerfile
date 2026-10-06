@@ -17,12 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar scripts y orquestador
+# Copiar scripts
 COPY scripts/ ./scripts/
-COPY ejecutar_todo.py .
 
 # Las carpetas de datos y salida se montan como volumenes en ejecucion
 VOLUME ["/app/datos", "/app/salida"]
 
-# Por defecto ejecuta el pipeline completo
-CMD ["python", "ejecutar_todo.py"]
+# Por defecto ejecuta el paso de extraccion
+CMD ["python", "scripts/01_extraer_calidad_aire.py"]
