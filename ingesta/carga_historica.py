@@ -34,12 +34,10 @@ import argparse
 import os
 import sys
 import zipfile
-from io import StringIO
 from pathlib import Path
 
 import pandas as pd
 import requests
-from dotenv import load_dotenv
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 DIR_BASE = Path(__file__).resolve().parent.parent
@@ -54,13 +52,22 @@ BATCH_SIZE = 5_000   # puntos por petición POST a InfluxDB
 # ── Utilidades ─────────────────────────────────────────────────────────────────
 
 def cargar_env() -> dict:
-    """Lee .env del directorio raíz y devuelve configuración de InfluxDB."""
-    load_dotenv(DIR_BASE / ".env")
-    url   = os.environ.get("INFLUXDB_URL",          "http://localhost:8086")
-    org   = os.environ.get("INFLUXDB_ORG",          "haizenlab")
-    token = os.environ.get("INFLUXDB_ADMIN_TOKEN",   "")
+    """Lee .env del directorio raíz de forma tolerante (sin requerir python-dotenv forzoso)."""
+    env_path = DIR_BASE / ".env"
+    if env_path.exists():
+        with open(env_path, encoding="utf-8") as f:
+            for linea in f:
+                linea = linea.strip()
+                if not linea or linea.startswith("#") or "=" not in linea:
+                    continue
+                k, v = linea.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+
+    url   = os.environ.get("INFLUXDB_URL", "http://localhost:8086")
+    org   = os.environ.get("INFLUXDB_ORG", "haizenlab")
+    token = os.environ.get("INFLUXDB_BATCH_WRITE_TOKEN") or os.environ.get("INFLUXDB_ADMIN_TOKEN", "")
     if not token:
-        print("ERROR: INFLUXDB_ADMIN_TOKEN no encontrado en .env", file=sys.stderr)
+        print("ERROR: INFLUXDB_BATCH_WRITE_TOKEN ni INFLUXDB_ADMIN_TOKEN encontrados en .env", file=sys.stderr)
         sys.exit(1)
     return {"url": url, "org": org, "token": token}
 
@@ -73,7 +80,7 @@ def ts_a_nanosegundos(serie: pd.Series) -> pd.Series:
 def escribir_batch(cfg: dict, bucket: str, lineas: list[str], dry_run: bool) -> None:
     """Envía un batch de line protocol a InfluxDB."""
     if dry_run:
-        print(f"  [DRY-RUN] Saltando escritura de {len(lineas)} puntos → bucket '{bucket}'")
+        print(f"  [DRY-RUN] Saltando escritura de {len(lineas)} puntos -> bucket '{bucket}'")
         return
 
     payload = "\n".join(lineas)
@@ -97,12 +104,12 @@ def enviar_dataframe(cfg: dict, bucket: str, lineas_gen, dry_run: bool) -> int:
         if len(batch) >= BATCH_SIZE:
             escribir_batch(cfg, bucket, batch, dry_run)
             total += len(batch)
-            print(f"    → {total:,} puntos enviados...", end="\r", flush=True)
+            print(f"    -> {total:,} puntos enviados...", end="\r", flush=True)
             batch = []
     if batch:
         escribir_batch(cfg, bucket, batch, dry_run)
         total += len(batch)
-    print(f"    → {total:,} puntos enviados. ✓           ")
+    print(f"    -> {total:,} puntos enviados. [OK]           ")
     return total
 
 
@@ -133,28 +140,25 @@ def generar_lp_no2(df_chunk: pd.DataFrame):
 
 
 def cargar_no2(cfg: dict, dry_run: bool) -> None:
-    """Lee el ZIP de NO2, parsea con pandas y sube al bucket 'aire'."""
+    """Lee el ZIP de NO2 directamente mediante stream y sube al bucket 'aire'."""
     if not ARCHIVO_NO2_ZIP.exists():
         print(f"ERROR: No se encontró {ARCHIVO_NO2_ZIP}", file=sys.stderr)
         sys.exit(1)
 
     print(f"\n[NO2] Abriendo ZIP: {ARCHIVO_NO2_ZIP.name}")
+    chunk_size = 50_000
+    total_global = 0
+
     with zipfile.ZipFile(ARCHIVO_NO2_ZIP) as z:
         nombre_interno = z.namelist()[0]
         print(f"  Fichero interno: {nombre_interno}")
         with z.open(nombre_interno) as f:
-            contenido = f.read().decode("utf-8")
-
-    # Leer con pandas en chunks para no cargar todo en RAM
-    chunk_size = 50_000
-    reader = pd.read_csv(StringIO(contenido), chunksize=chunk_size)
-
-    total_global = 0
-    for n_chunk, chunk in enumerate(reader, 1):
-        filas_antes = len(chunk)
-        chunk = chunk.dropna(subset=["no2"])
-        print(f"  Chunk {n_chunk}: {filas_antes:,} filas → {len(chunk):,} válidas")
-        total_global += enviar_dataframe(cfg, "aire", generar_lp_no2(chunk), dry_run)
+            reader = pd.read_csv(f, chunksize=chunk_size)
+            for n_chunk, chunk in enumerate(reader, 1):
+                filas_antes = len(chunk)
+                chunk = chunk.dropna(subset=["no2"])
+                print(f"  Chunk {n_chunk}: {filas_antes:,} filas -> {len(chunk):,} validas")
+                total_global += enviar_dataframe(cfg, "aire", generar_lp_no2(chunk), dry_run)
 
     print(f"[NO2] Total puntos cargados en bucket 'aire': {total_global:,}")
 
