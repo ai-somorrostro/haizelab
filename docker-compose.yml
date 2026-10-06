@@ -1,5 +1,34 @@
+# docker-compose.yml
+# ==================
+# Orquestacion del proyecto HaizeLab.
+#
+# Servicios de analisis (originales, no modificados):
+#   extraer, analisis, visualizar, todo
+#
+# Servicios de infraestructura de datos en tiempo real:
+#   influxdb     — base de datos de series temporales (InfluxDB 2.9.1)
+#   influxdb_setup — contenedor efimero: crea buckets y tokens en el primer arranque
+#   nodered      — flujos meteo, trafico, aire_demo
+#
+# Arranque completo desde cero (PRIMER USO):
+#   1. cp .env.example .env
+#   2. Editar .env con credenciales seguras
+#   3. python ingesta/preparar_datos_demo.py   (genera el CSV reducido)
+#   4. docker compose up -d --build
+#
+# Reinicio sin borrar datos:
+#   docker compose up -d
+#
+# Borrar TODO (incluidos datos):
+#   docker compose down -v
+
 services:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Servicios originales de analisis (sin modificar)
+  # ────────────────────────────────────────────────────────────────────────────
   extraer:
+    profiles: ["pipeline"]
     build: .
     image: haizelab:latest
     container_name: haizelab_extraer
@@ -9,6 +38,7 @@ services:
     command: sh -c "python scripts/01_extraer_calidad_aire.py && python scripts/02_extraer_meteorologia.py && python scripts/03_extraer_trafico.py"
 
   analisis:
+    profiles: ["pipeline"]
     build: .
     image: haizelab:latest
     container_name: haizelab_analisis
@@ -18,6 +48,7 @@ services:
     command: sh -c "python scripts/04_unificar_datos.py && python scripts/05_analisis_impacto_zbe.py"
 
   visualizar:
+    profiles: ["pipeline"]
     build: .
     image: haizelab:latest
     container_name: haizelab_visualizar
@@ -27,6 +58,7 @@ services:
     command: python scripts/06_visualizar_decision.py
 
   todo:
+    profiles: ["pipeline"]
     build: .
     image: haizelab:latest
     container_name: haizelab_todo
@@ -34,3 +66,149 @@ services:
       - ./datos:/app/datos
       - ./salida:/app/salida
     command: python ejecutar_todo.py
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # InfluxDB 2.9.1
+  # Nota: desde sept 2026 "latest" apunta a InfluxDB 3; se fija la version.
+  # Organizacion: haizenlab (segun INFLUXDB_ORG en .env)
+  # Bucket principal "aire": retencion infinita (datos historicos ZBE)
+  # Buckets meteo/trafico/aire_demo: creados por influxdb_setup
+  # ────────────────────────────────────────────────────────────────────────────
+  influxdb:
+    image: influxdb:2.9.1
+    container_name: haizelab_influxdb
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE:        setup
+      DOCKER_INFLUXDB_INIT_USERNAME:    ${INFLUXDB_ADMIN_USER}
+      DOCKER_INFLUXDB_INIT_PASSWORD:    ${INFLUXDB_ADMIN_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG:         ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET:      ${INFLUXDB_BUCKET_PRINCIPAL}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping", "--host", "http://localhost:8086"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # influxdb_setup — contenedor efimero de inicializacion
+  # Crea los 3 buckets adicionales y genera 2 tokens con minimos permisos:
+  #   - nodered-write: escritura en meteo, trafico, aire_demo (NO en aire)
+  #   - read-all: lectura de los 4 buckets (para Grafana y MCP futuro)
+  # Los tokens se guardan en el volumen influxdb_tokens (/tokens/tokens.env)
+  # Si el fichero ya existe (reinicio sin -v), sale sin recrear nada.
+  # ────────────────────────────────────────────────────────────────────────────
+  influxdb_setup:
+    image: influxdb:2.9.1
+    container_name: haizelab_influxdb_setup
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      DOCKER_INFLUXDB_INIT_ORG:         ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
+      INFLUXDB_RETENTION_METEO:         ${INFLUXDB_RETENTION_METEO}
+      INFLUXDB_RETENTION_TRAFICO:       ${INFLUXDB_RETENTION_TRAFICO}
+      INFLUXDB_RETENTION_AIRE_DEMO:     ${INFLUXDB_RETENTION_AIRE_DEMO}
+    volumes:
+      - ./influxdb/init-influxdb.sh:/init-influxdb.sh:ro
+      - influxdb_tokens:/tokens
+    command: ["sh", "/init-influxdb.sh"]
+    restart: "no"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Node-RED 5.0.7
+  # Imagen personalizada (nodered/Dockerfile) con node-red-contrib-influxdb 0.7.0
+  # Flujos: meteo (15 min), trafico (5 min), aire_demo (5 s)
+  # Token de escritura: llega via /tokens/tokens.env cargado por entrypoint.sh
+  # Nunca usa el token administrador de InfluxDB
+  # ────────────────────────────────────────────────────────────────────────────
+  nodered:
+    build:
+      context: ./nodered
+      dockerfile: Dockerfile
+    image: haizelab_nodered:latest
+    container_name: haizelab_nodered
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      influxdb_setup:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:1880:1880"
+    environment:
+      INFLUXDB_URL:                 http://influxdb:8086
+      INFLUXDB_ORG:                 ${INFLUXDB_ORG}
+      AIRE_DEMO_CSV:                /data/no2_demo_reducido.csv
+      NODE_RED_CREDENTIAL_SECRET:   ${INFLUXDB_ADMIN_TOKEN}
+      # INFLUXDB_NODERED_WRITE_TOKEN se carga desde /tokens/tokens.env via entrypoint.sh
+    volumes:
+      - nodered_data:/data
+      - ./nodered/flows.json:/data/flows.json:ro
+      - ./nodered/settings.js:/data/settings.js:ro
+      - ./ingesta/no2_demo_reducido.csv:/data/no2_demo_reducido.csv:ro
+      - influxdb_tokens:/tokens:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:1880/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Grafana 11.2.0
+  # Visualizacion analitica en tiempo real para calidad del aire, clima y trafico
+  # Autenticacion: Token de solo lectura 'read-all' inyectado via entrypoint.sh
+  # Dashboard auto-provisionado: HaizeLab — Monitor ZBE Bilbao
+  # ────────────────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: haizelab_grafana
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      influxdb_setup:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${INFLUXDB_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${INFLUXDB_ADMIN_PASSWORD:-haizelab2024seguro}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_AUTO_ASSIGN_ORG_NAME=HaizeLab
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/haizelab-overview.json
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-haizenlab}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/entrypoint.sh:/entrypoint.sh:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - influxdb_tokens:/tokens:ro
+    entrypoint: ["sh", "/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+# ────────────────────────────────────────────────────────────────────────────
+# Volumenes con nombre
+# ────────────────────────────────────────────────────────────────────────────
+volumes:
+  influxdb_data:     # serie temporales de InfluxDB (persistentes)
+  influxdb_config:   # configuracion interna de InfluxDB
+  influxdb_tokens:   # tokens.env generado por influxdb_setup (no accesible desde git)
+  nodered_data:      # datos internos de Node-RED (credenciales cifradas, estado)
+  grafana_data:      # configuracion persistente de Grafana

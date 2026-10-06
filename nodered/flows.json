@@ -1,0 +1,360 @@
+[
+  {
+    "id": "influx_cfg_haizelab",
+    "type": "influxdb",
+    "name": "InfluxDB-HaizeLab",
+    "hostname": "influxdb",
+    "port": "8086",
+    "protocol": "http",
+    "database": "haizenlab",
+    "usetls": false,
+    "tls": "",
+    "influxdbVersion": "2.0",
+    "url": "http://influxdb:8086",
+    "timeout": 10,
+    "rejectUnauthorized": true
+  },
+  {
+    "id": "tab_meteo",
+    "type": "tab",
+    "label": "meteo",
+    "disabled": false
+  },
+  {
+    "id": "inj_meteo",
+    "type": "inject",
+    "z": "tab_meteo",
+    "name": "Cada 15 min",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "900",
+    "once": true,
+    "onceDelay": "3",
+    "payload": "",
+    "payloadType": "date",
+    "wires": [
+      [
+        "fn_meteo_url"
+      ]
+    ],
+    "x": 160,
+    "y": 160
+  },
+  {
+    "id": "fn_meteo_url",
+    "type": "function",
+    "z": "tab_meteo",
+    "name": "URL Open-Meteo",
+    "func": "msg.url = 'https://api.open-meteo.com/v1/forecast?latitude=43.263&longitude=-2.935&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=Europe%2FMadrid';\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "wires": [
+      [
+        "req_meteo"
+      ]
+    ],
+    "x": 360,
+    "y": 160
+  },
+  {
+    "id": "req_meteo",
+    "type": "http request",
+    "z": "tab_meteo",
+    "name": "GET Open-Meteo",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "wires": [
+      [
+        "fn_meteo_parse"
+      ]
+    ],
+    "x": 580,
+    "y": 160
+  },
+  {
+    "id": "fn_meteo_parse",
+    "type": "function",
+    "z": "tab_meteo",
+    "name": "Parsear meteo",
+    "func": "try {\n    var p = msg.payload;\n    if (!p || !p.current) { node.warn('[meteo] Sin current. Status:'+msg.statusCode); return null; }\n    var c = p.current;\n    if (c.temperature_2m === undefined || c.wind_speed_10m === undefined) {\n        node.warn('[meteo] Campos faltantes: '+JSON.stringify(c)); return null;\n    }\n    msg.payload = [{\n        measurement: 'clima',\n        tags: {ubicacion:'bilbao', fuente:'open-meteo'},\n        fields: {temp_c:parseFloat(c.temperature_2m), viento_kmh:parseFloat(c.wind_speed_10m),\n                 viento_dir:parseFloat(c.wind_direction_10m), lluvia_mm:parseFloat(c.precipitation),\n                 humedad:parseFloat(c.relative_humidity_2m)},\n        timestamp: new Date()\n    }];\n    msg.token  = env.get('INFLUXDB_NODERED_WRITE_TOKEN');\n    msg.bucket = 'meteo';\n    msg.org    = env.get('INFLUXDB_ORG');\n    node.status({fill:'green',shape:'dot',text:c.temperature_2m+'C '+c.wind_speed_10m+'km/h'});\n    return msg;\n} catch(e) { node.warn('[meteo] Error:'+e.message); node.status({fill:'red',shape:'ring',text:'error'}); return null; }",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "wires": [
+      [
+        "out_meteo"
+      ]
+    ],
+    "x": 800,
+    "y": 160
+  },
+  {
+    "id": "out_meteo",
+    "type": "influxdb batch",
+    "z": "tab_meteo",
+    "influxdb": "influx_cfg_haizelab",
+    "name": "Escribir > meteo",
+    "precision": "ms",
+    "retentionPolicy": "",
+    "database": "meteo",
+    "precisionV18FluxV20": "ms",
+    "retentionPolicyV18Flux": "",
+    "org": "haizenlab",
+    "bucket": "meteo",
+    "wires": [],
+    "x": 1020,
+    "y": 160
+  },
+  {
+    "id": "catch_meteo",
+    "type": "catch",
+    "z": "tab_meteo",
+    "name": "Catch meteo",
+    "scope": [
+      "out_meteo",
+      "req_meteo"
+    ],
+    "uncaught": false,
+    "wires": [
+      [
+        "dbg_meteo"
+      ]
+    ],
+    "x": 800,
+    "y": 280
+  },
+  {
+    "id": "dbg_meteo",
+    "type": "debug",
+    "z": "tab_meteo",
+    "name": "Log error meteo",
+    "active": true,
+    "tosidebar": true,
+    "console": true,
+    "complete": "true",
+    "targetType": "full",
+    "wires": [],
+    "x": 1020,
+    "y": 280
+  },
+  {
+    "id": "tab_trafico",
+    "type": "tab",
+    "label": "trafico",
+    "disabled": false
+  },
+  {
+    "id": "inj_trafico",
+    "type": "inject",
+    "z": "tab_trafico",
+    "name": "Cada 5 min",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "300",
+    "once": true,
+    "onceDelay": "5",
+    "payload": "",
+    "payloadType": "date",
+    "wires": [
+      [
+        "req_trafico"
+      ]
+    ],
+    "x": 160,
+    "y": 160
+  },
+  {
+    "id": "req_trafico",
+    "type": "http request",
+    "z": "tab_trafico",
+    "name": "GET Trafico GeoJSON",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "https://www.bilbao.eus/aytoonline/srvDatasetTrafico?formato=geojson",
+    "tls": "",
+    "persist": false,
+    "wires": [
+      [
+        "fn_trafico_parse"
+      ]
+    ],
+    "x": 380,
+    "y": 160
+  },
+  {
+    "id": "fn_trafico_parse",
+    "type": "function",
+    "z": "tab_trafico",
+    "name": "Parsear tramos",
+    "func": "try {\n    var geo = msg.payload;\n    if (!geo || !geo.features || geo.features.length === 0) {\n        node.warn('[trafico] Respuesta sin features. Status:'+msg.statusCode);\n        node.status({fill:'red',shape:'ring',text:'sin datos'}); return null;\n    }\n    var ahora = new Date();\n    var puntos = [];\n    geo.features.forEach(function(f) {\n        var p = f.properties;\n        if (!p || !p.CodigoSeccion) return;\n        puntos.push({\n            measurement: 'estado',\n            tags: {codigo_seccion: String(p.CodigoSeccion)},\n            fields: {intensidad: parseInt(p.Intensidad)||0,\n                     ocupacion:  parseInt(p.Ocupacion)||0,\n                     velocidad:  parseInt(p.Velocidad)||0},\n            timestamp: ahora\n        });\n    });\n    if (puntos.length === 0) { node.warn('[trafico] Sin puntos'); return null; }\n    msg.payload = puntos;\n    msg.token  = env.get('INFLUXDB_NODERED_WRITE_TOKEN');\n    msg.bucket = 'trafico';\n    msg.org    = env.get('INFLUXDB_ORG');\n    node.status({fill:'green',shape:'dot',text:puntos.length+' tramos @ '+ahora.toLocaleTimeString()});\n    return msg;\n} catch(e) { node.warn('[trafico] Error:'+e.message); node.status({fill:'red',shape:'ring',text:'error'}); return null; }",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "wires": [
+      [
+        "out_trafico"
+      ]
+    ],
+    "x": 620,
+    "y": 160
+  },
+  {
+    "id": "out_trafico",
+    "type": "influxdb batch",
+    "z": "tab_trafico",
+    "influxdb": "influx_cfg_haizelab",
+    "name": "Escribir > trafico",
+    "precision": "ms",
+    "retentionPolicy": "",
+    "database": "trafico",
+    "precisionV18FluxV20": "ms",
+    "retentionPolicyV18Flux": "",
+    "org": "haizenlab",
+    "bucket": "trafico",
+    "wires": [],
+    "x": 880,
+    "y": 160
+  },
+  {
+    "id": "catch_trafico",
+    "type": "catch",
+    "z": "tab_trafico",
+    "name": "Catch trafico",
+    "scope": [
+      "out_trafico",
+      "req_trafico"
+    ],
+    "uncaught": false,
+    "wires": [
+      [
+        "dbg_trafico"
+      ]
+    ],
+    "x": 620,
+    "y": 280
+  },
+  {
+    "id": "dbg_trafico",
+    "type": "debug",
+    "z": "tab_trafico",
+    "name": "Log error trafico",
+    "active": true,
+    "tosidebar": true,
+    "console": true,
+    "complete": "true",
+    "targetType": "full",
+    "wires": [],
+    "x": 880,
+    "y": 280
+  },
+  {
+    "id": "tab_demo",
+    "type": "tab",
+    "label": "aire_demo",
+    "disabled": false
+  },
+  {
+    "id": "inj_demo",
+    "type": "inject",
+    "z": "tab_demo",
+    "name": "Cada 5 s",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "5",
+    "once": true,
+    "onceDelay": "10",
+    "payload": "",
+    "payloadType": "date",
+    "wires": [
+      [
+        "fn_demo"
+      ]
+    ],
+    "x": 160,
+    "y": 160
+  },
+  {
+    "id": "fn_demo",
+    "type": "function",
+    "z": "tab_demo",
+    "name": "Siguiente hora NO2",
+    "func": "var fs = global.get('fs') || require('fs');\nif (!flow.get('demo_cargado')) {\n    var csvPath = env.get('AIRE_DEMO_CSV') || '/data/no2_demo_reducido.csv';\n    try { var contenido = fs.readFileSync(csvPath, 'utf8'); }\n    catch(e) { node.error('[aire_demo] No se puede leer '+csvPath+': '+e.message); return null; }\n    var lineas = contenido.trim().split('\\n');\n    var cab = lineas[0].split(',').map(function(c) { return c.trim(); });\n    var iTs = cab.indexOf('ts'), iEst = cab.indexOf('estacion'), iZon = cab.indexOf('zona'), iNo2 = cab.indexOf('no2');\n    var porTs = {};\n    for (var i = 1; i < lineas.length; i++) {\n        var linea = lineas[i].trim();\n        if (!linea) continue;\n        var cols = linea.split(',').map(function(c) { return c.trim(); });\n        var ts = cols[iTs] || '';\n        if (!ts) continue;\n        var n = parseFloat(cols[iNo2]);\n        if (isNaN(n)) continue;\n        if (!porTs[ts]) porTs[ts] = [];\n        porTs[ts].push({estacion: cols[iEst] || '', zona: cols[iZon] || '', no2: n});\n    }\n    var ticks = Object.keys(porTs).sort();\n    flow.set('demo_por_ts', porTs); flow.set('demo_ticks', ticks);\n    flow.set('demo_idx', 0); flow.set('demo_cargado', true);\n    node.log('[aire_demo] CSV cargado: '+ticks.length+' ticks');\n}\nvar porTs = flow.get('demo_por_ts'), ticks = flow.get('demo_ticks');\nif (!ticks || ticks.length === 0) {\n    node.warn('[aire_demo] No hay ticks disponibles'); return null;\n}\nvar idx = parseInt(flow.get('demo_idx')) || 0;\nif (idx >= ticks.length) { idx = 0; node.warn('[aire_demo] Reiniciando historico'); }\nvar tsOrig = ticks[idx], filas = porTs[tsOrig];\nflow.set('demo_idx', idx + 1);\nif (!filas || filas.length === 0) {\n    node.warn('[aire_demo] Sin filas para tick: '+tsOrig); return null;\n}\nvar ahora = new Date();\nvar puntos = filas.map(function(f) {\n    return {measurement: 'contaminantes', tags: {estacion: f.estacion, zona: f.zona},\n            fields: {no2: f.no2, fecha_original: tsOrig}, timestamp: ahora};\n});\nmsg.payload = puntos;\nmsg.token  = env.get('INFLUXDB_NODERED_WRITE_TOKEN');\nmsg.bucket = 'aire_demo';\nmsg.org    = env.get('INFLUXDB_ORG');\nnode.status({fill:'green', shape:'dot', text:(idx+1)+'/'+ticks.length+' | '+tsOrig.substring(0,16)});\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "wires": [
+      [
+        "out_demo"
+      ]
+    ],
+    "x": 400,
+    "y": 160
+  },
+  {
+    "id": "out_demo",
+    "type": "influxdb batch",
+    "z": "tab_demo",
+    "influxdb": "influx_cfg_haizelab",
+    "name": "Escribir > aire_demo",
+    "precision": "ms",
+    "retentionPolicy": "",
+    "database": "aire_demo",
+    "precisionV18FluxV20": "ms",
+    "retentionPolicyV18Flux": "",
+    "org": "haizenlab",
+    "bucket": "aire_demo",
+    "wires": [],
+    "x": 680,
+    "y": 160
+  },
+  {
+    "id": "catch_demo",
+    "type": "catch",
+    "z": "tab_demo",
+    "name": "Catch aire_demo",
+    "scope": [
+      "out_demo"
+    ],
+    "uncaught": false,
+    "wires": [
+      [
+        "dbg_demo"
+      ]
+    ],
+    "x": 400,
+    "y": 280
+  },
+  {
+    "id": "dbg_demo",
+    "type": "debug",
+    "z": "tab_demo",
+    "name": "Log error demo",
+    "active": true,
+    "tosidebar": true,
+    "console": true,
+    "complete": "true",
+    "targetType": "full",
+    "wires": [],
+    "x": 680,
+    "y": 280
+  }
+]
