@@ -63,6 +63,32 @@ services:
 
 
   # ────────────────────────────────────────────────────────────────────────────
+  # Servicios Reto 0 — Módulo SBD (Notebook e Ingesta reproducible)
+  # ────────────────────────────────────────────────────────────────────────────
+  sbd-pipeline:
+    profiles: ["pipeline", "sbd"]
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_sbd_pipeline
+    volumes:
+      - ./data:/app/data
+      - ./ingesta:/app/ingesta
+      - ./datos:/app/datos
+    command: python ingesta/descargar_y_limpiar.py
+
+  sbd-notebook:
+    profiles: ["pipeline", "sbd"]
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_sbd_notebook
+    volumes:
+      - ./data:/app/data
+      - ./notebooks:/app/notebooks
+      - ./docs/img:/app/docs/img
+      - ./ingesta:/app/ingesta
+    command: python -c "import nbformat; from nbclient import NotebookClient; nb = nbformat.read('notebooks/zbe_bilbao.ipynb', as_version=4); NotebookClient(nb, timeout=600, kernel_name='python3').execute(); nbformat.write(nb, 'notebooks/zbe_bilbao.ipynb'); print('[OK] Notebook ejecutado con exito en Docker')"
+
+  # ────────────────────────────────────────────────────────────────────────────
   # InfluxDB 2.9.1
   # Nota: desde sept 2026 "latest" apunta a InfluxDB 3; se fija la version.
   # Organizacion: haizenlab (segun INFLUXDB_ORG en .env)
