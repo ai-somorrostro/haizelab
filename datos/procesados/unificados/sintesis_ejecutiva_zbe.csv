@@ -1,0 +1,6 @@
+indicador,unidad,valor_previo,valor_post,variacion_pct
+NO2 Dentro ZBE (Absoluto),ug/m3,22.49,19.14,-14.88
+NO2 Dentro ZBE (En Calma Atmosferica),ug/m3,30.61,24.33,-20.51
+NO2 Control Fuera ZBE,ug/m3,15.67,13.52,-13.72
+Trafico Acceso San Mames (Puerta ZBE),veh/dia,50127.0,45052.0,-10.12
+Trafico Total Accesos Bilbao,veh/dia,141005.0,143587.0,1.83

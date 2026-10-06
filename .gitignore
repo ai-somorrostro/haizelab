@@ -1,25 +1,32 @@
-﻿# --- Datos brutos (pesados, se obtienen de Open Data Euskadi) ---
-datos/
+# --- Datos crudos originales (excluidos para mantener el repo ligero) ---
+datos/crudo/
+data/raw/
 
-# --- Salidas generadas (se regeneran con analisis.py) ---
+# --- Datasets descomprimidos de gran tamaño (> 50 MB) ---
+# Se utiliza en su lugar la versión comprimida .zip (< 10 MB, compatible con GitHub)
+datos/procesados/calidad_aire/no2_horario_limpio.csv
 salida/aire_limpio.csv
+data/clean/dataset_integrado_zbe.csv
+data/clean/calidad_aire_limpio.csv
 
-# --- Python ---
+# --- Python / Entornos virtuales ---
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
 venv/
 env/
-dist/
-build/
 
-# --- OS ---
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# --- Editores ---
+# --- IDE / Sistema Operativo ---
 .vscode/
 .idea/
-*.swp
+.DS_Store
+Thumbs.db
+
+# --- Infraestructura: variables de entorno y credenciales ---
+.env
+nodered/credentials.json
+
+# --- Datos reducidos de demo (generados por ingesta/preparar_datos_demo.py) ---
+# Se regeneran localmente; no se suben si pesan mas de unos MB
+ingesta/no2_demo_reducido.csv

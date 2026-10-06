@@ -1,0 +1,28 @@
+# .gitattributes
+# ==============
+# Fuerza finales de linea LF para scripts de shell y ficheros de configuracion
+# que se ejecutan en contenedores Linux, aunque se editen en Windows.
+# Esto evita errores del tipo "/bin/sh^M: bad interpreter".
+
+# Scripts de shell: siempre LF
+*.sh            text eol=lf
+
+# Ficheros de configuracion de contenedores: LF
+Dockerfile*     text eol=lf
+*.json          text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.env*          text eol=lf
+
+# Python: LF (compatibilidad multi-plataforma)
+*.py            text eol=lf
+
+# Markdown y texto: auto (el editor decide)
+*.md            text
+*.txt           text
+
+# Binarios: no modificar finales de linea
+*.zip           binary
+*.png           binary
+*.jpg           binary
+*.pdf           binary
