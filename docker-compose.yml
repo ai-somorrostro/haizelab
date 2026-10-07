@@ -4,9 +4,10 @@
 #
 # Servicios de infraestructura de datos en tiempo real:
 #   influxdb       — base de datos de series temporales (InfluxDB 2.9.1)
-#   influxdb_setup — contenedor efimero: crea buckets y 3 tokens (primer arranque)
+#   influxdb_setup — contenedor efimero: crea buckets y 4 tokens (primer arranque)
 #   nodered        — flujos meteo, trafico, aire_demo
 #   grafana        — dashboards con aprovisionamiento automatico
+#   influx-mcp     — servidor MCP solo lectura (token autogenerado)
 #
 # Servicios de analisis batch (perfil "pipeline"):
 #   extraer, analisis, visualizar
@@ -120,11 +121,14 @@ services:
 
   # ────────────────────────────────────────────────────────────────────────────
   # influxdb_setup — contenedor efimero de inicializacion
-  # Crea los 3 buckets adicionales y genera 2 tokens con minimos permisos:
+  # Crea los 3 buckets adicionales y genera 4 tokens con minimos permisos:
   #   - nodered-write: escritura en meteo, trafico, aire_demo (NO en aire)
-  #   - read-all: lectura de los 4 buckets (para Grafana y MCP futuro)
+  #   - batch-write: escritura en aire y meteo (carga historica)
+  #   - read-all: lectura de los 4 buckets (para Grafana)
+  #   - mcp-read-only: lectura de los 4 buckets (solo servidor MCP)
   # Los tokens se guardan en el volumen influxdb_tokens (/tokens/tokens.env)
-  # Si el fichero ya existe (reinicio sin -v), sale sin recrear nada.
+  # Si el fichero ya existe con los 4 tokens (reinicio sin -v), sale sin recrear.
+  # Si existe sin INFLUXDB_MCP_TOKEN (volumen antiguo), solo añade ese token.
   # ────────────────────────────────────────────────────────────────────────────
   influxdb_setup:
     image: influxdb:2.9.1
@@ -228,7 +232,8 @@ services:
 
   # ────────────────────────────────────────────────────────────────────────────
   # influx-mcp — MCP Server solo lectura para InfluxDB 2.x (mludvig/influxdb-mcp)
-  # Solo usa INFLUXDB_MCP_TOKEN (read-only 4 buckets). Nunca admin ni read-all.
+  # Token: INFLUXDB_MCP_TOKEN autogenerado por influxdb_setup (Token 4) via
+  # volumen influxdb_tokens. Override opcional con INFLUXDB_MCP_TOKEN en .env.
   # HTTP: http://127.0.0.1:5001/mcp/ (para OpenCode remote y Antigravity serverUrl)
   # ────────────────────────────────────────────────────────────────────────────
   influx-mcp:
@@ -241,15 +246,19 @@ services:
     depends_on:
       influxdb:
         condition: service_healthy
+      influxdb_setup:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:5001:5001"
     environment:
       INFLUXDB_HOST: influxdb
       INFLUXDB_PORT: 8086
       INFLUXDB_ORG: ${INFLUXDB_ORG}
-      INFLUXDB_TOKEN: ${INFLUXDB_MCP_TOKEN}
+      INFLUXDB_TOKEN: ${INFLUXDB_MCP_TOKEN:-}
       MCP_LISTEN_HOST: 0.0.0.0
       MCP_LISTEN_PORT: 5001
+    volumes:
+      - influxdb_tokens:/tokens:ro
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,json; r=urllib.request.Request('http://127.0.0.1:5001/mcp/', data=json.dumps({'jsonrpc':'2.0','method':'ping','id':1}).encode(), headers={'Content-Type':'application/json','Accept':'application/json, text/event-stream'}); urllib.request.urlopen(r)\""]
       interval: 30s

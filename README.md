@@ -204,7 +204,8 @@ El contenedor inicial `influxdb_setup` genera los buckets con sus politicas de r
 ### Tokens segregados:
 * `nodered-write`: Escritura permitida exclusivamente en `meteo`, `trafico` y `aire_demo`. No tiene permisos en `aire`.
 * `batch-write`: Escritura para scripts de carga masiva en `aire` y `meteo`.
-* `read-all`: Lectura sobre los 4 buckets para cuadros de mando y consumidores externos.
+* `read-all`: Lectura sobre los 4 buckets para cuadros de mando (Grafana).
+* `mcp-read-only` (`INFLUXDB_MCP_TOKEN`): Lectura sobre los 4 buckets solo para el servidor MCP (`influx-mcp`). Autogenerado por `influxdb_setup`.
 * `admin`: Restringido exclusivamente al aprovisionamiento interno del sistema.
 
 ---
