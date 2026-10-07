@@ -226,6 +226,37 @@ services:
       retries: 5
       start_period: 30s
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # influx-mcp — MCP Server solo lectura para InfluxDB 2.x (mludvig/influxdb-mcp)
+  # Solo usa INFLUXDB_MCP_TOKEN (read-only 4 buckets). Nunca admin ni read-all.
+  # HTTP: http://127.0.0.1:5001/mcp/ (para OpenCode remote y Antigravity serverUrl)
+  # ────────────────────────────────────────────────────────────────────────────
+  influx-mcp:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    image: haizelab_influx_mcp:latest
+    container_name: haizelab_influx_mcp
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5001:5001"
+    environment:
+      INFLUXDB_HOST: influxdb
+      INFLUXDB_PORT: 8086
+      INFLUXDB_ORG: ${INFLUXDB_ORG}
+      INFLUXDB_TOKEN: ${INFLUXDB_MCP_TOKEN}
+      MCP_LISTEN_HOST: 0.0.0.0
+      MCP_LISTEN_PORT: 5001
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,json; r=urllib.request.Request('http://127.0.0.1:5001/mcp/', data=json.dumps({'jsonrpc':'2.0','method':'ping','id':1}).encode(), headers={'Content-Type':'application/json','Accept':'application/json, text/event-stream'}); urllib.request.urlopen(r)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
 # ────────────────────────────────────────────────────────────────────────────
 # Volumenes con nombre
 # ────────────────────────────────────────────────────────────────────────────
