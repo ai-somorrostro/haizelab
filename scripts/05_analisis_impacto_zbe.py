@@ -103,12 +103,16 @@ def main():
     if not row_sm.empty:
         sm_23 = row_sm["imd_2023"].iloc[0]
         sm_24 = row_sm["imd_2024"].iloc[0]
-        var_sm = row_sm["var_pct_23_24"].iloc[0]
+        sm_25 = row_sm["imd_2025"].iloc[0]
+        var_sm_24 = row_sm["var_pct_23_24"].iloc[0]
+        var_sm_25 = row_sm["var_pct_23_25"].iloc[0]
+        rebote_25 = row_sm["var_pct_24_25"].iloc[0]
         print(f"Acceso San Mamés (entrada directa a ZBE):")
-        print(f"  Año 2023: {sm_23:,.0f} veh/día")
-        print(f"  Año 2024 (ZBE): {sm_24:,.0f} veh/día")
-        print(f"  Variación: {var_sm:+.2f}% (-{sm_23 - sm_24:,.0f} vehículos diarios)")
-        print("-> Coincidencia causal: la reducción de tráfico en la arteria de acceso explica la caída del NO2.")
+        print(f"  Año 2023 (Línea de base):  {sm_23:,.0f} veh/día")
+        print(f"  Año 2024 (Fase 1 ZBE):     {sm_24:,.0f} veh/día ({var_sm_24:+.2f}%, -{sm_23 - sm_24:,.0f} veh/día)")
+        print(f"  Año 2025 (Fase 2 ZBE):     {sm_25:,.0f} veh/día ({var_sm_25:+.2f}% vs 2023; rebote de {rebote_25:+.2f}% vs 2024)")
+        print("-> Análisis causal sin sesgos: disuasión inicial acusada en 2024 (-10.1%) con rebote parcial en 2025 (-3.2% neto),")
+        print("   lo que confirma un impacto moderado y una adaptación progresiva de la flota y rutas.")
 
     print("\n[OK] Análisis estadístico completado con éxito.\n")
 

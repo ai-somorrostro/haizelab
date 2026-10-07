@@ -526,7 +526,7 @@ def construir_documento():
         "de la entrada en vigor de la ZBE (15/06/2024):"
     )
 
-    t_res = doc.add_table(rows=6, cols=5)
+    t_res = doc.add_table(rows=7, cols=5)
     t_res.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(t_res, "single", HEX_BORDER, "4")
 
@@ -543,11 +543,12 @@ def construir_documento():
         r.font.color.rgb = RGB_WHITE
 
     res_data = [
-        ("Dentro ZBE (Mazarredo + Mª Díaz Haro)", "25,60 µg/m³", "21,24 µg/m³", "-4,36 µg/m³", "-17,03%"),
-        ("Control Fuera (Gran Bilbao Urbano)", "15,92 µg/m³", "13,38 µg/m³", "-2,54 µg/m³", "-15,95%"),
-        ("Fondo Regional (Monte Arraiz)", "8,45 µg/m³", "7,62 µg/m³", "-0,83 µg/m³", "-9,82%"),
-        ("Estación Mazarredo (Interior)", "26,85 µg/m³", "22,10 µg/m³", "-4,75 µg/m³", "-17,69%"),
-        ("Estación Europa (Bilbao Norte)", "21,30 µg/m³", "18,35 µg/m³", "-2,95 µg/m³", "-13,85%"),
+        ("Dentro ZBE (Mazarredo + Mª Díaz Haro)", "25,50 µg/m³", "21,90 µg/m³", "-3,59 µg/m³", "-14,08%"),
+        ("Control Fuera (5 est. Gran Bilbao Urbano)", "18,25 µg/m³", "16,29 µg/m³", "-1,96 µg/m³", "-10,75%"),
+        ("Fondo Regional (Monte Arraiz)", "8,73 µg/m³", "8,16 µg/m³", "-0,57 µg/m³", "-6,53%"),
+        ("Estación Mazarredo (Interior tráfico)", "26,71 µg/m³", "22,86 µg/m³", "-3,85 µg/m³", "-14,41%"),
+        ("Estación Mª Díaz de Haro (Interior urbano)", "24,28 µg/m³", "20,95 µg/m³", "-3,33 µg/m³", "-13,71%"),
+        ("Estación Europa (Bilbao Norte control)", "21,30 µg/m³", "18,35 µg/m³", "-2,95 µg/m³", "-13,85%"),
     ]
     for r_idx, fila in enumerate(res_data, 1):
         bg = HEX_MINT_BG if r_idx == 1 else (HEX_LIGHT_BG if r_idx % 2 == 1 else "FFFFFF")
@@ -564,9 +565,11 @@ def construir_documento():
 
     doc.add_paragraph().paragraph_format.space_after = Pt(2)
     doc.add_paragraph(
-        "El descenso bruto interior fue de -4,36 µg/m³. Descontando la inercia general observada en el exterior "
-        "(-2,54 µg/m³, atribuible al clima y modernización del parque móvil), se obtiene un impacto neto "
-        "atribuible a la ZBE de -1,28 µg/m³ (error estándar 0,66; p-valor < 0,05)."
+        "El titular real del impacto es más modesto y preciso que la simple caída bruta antes/después (-14,08%): "
+        "fuera de la ZBE el NO2 también descendió -1,96 µg/m³ (-10,75%) por meteorología favorable y renovación del parque móvil. "
+        "Descontando esa inercia metropolitana, el impacto causal neto atribuible a la ZBE mediante Diferencias en Diferencias es de "
+        "-1,63 µg/m³ (error estándar 0,12; t = -13,41; p-valor < 0,001), lo que representa una reducción neta en torno al "
+        "-6,4% sobre la base previa de 25,50 µg/m³."
     )
 
     # =========================================================================
@@ -584,8 +587,8 @@ def construir_documento():
     r_f1_t.font.color.rgb = RGB_NAVY
 
     doc.add_paragraph(
-        "• Presentación: Se compara la serie temporal agregada mensual de NO2 entre estaciones interiores (Abando) "
-        "y el conjunto de control exterior metropolitano, marcando el inicio de la Fase 1 (15/06/2024)."
+        "• Presentación: Se compara la serie temporal agregada mensual de NO2 entre estaciones interiores (Abando: Mazarredo y Mª Díaz de Haro) "
+        "y el conjunto de control exterior metropolitano del Gran Bilbao (5 estaciones), marcando el inicio de la Fase 1 (15/06/2024)."
     )
     img_g1 = DIR_IMG / "g1_evolucion_mensual_no2.png"
     if img_g1.exists():
@@ -623,8 +626,8 @@ def construir_documento():
         doc.add_picture(str(img_g2), width=Inches(4.1))
 
     doc.add_paragraph(
-        "• Interpretación causal: Sin la ordenanza, el interior de Bilbao habría descendido únicamente hasta 22,52 µg/m³ por inercia metropolitana. "
-        "El valor observado cayó hasta 21,24 µg/m³. La brecha entre ambas curvas (-1,28 µg/m³) representa el efecto causal directo de las restricciones."
+        "• Interpretación causal: Sin la ordenanza, el interior de Bilbao habría descendido únicamente hasta 23,53 µg/m³ por inercia metropolitana. "
+        "El valor observado cayó hasta 21,90 µg/m³. La brecha entre ambas curvas (-1,63 µg/m³, -6,4%) representa el efecto causal directo de las restricciones."
     )
 
     # Figura 3: g6
@@ -637,7 +640,7 @@ def construir_documento():
     r_f3_t.font.color.rgb = RGB_NAVY
 
     doc.add_paragraph(
-        "• Presentación: Comportamiento del NO2 interior y exterior aislado exclusivamente para horas de baja ventilación (< 2 m/s en Monte Banderas), "
+        "• Presentación: Comportamiento del NO2 interior y exterior aislado exclusivamente para horas de baja ventilación (< 2 m/s), "
         "donde no hay dispersión mecánica y el aire depende de las emisiones locales directas."
     )
     img_g6 = DIR_IMG / "g6_dispersion_no2_viento.png"
@@ -649,8 +652,9 @@ def construir_documento():
         doc.add_picture(str(img_g6), width=Inches(4.1))
 
     doc.add_paragraph(
-        "• Interpretación causal: Con vientos superiores a 5 m/s la dilución forzada disfraza las diferencias. En calma, el NO2 interior pasó "
-        "de 30,6 a 24,3 µg/m³ (-20,5% de caída neta). La ZBE es máxima y especialmente eficaz en los momentos de mayor peligro sanitario para la ciudadanía."
+        "• Interpretación causal: En calma atmosférica (< 2 m/s), el NO2 interior pasó de 28,10 µg/m³ a 25,47 µg/m³ en Fase 1 (-9,4%) "
+        "y a 23,56 µg/m³ en Fase 2 (-16,2%), con un promedio post global de 24,35 µg/m³ (-13,4%). "
+        "La ZBE es especialmente eficaz en los momentos de mayor peligro sanitario para la ciudadanía."
     )
 
     # Figura 4: dashboard_decision_v1
@@ -664,7 +668,7 @@ def construir_documento():
 
     doc.add_paragraph(
         "• Presentación: Panel integral de cuatro cuadrantes combinando concentraciones de NO2, evolución de intensidades vehiculares en el acceso "
-        "principal de San Mamés y límites anuales europeos (40 µg/m³)."
+        "principal de San Mamés (Diputación de Bizkaia) y variaciones consolidadas."
     )
     img_dash = DIR_IMG / "dashboard_decision_v1.png"
     if img_dash.exists():
@@ -675,8 +679,10 @@ def construir_documento():
         doc.add_picture(str(img_dash), width=Inches(4.1))
 
     doc.add_paragraph(
-        "• Interpretación causal: La caída de contaminantes se acompaña de una reducción del 10,12% en el tráfico diario del acceso de San Mamés "
-        "(-5.075 vehículos/día laborable), sin saturación inducida en las rondas de circunvalación. Menos vehículos circulando produjeron menos emisiones directas."
+        "• Interpretación causal: El acceso de San Mamés registró en 2024 un descenso acusado del -10,12% (50.127 a 45.052 veh/día). "
+        "En 2025 se observó un rebote a 48.543 veh/día (+7,75% interanual), dejando la reducción neta 2023–2025 en un -3,16% (~ -3,2%). "
+        "Esta evolución evidencia una disuasión inicial acusada seguida de adaptación de la flota. Asimismo, el test placebo con SO2 mostró un efecto "
+        "Diff-in-Diff neutro de +0,33 µg/m³ (-3,94% bruto dentro), confirmando la especificidad vehicular."
     )
 
     # =========================================================================
@@ -685,12 +691,28 @@ def construir_documento():
     agregar_banner_seccion(doc, 6, "Conclusiones estratégicas y recomendaciones")
 
     doc.add_paragraph(
-        "1. Impacto neto probado: La ZBE de Bilbao funciona y ha generado una reducción neta atribuible de -1,28 µg/m³ de NO2 "
-        "(entre un -6% y -8% adicional sobre la tendencia exterior), concentrándose en días laborables y horario de restricción.\n"
-        "2. Máxima efectividad en episodios críticos: En situaciones de calma atmosférica e inversión térmica, la reducción "
-        "alcanzó el -20,5%, disminuyendo sustancialmente las horas de superación de los umbrales de aviso de la OMS (25 µg/m³).\n"
-        "3. Efecto marginal menor en Fase 2: La Fase 1 (sin etiqueta) concentró el 78% del impacto global. La Fase 2 (etiqueta B) "
-        "ha mostrado una ganancia marginal más reducida debido al elevado volumen de exenciones municipales en el centro urbano."
+        "1. Impacto neto probado pero moderado: La ZBE de Bilbao ha generado una reducción neta atribuible de -1,63 µg/m³ de NO2 "
+        "(en torno al -6,4% sobre la base previa), sustancialmente menor que la caída bruta del -14% antes/después debido a la mejora general metropolitana.\n"
+        "2. Eficacia protectora en episodios críticos: En situaciones de calma atmosférica e inversión térmica, la reducción "
+        "alcanza entre el -9,4% y el -16,2%, disminuyendo las horas de superación de los umbrales de aviso de la OMS (25 µg/m³).\n"
+        "3. Rendimientos decrecientes entre fases: La Fase 1 (sin etiqueta) concentró la mayor parte del beneficio. La Fase 2 (etiqueta B) "
+        "ha mostrado una ganancia marginal reducida, coincidiendo con el rebote y estabilización del tráfico de acceso en 2025 (-3,2% neto vs 2023)."
+    )
+
+    p_lim = doc.add_paragraph()
+    p_lim.paragraph_format.space_before = Pt(3)
+    r_lim_t = p_lim.add_run("Cinco limitaciones metodológicas asumidas con rigor institucional:")
+    r_lim_t.font.name = "Arial"
+    r_lim_t.font.size = Pt(10.5)
+    r_lim_t.bold = True
+    r_lim_t.font.color.rgb = RGB_SLATE
+
+    doc.add_paragraph(
+        "• Representatividad espacial: Solo dos estaciones fijas oficiales en el interior de la ZBE (Mazarredo y Mª Díaz de Haro).\n"
+        "• Magnitud absoluta moderada: El impacto neto (-1,63 µg/m³) es modesto frente a la variabilidad meteorológica interanual.\n"
+        "• Inercia del periodo base: Los años 2022 y 2023 reflejaban aún pautas de movilidad en recuperación tras el COVID-19.\n"
+        "• Factores concurrentes: Bonificaciones al transporte público, expansión ciclable y renovación vegetativa natural del parque móvil.\n"
+        "• Concentración vs. emisiones: Las estaciones registran concentración en aire (µg/m³), no emisiones directas en tubo de escape."
     )
 
     p_rec = doc.add_paragraph()
@@ -702,9 +724,9 @@ def construir_documento():
     r_rec_t.font.color.rgb = RGB_TEAL
 
     doc.add_paragraph(
-        "• Auditoría de exenciones: Revisar los permisos de acceso temporal y rotación para evitar fugas de tráfico hacia parkings subterráneos.\n"
-        "• Micro-sensorización IoT: Instalar sensores calibrados complementarios en cañones urbanos de alta exposición (Alameda Urquijo y colegios).\n"
-        "• Mantenimiento del esquema horario: Preservar la vigencia de lunes a viernes de 7:00 a 20:00, descartando restricciones nocturnas innecesarias."
+        "• Mantener la regulación actual y priorizar la electrificación del reparto urbano: No se aconseja un endurecimiento drástico adicional a turismos (coste socioeconómico alto con ganancia marginal decreciente); priorizar furgonetas y distribución de última milla.\n"
+        "• Despliegue de sensores perimetrales: Monitorizar arterias límite (Autonomía, Sagrado Corazón, Deusto) para descartar efectos de desplazamiento de tráfico (spillover).\n"
+        "• Mantenimiento del esquema horario: Preservar la vigencia de lunes a viernes de 7:00 a 20:00 h, descartando restricciones nocturnas innecesarias."
     )
 
     # =========================================================================
@@ -839,9 +861,9 @@ def construir_documento():
 
     doc.add_paragraph(
         "El análisis econométrico multivariable demuestra con rigor estadístico que la ZBE de Bilbao ha alcanzado un impacto neto "
-        "favorable de -1,28 µg/m³ en la concentración interior de NO2. El sistema integrado (ETL en Pandas, series en InfluxDB, "
+        "atribuible de -1,63 µg/m³ en la concentración interior de NO2 (-6,4% respecto a la base pre-ZBE). El sistema integrado (ETL en Pandas, series en InfluxDB, "
         "monitorización en Grafana e interfaz MCP de solo lectura) garantiza la reproducibilidad completa del estudio, facilitando "
-        "que el Ayuntamiento de Bilbao base sus decisiones de movilidad en evidencias empíricas continuas y transparentes."
+        "que el Ayuntamiento de Bilbao base sus decisiones de movilidad en evidencias empíricas continuas, transparentes y moderadas."
     )
 
     # Referencias bibliográficas

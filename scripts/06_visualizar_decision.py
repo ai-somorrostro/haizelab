@@ -72,9 +72,11 @@ def plot_dashboard_decision(df_uni: pd.DataFrame, df_traf: pd.DataFrame):
 
     ax1.plot(m_no2.index, m_no2["no2_dentro"], color=C_DENTRO, lw=2.5, marker="o", ms=4, label="Dentro ZBE (Mazarredo / Díaz Haro)")
     ax1.fill_between(m_no2.index, m_no2["no2_dentro"], alpha=0.10, color=C_DENTRO)
-    ax1.plot(m_no2.index, m_no2["no2_fuera"], color=C_FUERA, lw=2.0, marker="s", ms=3.5, label="Control Urbano Exterior (18 estaciones)")
+    ax1.plot(m_no2.index, m_no2["no2_dentro"], color=C_DENTRO, lw=2.5, marker="o", ms=4, label="Dentro ZBE (Mazarredo / Díaz Haro)")
+    ax1.fill_between(m_no2.index, m_no2["no2_dentro"], alpha=0.10, color=C_DENTRO)
+    ax1.plot(m_no2.index, m_no2["no2_fuera"], color=C_FUERA, lw=2.0, marker="s", ms=3.5, label="Control Urbano Exterior (5 est. Gran Bilbao)")
     if "no2_fondo" in m_no2.columns:
-        ax1.plot(m_no2.index, m_no2["no2_fondo"], color=C_FONDO, lw=1.6, ls="--", label="Fondo regional (Arraiz / Mundaka)")
+        ax1.plot(m_no2.index, m_no2["no2_fondo"], color=C_FONDO, lw=1.6, ls="--", label="Fondo regional (Monte Arraiz)")
 
     ax1.axvline(FASE1, color=C_FASE1, lw=1.5, ls="--")
     ax1.text(FASE1 + pd.Timedelta(days=8), 38, "Inicio ZBE\n(Junio 2024)", color=C_FASE1, fontsize=8.5, fontweight="bold")
@@ -101,9 +103,12 @@ def plot_dashboard_decision(df_uni: pd.DataFrame, df_traf: pd.DataFrame):
     if not row_sm.empty:
         vals_sm = [row_sm[c].iloc[0] / 1000 for c in cols_imd]
         ax2.plot(years, vals_sm, color=C_TRAFICO, lw=2.6, marker="o", ms=6, label="Acceso San Mames (Entrada ZBE)")
-        ax2.annotate("-10.1% ZBE", xy=(2024, vals_sm[6]), xytext=(2023.2, vals_sm[6] - 4.5),
+        ax2.annotate("-10.1% (2024)", xy=(2024, vals_sm[6]), xytext=(2023.1, vals_sm[6] - 4.5),
                      arrowprops=dict(arrowstyle="->", color="#EF4444", lw=1.5),
-                     color="#EF4444", fontsize=9, fontweight="bold")
+                     color="#EF4444", fontsize=8.5, fontweight="bold")
+        ax2.annotate("Rebote: 48.5k\n(-3.2% vs 2023)", xy=(2025, vals_sm[7]), xytext=(2024.1, vals_sm[7] + 2.0),
+                     arrowprops=dict(arrowstyle="->", color="#FBBF24", lw=1.5),
+                     color="#FBBF24", fontsize=8.5, fontweight="bold")
 
     if not row_jg.empty:
         vals_jg = [row_jg[c].iloc[0] / 1000 for c in cols_imd]
@@ -149,15 +154,23 @@ def plot_dashboard_decision(df_uni: pd.DataFrame, df_traf: pd.DataFrame):
     # Panel 4: Resumen y Veredicto para la Toma de Decisión
     # -----------------------------------------------------------
     ax4 = axs[1, 1]
+
+    # Cálculos dinámicos
+    caida_bruta_dentro = ((df_post["no2_dentro"].mean() - df_pre["no2_dentro"].mean()) / df_pre["no2_dentro"].mean()) * 100
+    caida_bruta_fuera = ((df_post["no2_fuera"].mean() - df_pre["no2_fuera"].mean()) / df_pre["no2_fuera"].mean()) * 100
+    efecto_did_neto = ((df_post["no2_dentro"].mean() - df_pre["no2_dentro"].mean()) - (df_post["no2_fuera"].mean() - df_pre["no2_fuera"].mean())) / df_pre["no2_dentro"].mean() * 100
+    caida_calma = ((v_post[0] - v_pre[0]) / v_pre[0]) * 100
+
     metricas = [
-        "Trafico San Mames\n(Acceso ZBE)",
-        "NO2 Centro en Calma\n(<2 m/s viento)",
-        "NO2 Dentro ZBE\n(Media global)",
-        "NO2 Control Fuera\n(Tendencia Gran Bilbao)",
-        "Trafico Total\nAccesos Bilbao"
+        "Trafico S. Mames '24\n(Disuasion inicial)",
+        "Trafico S. Mames '25\n(Rebote consolidado)",
+        "NO2 Dentro Calma\n(<2 m/s viento)",
+        "NO2 Dentro ZBE\n(Caida bruta antes/despues)",
+        "Control Gran Bilbao\n(Tendencia exterior)",
+        "Efecto Neto ZBE\n(Diff-in-Diff atribuible)"
     ]
-    valores = [-10.12, -17.13, -13.84, -13.03, -0.68]
-    colores_b = [C_TRAFICO, "#EF4444", C_DENTRO, C_FUERA, "#94A3B8"]
+    valores = [-10.12, -3.16, caida_calma, caida_bruta_dentro, caida_bruta_fuera, efecto_did_neto]
+    colores_b = [C_TRAFICO, "#FBBF24", "#EF4444", C_DENTRO, C_FUERA, "#10B981"]
 
     y_pos = np.arange(len(metricas))
     bars = ax4.barh(y_pos, valores, color=colores_b, height=0.52, alpha=0.9)
@@ -165,27 +178,33 @@ def plot_dashboard_decision(df_uni: pd.DataFrame, df_traf: pd.DataFrame):
 
     for bar, val in zip(bars, valores):
         ax4.text(val - 0.4, bar.get_y() + bar.get_height()/2, f"{val:+.1f}%",
-                 va="center", ha="right", color="#F8FAFC", fontsize=9.5, fontweight="bold")
+                 va="center", ha="right", color="#F8FAFC", fontsize=9.0, fontweight="bold")
 
     ax4.set_yticks(y_pos)
-    ax4.set_yticklabels(metricas, color="#CBD5E1", fontsize=9)
+    ax4.set_yticklabels(metricas, color="#CBD5E1", fontsize=8.5)
     ax4.set_xlabel("Variacion tras implantacion de la ZBE (%)", color="#CBD5E1", fontsize=10)
-    ax4.set_title("4. RESUMEN EJECUTIVO: Variaciones Porcentuales Observadas", color="#F8FAFC", fontsize=11, fontweight="bold", pad=10)
+    ax4.set_title("4. RESUMEN EJECUTIVO: Variaciones Porcentuales Reales", color="#F8FAFC", fontsize=11, fontweight="bold", pad=10)
     ax4.set_xlim(-22, 5)
 
-    # Veredicto de decisión
-    ax4.text(-21, -0.9, "VEREDICTO: PROYECTO VIABLE Y JUSTIFICADO\nLa correlacion entre caida de vehiculos (-10%) y reduccion de NO2 (-17% en calma) es solida.",
-             fontsize=8.5, color="#10B981", fontweight="bold",
-             bbox=dict(boxstyle="round,pad=0.4", fc="#064E3B", ec="#10B981", alpha=0.9))
+    # Veredicto de decisión institucional honesto
+    ax4.text(-21, -0.9, "VEREDICTO: EFECTO CONFIRMADO PERO MODERADO\nEfecto neto ZBE atribuible: -7.1% (-1.8 ug/m3). Disuasion inicial de trafico (-10.1% en 2024)\namortiguada en 2025 (-3.2% vs 2023). El impacto se sostiene bajo 5 limitaciones metodologicas.",
+             fontsize=8.0, color="#38BDF8", fontweight="bold",
+             bbox=dict(boxstyle="round,pad=0.4", fc="#082F49", ec="#38BDF8", alpha=0.9))
 
     plt.suptitle("PANEL DE DECISIÓN ESTRATÉGICA — EVALUACIÓN DEL IMPACTO DE LA ZBE DE BILBAO\n¿Debemos avanzar con el proyecto? Datos oficiales de Calidad del Aire (Euskadi) + Tráfico (Bizkaia) + Clima (Banderas)",
                  color="#F8FAFC", fontsize=14, fontweight="bold", y=0.98)
     plt.tight_layout(rect=[0, 0, 1, 0.95], pad=2.0)
 
     f_out = DIR_SALIDA / "dashboard_decision_zbe.png"
-    plt.savefig(f_out, dpi=180, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.savefig(f_out, dpi=200, facecolor=C_BG)
     plt.close()
-    print(f"-> Dashboard de decisión guardado: {f_out}")
+    print(f"-> Guardado dashboard de decisión: {f_out}")
+
+    # Guardar copia directa en docs/img para informes y markdown
+    f_docs_img = DIR_BASE / "docs" / "img" / "dashboard_decision_v1.png"
+    import shutil
+    shutil.copy2(f_out, f_docs_img)
+    print(f"-> Copiado dashboard a docs/img: {f_docs_img}")
 
 
 def plot_evolucion_no2(df_uni: pd.DataFrame):

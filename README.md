@@ -243,15 +243,21 @@ python scripts/generar_informe_docx.py
 
 ## 10. Resultados principales de la evaluacion de la ZBE
 
-El analisis econometrico realizado en el notebook y sintetizado en el informe ejecutivo muestra los siguientes hallazgos:
-1. **Reduccion media observada de NO2**:
-   * Dentro de la ZBE (Mazarredo y Maria Diaz de Haro): paso de 25,6 ug/m3 a 21,2 ug/m3 (-17%).
-   * En estaciones de control exterior (Gran Bilbao): paso de 15,9 ug/m3 a 13,4 ug/m3 (-16%).
-   * Efecto neto del modelo Diff-in-Diff: reduccion neta atribuible a la ZBE de **-1,28 ug/m3** (intervalo de confianza del 95%: +-1,29 ug/m3).
+El analisis econometrico realizado a partir del diseno unificado de 8 estaciones (2 dentro: Mazarredo y Maria Diaz de Haro; 5 de control metropolitano del Gran Bilbao: Europa, Barakaldo, Basauri, Erandio, Castrejana; y 1 de fondo: Monte Arraiz) arroja los siguientes resultados consensuados:
+
+1. **Reduccion real de NO2 y estimador causal neto**:
+   * Dentro de la ZBE: descenso de **25,50 a 21,90 ug/m3** (**-3,59 ug/m3**, o **-14,08%** bruto antes/despues).
+   * En estaciones de control exterior (Gran Bilbao): descenso de **18,25 a 16,29 ug/m3** (**-1,96 ug/m3**, o **-10,75%**).
+   * **Efecto neto causal (Diff-in-Diff)**: reduccion neta atribuible a la ZBE de **-1,63 ug/m3** (error estandar 0,12; p-valor < 0,001), equivalente a un **-6,39% (~ -6,4%)** sobre la linea de base interior de 25,5 ug/m3. El titular causal solido es este -6,4% y no el -14% bruto, dado que mas de la mitad del descenso ocurrio tambien en el resto de la metropolis por meteorologia y renovacion vehicular.
 2. **Control meteorologico por regimen de viento**:
-   * En situaciones de calma atmosferica (< 2 m/s), donde no hay dispersion y predominan las emisiones del centro, el NO2 interior experimento una reduccion del **-20,5%** (de 30,6 a 24,3 ug/m3).
-3. **Contraste con volumenes de trafico**:
-   * El acceso principal a la ZBE por San Mames registro un descenso del **-10,12%** (-5.075 vehiculos/dia) tras la entrada en vigor de las restricciones de la Fase 1.
+   * En situaciones de calma atmosferica (< 2 m/s, baja dispersion), el NO2 interior paso de 28,10 ug/m3 a 25,47 ug/m3 en Fase 1 (**-9,4%**) y a 23,56 ug/m3 en Fase 2 (**-16,2%**), con una media post global de 24,35 ug/m3 (**-13,4%**). Esto confirma que en los momentos de mayor peligro sanitario el aire esta significativamente mas limpio.
+3. **Contraste con volumenes de trafico (San Mames) y control placebo**:
+   * En 2024 (Fase 1), el acceso de San Mames mostro una disuasion inicial del **-10,12%** (-5.075 vehiculos/dia).
+   * En 2025 (Fase 2), se registro un rebote a 48.543 vehiculos/dia (+7,75% interanual), situando la caida neta 2023–2025 en un **-3,16%** (~ -3,2%). Presentar la serie completa evita sesgos de seleccion (cherry-picking) y evidencia una adaptacion progresiva de los conductores.
+   * **Control placebo de SO2**: la variacion neta en Diff-in-Diff del dioxido de azufre fue de **+0,33 ug/m3** (-3,94% bruto dentro), validando que las mejoras son atribuibles especificamente al trafico fósil y no a dinamicas industriales o portuarias.
+4. **Veredicto institucional y limitaciones tecnicas asumidas**:
+   * **Veredicto:** *Efecto reductor confirmado pero moderado*.
+   * Se asumen con total honestidad cientifica cinco limitaciones tecnicas: (1) representatividad espacial acotada a 2 estaciones interiores, (2) magnitud absoluta moderada (-1,63 ug/m3) frente a la variabilidad climatica, (3) normalizacion post-pandemia en la base previa (2022-2023), (4) factores concurrentes (renovacion de la flota y descuentos en transporte publico), y (5) concentraciones ambientales medidas en sensores vs. emisiones directas en tubo de escape.
 
 ---
 

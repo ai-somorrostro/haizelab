@@ -9,7 +9,7 @@ celdas de código y texto Markdown requeridas para el Reto 0 del módulo SBD.
 from pathlib import Path
 import nbformat as nbf
 
-DIR_RAIZ = Path(__file__).resolve().parent.parent
+DIR_RAIZ = Path(__file__).resolve().parent.parent.parent
 DIR_NOTEBOOKS = DIR_RAIZ / "notebooks"
 DIR_NOTEBOOKS.mkdir(parents=True, exist_ok=True)
 RUTA_NOTEBOOK = DIR_NOTEBOOKS / "zbe_bilbao.ipynb"
@@ -572,8 +572,9 @@ plt.show()
 print(\"\"\"
 [Interpretación de la Gráfica 6]:
 Bajo calma atmosférica (< 2 m/s), cuando no hay dispersión mecánica y dominan las emisiones locales directas,
-el NO2 en el interior de la ZBE descendió de 32.3 µg/m³ a 26.8 µg/m³ (-17.1%).
-Esto descarta que la mejora de calidad del aire sea un artefacto de mayor viento en el periodo posterior.
+el NO2 en el interior de la ZBE descendió de 28.10 µg/m³ a 25.47 µg/m³ (-9.4% en Fase 1) y a 23.56 µg/m³ (-16.2% en Fase 2),
+con un promedio post global de 24.35 µg/m³ (-13.4%).
+Esto descarta que la mejora de calidad del aire sea un artefacto de mayor ventilación eólica en el periodo posterior.
 \"\"\")"""))
 
     cells.append(nbf.v4.new_code_cell("""# 17. Modelo A: Regresión Econométrica Multivariable con Controles
@@ -737,9 +738,9 @@ plt.show()
 
 print(\"\"\"
 [Interpretación de la Gráfica 8]:
-1. Los contaminantes primarios vehiculares (NO, NOx, NO2, CO) experimentan fuertes caídas (-14% a -25%).
-2. El SO2 (control placebo) muestra una variación prácticamente nula o neutra (+0.8%), confirmando
-   que la mejora atmosférica observada se debe específicamente al parque rodante y no a una perturbación
+1. Los contaminantes primarios vehiculares (NO, NOx, NO2, CO) experimentan fuertes caídas (-14% a -39%).
+2. El SO2 (control placebo) muestra una caída bruta dentro del -3.94% pero un estimador Diff-in-Diff neto de +0.33 µg/m³ (variación neutra/no significativa), confirmando
+   que la reducción observada se debe específicamente a las emisiones de tráfico fósil y no a una perturbación
    industrial o regional genérica.
 \"\"\")"""))
 
@@ -841,11 +842,11 @@ en la exclusión de flotas más modernas (etiqueta B) y una progresiva adaptaci�
 ### Conclusiones Clave para la Cúpula del Ayuntamiento de Bilbao
 
 1. **Efecto Reductor Confirmado pero Moderado:**
-   La ZBE ha logrado reducir la concentración de $NO_2$ en el interior de Abando e Indautxu en **-1,59 µg/m³** netos según el modelo de Diferencias en Diferencias frente al Gran Bilbao, y en **-2,08 µg/m³** según el modelo contrafactual de *Gradient Boosting*. En episodios de calma atmosférica (sin ventilación eólica), la caída en el centro alcanza un **-17,1%**, lo que confirma que el aire es más limpio en momentos críticos.
+   La ZBE ha logrado reducir la concentración de $NO_2$ en el interior de Abando e Indautxu en **-1,63 µg/m³** netos según el modelo econométrico de Diferencias en Diferencias frente a las 5 estaciones de control del Gran Bilbao (un **-6,4%** relativo atribuible sobre la línea de base de 25,50 µg/m³, frente al -14,1% de caída bruta antes/después), y en **-2,08 µg/m³** según el modelo contrafactual de *Gradient Boosting*. En episodios de calma atmosférica (< 2 m/s), la concentración interior descendió un **-9,4%** en Fase 1 y un **-16,2%** en Fase 2 (-13,4% global post), ratificando la mejora en situaciones de baja dispersión.
 2. **Coherencia Causal Temporal y Mecánica:**
-   La reducción es un **25% más acusada durante el horario regulado** (lunes a viernes de 07:00 a 20:00) que en horario nocturno o fines de semana. Asimismo, los contaminantes vehiculares directos ($NO$, $NO_x$, $CO$) caen con fuerza, mientras que el dióxido de azufre ($SO_2$, test placebo) permanece plano (+0,8%), demostrando que la causa es motora y no un artefacto atmosférico.
-3. **Rendimientos Decrecientes entre Fases:**
-   La Fase 1 (exclusión de vehículos sin etiqueta) concentró el **85% del impacto total acumulado**. La Fase 2 (etiqueta B no residentes) ha tenido un impacto marginal adicional mucho menor (-2,5%), dado que el parque vehicular ya se había adaptado y los vehículos B emiten sensiblemente menos que los vehículos sin distintivo.
+   La reducción es un **25% más acusada durante el horario regulado** (lunes a viernes de 07:00 a 20:00) que en horario nocturno o fines de semana. Asimismo, los contaminantes vehiculares directos ($NO$, $NO_x$, $CO$) caen con fuerza (-14% a -39%), mientras que el dióxido de azufre ($SO_2$, test placebo) presenta un efecto neto Diff-in-Diff no significativo de **+0,33 µg/m³** (-3,9% bruto dentro), validando que el efecto es estrictamente vehicular y no un artefacto atmosférico.
+3. **Rendimientos Decrecientes entre Fases y Dinámica de Tráfico:**
+   La Fase 1 (exclusión de vehículos sin etiqueta) concentró el **85% del impacto total acumulado**. La Fase 2 (etiqueta B no residentes) ha tenido un impacto marginal adicional mucho menor (-2,5%). En paralelo, el aforo del acceso de San Mamés mostró una disuasión inicial marcada en 2024 (-10,1%), seguida de un rebote en 2025 (48.543 veh/día) que situó la caída 2023–2025 en un -3,2%, lo que confirma una adaptación progresiva del parque vehicular y un impacto sostenido pero moderado.
 
 ---
 
