@@ -20,7 +20,7 @@ haizenlab (org)
 │       ├── tags:   estacion, zona
 │       └── fields: no2 (float), fecha_original (string)
 │
-├── meteo             ← Meteorología en tiempo real + histórico (retencion: 90 días)
+├── meteo             ← Meteorología en tiempo real + histórico (retencion: infinita)
 │   └── clima
 │       ├── tags:   ubicacion, fuente
 │       └── fields: temp_c (float, °C)
@@ -95,10 +95,10 @@ from(bucket: "aire")
 
 | Elemento       | Valor                                          |
 |----------------|------------------------------------------------|
-| Retención      | 90 días (7.776.000 s)                          |
+| Retención      | Infinita (preserva histórico 2022-2026 y lecturas RT) |
 | Fuente RT      | Node-RED `tab_meteo` (Open-Meteo, cada 15 min) |
 | Fuente hist.   | `ingesta/carga_historica.py --bucket meteo`    |
-| Token acceso   | `nodered-write` (escritura `meteo`)            |
+| Token acceso   | `nodered-write` (RT) / `batch-write` (histórico)|
 | Measurement    | `clima`                                        |
 
 | Campo / Tag         | Tipo   | Descripción                                          |
@@ -141,7 +141,7 @@ from(bucket: "aire")
 |-------------------|---------------------------------|-----------------|------------------------------|
 | `admin`           | Todos (creación inicial)        | Todos           | Solo setup, nunca en runtime |
 | `nodered-write`   | `meteo`, `trafico`, `aire_demo` | —               | Node-RED (runtime)           |
-| `batch-write`     | Solo `aire`                     | —               | `carga_historica.py`         |
+| `batch-write`     | `aire`, `meteo`                 | —               | `carga_historica.py`         |
 | `read-all`        | —                               | Los 4 buckets   | Grafana, MCP futuro          |
 
 > Un único token para todo puntúa como **deficiente** en la evaluación del reto.
