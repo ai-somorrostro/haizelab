@@ -172,7 +172,7 @@ Por tanto, el **impacto causal neto atribuible a la ZBE mediante Diferencias en 
 
 ## Conclusión
 
-El análisis econométrico multivariable demuestra con rigor estadístico que la ZBE de Bilbao ha alcanzado un impacto neto favorable de **-1,28 µg/m³** en la concentración interior de $\text{NO}_2$. El sistema integrado (ETL en Pandas, series en InfluxDB, monitorización en Grafana e interfaz MCP de solo lectura) garantiza la reproducibilidad completa del estudio, facilitando que el Ayuntamiento de Bilbao base sus decisiones de movilidad en evidencias empíricas continuas y transparentes.
+El análisis econométrico multivariable demuestra con rigor estadístico que la ZBE de Bilbao ha alcanzado un impacto neto favorable de **-1,63 µg/m³** en la concentración interior de $\text{NO}_2$. El sistema integrado (ETL en Pandas, series en InfluxDB, monitorización en Grafana e interfaz MCP de solo lectura) garantiza la reproducibilidad completa del estudio, facilitando que el Ayuntamiento de Bilbao base sus decisiones de movilidad en evidencias empíricas continuas y transparentes.
 
 ---
 
