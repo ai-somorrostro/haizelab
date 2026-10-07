@@ -26,4 +26,6 @@ Thumbs.db
 # --- Infraestructura: variables de entorno y credenciales ---
 .env
 nodered/credentials.json
-
+# --- Archivos temporales de Office / Word ---
+~$*.docx
+~$*.xlsx

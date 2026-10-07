@@ -5,9 +5,7 @@
 > **Módulo:** Sistemas de Big Data (5074) · CF Somorrostro  
 > **Reto 0:** «HERE WE GO»  
 > **Equipo:** Haizen Lab (Iñigo, Kerman y Alfred)  
-> **Cliente (simulado):** Ayuntamiento de Bilbao, área de Movilidad y Sostenibilidad  
-> **Fecha:** 07/10/2026  
-> **Documento entregable oficial:** [Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx](file:///c:/Users/alfre/Desktop/haizelab/docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx)
+> **Documento entregable oficial:** [Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx](Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx) | [Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf](Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf)
 
 ---
 

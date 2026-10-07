@@ -6,8 +6,7 @@
 > **Reto 0:** «HERE WE GO»  
 > **Equipo:** Haizen Lab (Iñigo, Kerman y Alfred)  
 > **Cliente (simulado):** Ayuntamiento de Bilbao, área de Movilidad y Sostenibilidad  
-> **Fecha:** 07/10/2026  
-> **Documento entregable oficial:** [MIA_Haizen_Lab.pdf](file:///c:/Users/inigo/Desktop/RETO%200/haizelab/docs/MIA_Haizen_Lab.pdf) | [MIA_Haizen_Lab.docx](file:///c:/Users/inigo/Desktop/RETO%200/haizelab/docs/MIA_Haizen_Lab.docx)
+> **Documento entregable oficial:** [MIA_Haizen_Lab.pdf](MIA_Haizen_Lab.pdf) | [MIA_Haizen_Lab.docx](MIA_Haizen_Lab.docx)
 
 ---
 
