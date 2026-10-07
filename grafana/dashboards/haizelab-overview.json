@@ -18,7 +18,7 @@
         "y": 0
       },
       "id": 100,
-      "title": "💨 Calidad del Aire — NO₂ y Zona de Bajas Emisiones (ZBE Bilbao)",
+      "title": "Calidad del Aire — NO₂ y Zona de Bajas Emisiones (ZBE Bilbao)",
       "type": "row"
     },
     {
@@ -212,7 +212,7 @@
         "y": 9
       },
       "id": 150,
-      "title": "📊 Estadísticas NO₂ — Medias, Medias Móviles y Percentiles",
+      "title": "Estadísticas NO₂ — Medias, Medias Móviles y Percentiles",
       "type": "row"
     },
     {
@@ -453,7 +453,7 @@
         "y": 18
       },
       "id": 200,
-      "title": "🌦️ Meteorología en Tiempo Real (Bilbao — Open-Meteo)",
+      "title": "Meteorología en Tiempo Real (Bilbao — Open-Meteo)",
       "type": "row"
     },
     {
@@ -655,7 +655,7 @@
         "y": 26
       },
       "id": 300,
-      "title": "🚗 Estado del Tráfico Urbano (Bilbao Open Data — 81 Tramos)",
+      "title": "Estado del Tráfico Urbano (Bilbao Open Data — 81 Tramos)",
       "type": "row"
     },
     {
