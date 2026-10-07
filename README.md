@@ -77,7 +77,9 @@ haizelab/
 |   |-- img/                           # Graficas analiticas y capturas de servicios
 |   |-- informe-cliente-sbd.md         # Informe ejecutivo para el cliente (maximo 4 paginas)
 |   |-- infraestructura-explicada.md   # Justificacion tecnica de InfluxDB, Node-RED y Grafana
-|   `-- organigrama-datos.md           # Esquema org, buckets, measurements, fields y tags
+|   |-- organigrama-datos.md           # Esquema org, buckets, measurements, fields y tags
+|   |-- propuesta-modelo-ia.md         # Propuesta tecnica de modelo de IA (Reto 0 - Modulo MIA)
+|   `-- MIA_Haizen_Lab.pdf             # Documento oficial de entrega en formato PDF (MIA)
 |
 |-- grafana/                           # Servicio de cuadros de mando y alertas
 |   |-- dashboards/
