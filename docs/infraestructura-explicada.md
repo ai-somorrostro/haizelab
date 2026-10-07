@@ -91,12 +91,12 @@ En Node-RED he organizado el trabajo en tres pestañas limpias y alineadas para 
 - Se guarda en el bucket `trafico` con el tag del tramo (`codigo_seccion`).
 
 ### 3. Pestaña `aire_demo` (cada 5 segundos)
-- Para no depender de si las estaciones de aire emiten justo cuando estamos en clase, he preparado un script en Python (`ingesta/preparar_datos_demo.py`) que cogió los datos reales de 2022 a 2026 de 4 estaciones clave:
+- Para no depender de si las estaciones de aire emiten justo cuando estamos en clase, preparé un dataset representativo (`ingesta/no2_demo_reducido.csv`) con datos reales de 2022 a 2026 de 4 estaciones clave:
   - **Mazarredo**: Dentro de la ZBE.
   - **Mª Díaz de Haro**: Dentro de la ZBE (corrigiendo el nombre que venía en sucio como `M_DIAZ_HARO`).
   - **Europa**: Fuera de la ZBE (control urbano).
   - **Arraiz**: Fondo natural.
-- El flujo carga ese CSV comprimido en memoria al arrancar.
+- El flujo carga ese CSV en memoria al arrancar el contenedor.
 - Cada 5 segundos, coge los datos de una hora real y los escribe en InfluxDB con la fecha y hora de este momento, de modo que parece que las estaciones están emitiendo en riguroso directo. Cuando llega al final del dataset, vuelve a empezar en bucle.
 
 ---
@@ -106,7 +106,7 @@ En Node-RED he organizado el trabajo en tres pestañas limpias y alineadas para 
 Para ver los datos no quería tener que crear paneles a mano cada vez que se reiniciara el contenedor. Así que he usado la función de **provisioning** de Grafana:
 
 - He configurado un archivo YAML para que Grafana añada InfluxDB como origen de datos automáticamente al arrancar.
-- He programado un script en Python (`grafana/generate_dashboard.py`) que genera el JSON del cuadro de mando:
+- El cuadro de mando (`grafana/dashboards/haizelab-overview.json`) define de forma declarativa todos los paneles:
   - **Calidad del aire**: Unos relojes con colores tipo semáforo (verde < 25, amarillo 25-40, rojo > 40 µg/m³ según las normas europeas) y la gráfica temporal comparando dentro vs fuera de la ZBE.
   - **Clima**: Gráfica de temperatura y humedad, y otra de viento y lluvia.
   - **Tráfico**: Cuántos coches se mueven por Bilbao y a qué velocidad media van.

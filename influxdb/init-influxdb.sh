@@ -71,7 +71,24 @@ ID_DEMO=$(get_id "aire_demo")
 ID_AIRE=$(get_id "aire")
 echo "[setup] IDs: aire=$ID_AIRE meteo=$ID_METEO trafico=$ID_TRAFICO aire_demo=$ID_DEMO"
 
-# Token escritura Node-RED (SOLO meteo + trafico + aire_demo; NO puede escribir en aire)
+# ── Tokens con minimo privilegio ──────────────────────────────────────────────
+# Criterio: un token por rol, nunca uno solo para todo (puntua como deficiente).
+#
+# Token 1: nodered-write  → escritura meteo + trafico + aire_demo (NO aire)
+# Token 2: batch-write    → escritura SOLO en aire (carga historica Python)
+# Token 3: read-all       → lectura de los 4 buckets (Grafana, MCP)
+#
+# Tags recomendados en los puntos escritos por Node-RED:
+#   meteo:     ubicacion=bilbao, fuente=open-meteo
+#   trafico:   codigo_seccion=<id>
+#   aire_demo: estacion=<nombre>, zona=dentro|fuera|fondo
+#
+# Tags en la carga historica (carga_historica.py):
+#   aire:      estacion=<nombre>, zona=<clasificacion>
+#   meteo:     ubicacion=bilbao, fuente=historico-open-meteo
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Token 1: escritura Node-RED (SOLO meteo + trafico + aire_demo; NO puede escribir en aire)
 TOKEN_NR=$(influx auth create \
   --org "$ORG" \
   --description "nodered-write: meteo+trafico+aire_demo" \
@@ -79,9 +96,17 @@ TOKEN_NR=$(influx auth create \
   --write-bucket "$ID_TRAFICO" \
   --write-bucket "$ID_DEMO" \
   --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | cut -f 3)
-echo "[setup] Token escritura Node-RED generado."
+echo "[setup] Token 1 (nodered-write) generado."
 
-# Token lectura para Grafana/MCP (todos los buckets, solo lectura)
+# Token 2: escritura carga historica (SOLO bucket aire; no puede tocar tiempo real)
+TOKEN_BATCH=$(influx auth create \
+  --org "$ORG" \
+  --description "batch-write: carga historica aire" \
+  --write-bucket "$ID_AIRE" \
+  --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | cut -f 3)
+echo "[setup] Token 2 (batch-write) generado."
+
+# Token 3: lectura para Grafana/MCP (todos los buckets, solo lectura)
 TOKEN_READ=$(influx auth create \
   --org "$ORG" \
   --description "read-all: Grafana y MCP futura" \
@@ -90,13 +115,14 @@ TOKEN_READ=$(influx auth create \
   --read-bucket "$ID_TRAFICO" \
   --read-bucket "$ID_DEMO" \
   --host "$HOST" --token "$ADMIN_TOKEN" --hide-headers 2>/dev/null | cut -f 3)
-echo "[setup] Token lectura generado."
+echo "[setup] Token 3 (read-all) generado."
 
 # Guardar en volumen compartido (no accesible desde git)
 mkdir -p /tokens
 {
   printf "INFLUXDB_NODERED_WRITE_TOKEN=%s\n" "$TOKEN_NR"
-  printf "INFLUXDB_READ_TOKEN=%s\n" "$TOKEN_READ"
+  printf "INFLUXDB_BATCH_WRITE_TOKEN=%s\n"   "$TOKEN_BATCH"
+  printf "INFLUXDB_READ_TOKEN=%s\n"          "$TOKEN_READ"
 } > "$TOKENS_FILE"
-echo "[setup] Tokens guardados en $TOKENS_FILE"
+echo "[setup] 3 tokens guardados en $TOKENS_FILE"
 echo "[setup] Inicializacion completada."

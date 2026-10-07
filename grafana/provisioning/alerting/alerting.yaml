@@ -1,0 +1,279 @@
+# grafana/provisioning/alerting/alerting.yaml
+# ============================================
+# Provisioning de alertas por umbrales para HaizeLab.
+#
+# Umbrales NO2 según directiva EU 2024/2881 y OMS 2021:
+#   - Amarillo (aviso)    : NO2 > 25 µg/m³
+#   - Rojo (superación)   : NO2 > 40 µg/m³  (límite anual UE)
+#   - Crítico (pico)      : NO2 > 200 µg/m³ (límite horario UE)
+#
+# Tráfico:
+#   - Congestión alta     : ocupacion_media > 35 %
+#
+# Cada alerta usa la fuente de datos InfluxDB-HaizeLab con Flux.
+# Las notificaciones van al contacto "haizelab-ops" (email/Slack).
+#
+# IMPORTANTE: Para que las alertas funcionen con InfluxDB Flux, Grafana
+# necesita el token de lectura. Esto ya está provisionado en entrypoint.sh.
+
+apiVersion: 1
+
+groups:
+  # ────────────────────────────────────────────────────────────────
+  # Grupo 1: Calidad del Aire — NO2
+  # ────────────────────────────────────────────────────────────────
+  - orgId: 1
+    name: "Calidad Aire NO2"
+    folder: "HaizeLab Alertas"
+    interval: 1m
+    rules:
+
+      - uid: "alert-no2-aviso"
+        title: "NO₂ — Nivel de Aviso (> 25 µg/m³)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900    # últimos 15 min
+              to: 0
+            datasourceUid: "InfluxDB-HaizeLab"
+            model:
+              datasource:
+                type: influxdb
+                uid: "InfluxDB-HaizeLab"
+              query: |
+                from(bucket: "aire_demo")
+                  |> range(start: -15m)
+                  |> filter(fn: (r) => r["_measurement"] == "contaminantes")
+                  |> filter(fn: (r) => r["_field"] == "no2")
+                  |> group()
+                  |> mean()
+              intervalMs: 60000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: [25]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "NO₂ supera el umbral de aviso OMS (25 µg/m³)"
+          description: "La media de NO₂ en las últimas 15 min es superior a 25 µg/m³ en la ZBE de Bilbao. Revisar estaciones."
+        labels:
+          severity: warning
+          team: haizelab
+          tipo: aire
+
+      - uid: "alert-no2-superacion"
+        title: "NO₂ — Superación Límite EU (> 40 µg/m³)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 3600    # última hora
+              to: 0
+            datasourceUid: "InfluxDB-HaizeLab"
+            model:
+              datasource:
+                type: influxdb
+                uid: "InfluxDB-HaizeLab"
+              query: |
+                from(bucket: "aire_demo")
+                  |> range(start: -1h)
+                  |> filter(fn: (r) => r["_measurement"] == "contaminantes")
+                  |> filter(fn: (r) => r["_field"] == "no2")
+                  |> group()
+                  |> mean()
+              intervalMs: 60000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: [40]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: "ALERTA: NO₂ supera el límite legal europeo (40 µg/m³)"
+          description: "La media horaria de NO₂ supera 40 µg/m³. Posible superación del límite anual EU 2024/2881. Se requiere acción."
+        labels:
+          severity: critical
+          team: haizelab
+          tipo: aire
+
+      - uid: "alert-no2-pico-horario"
+        title: "NO₂ — Pico Horario Crítico (> 200 µg/m³)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600    # últimos 10 min
+              to: 0
+            datasourceUid: "InfluxDB-HaizeLab"
+            model:
+              datasource:
+                type: influxdb
+                uid: "InfluxDB-HaizeLab"
+              query: |
+                from(bucket: "aire_demo")
+                  |> range(start: -10m)
+                  |> filter(fn: (r) => r["_measurement"] == "contaminantes")
+                  |> filter(fn: (r) => r["_field"] == "no2")
+                  |> group()
+                  |> max()
+              intervalMs: 60000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: [200]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: "CRÍTICO: Pico horario de NO₂ supera 200 µg/m³"
+          description: "Se ha detectado un pico de NO₂ por encima del límite horario europeo (200 µg/m³). Verificar calidad del sensor."
+        labels:
+          severity: critical
+          team: haizelab
+          tipo: aire
+
+  # ────────────────────────────────────────────────────────────────
+  # Grupo 2: Tráfico — Congestión
+  # ────────────────────────────────────────────────────────────────
+  - orgId: 1
+    name: "Trafico Congestion"
+    folder: "HaizeLab Alertas"
+    interval: 2m
+    rules:
+
+      - uid: "alert-trafico-congestion"
+        title: "Tráfico — Congestión Alta (Ocupación > 35%)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 1800    # últimos 30 min
+              to: 0
+            datasourceUid: "InfluxDB-HaizeLab"
+            model:
+              datasource:
+                type: influxdb
+                uid: "InfluxDB-HaizeLab"
+              query: |
+                from(bucket: "trafico")
+                  |> range(start: -30m)
+                  |> filter(fn: (r) => r["_measurement"] == "estado")
+                  |> filter(fn: (r) => r["_field"] == "ocupacion")
+                  |> group()
+                  |> mean()
+              intervalMs: 60000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: [35]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: "Congestión alta en la red de Bilbao (ocupación media > 35%)"
+          description: "La ocupación media de los 81 tramos supera el 35% durante más de 10 min. Posible congestión generalizada."
+        labels:
+          severity: warning
+          team: haizelab
+          tipo: trafico
+
+# ────────────────────────────────────────────────────────────────
+# Punto de contacto (contact point) por defecto
+# Para configurar email o Slack reales, editar grafana.ini o
+# añadir otro yaml con contactPoints.
+# ────────────────────────────────────────────────────────────────
+contactPoints:
+  - orgId: 1
+    name: haizelab-ops
+    receivers:
+      - uid: haizelab-ops-default
+        type: email
+        settings:
+          addresses: "haizelab-ops@example.com"
+          singleEmail: false
+
+policies:
+  - orgId: 1
+    receiver: haizelab-ops
+    group_by: ["alertname", "severity"]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 1h
+    routes:
+      - receiver: haizelab-ops
+        matchers:
+          - severity = critical
+        group_wait: 10s
+        repeat_interval: 15m

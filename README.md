@@ -31,23 +31,22 @@ haizelab/
 ├── influxdb/                          # Configuración y provisión de InfluxDB 2
 │   └── init-influxdb.sh               # Provisión de buckets y tokens de mínimo privilegio
 │
-├── ingesta/                           # Pipelines de preparación para ingesta continua
-│   ├── preparar_datos_demo.py         # Extracción de subconjunto de demo de NO2
-│   └── no2_demo_reducido.csv          # Dataset local para demo (ignorado en git)
+├── ingesta/                           # Ingesta continua y carga batch histórica
+│   ├── carga_historica.py             # Carga histórica optimizada (NO2 y meteo) a InfluxDB
+│   └── no2_demo_reducido.csv          # Dataset local para demo en tiempo real
 │
 ├── nodered/                           # Servicio de flujos Node-RED
-│   ├── Dockerfile                     # Imagen personalizada con node-red-contrib-influxdb
+│   ├── Dockerfile                     # Imagen con node-red-contrib-influxdb
 │   ├── entrypoint.sh                  # Inyección segura de tokens sin persistencia en git
 │   ├── flows.json                     # Flujos declarativos (meteo, tráfico, aire_demo)
 │   └── settings.js                    # Configuración de runtime y módulos externos
 │
 ├── grafana/                           # Servicio de visualización y dashboards
-│   ├── entrypoint.sh                  # Inyección automática del token read-all en datasource
-│   ├── generate_dashboard.py          # Script generador del cuadro de mando en JSON
+│   ├── entrypoint.sh                  # Inyección automática de token y control de acceso
 │   ├── dashboards/                    # Manifiesto del dashboard ZBE Bilbao
-│   └── provisioning/                  # Configuración de auto-aprovisionamiento
+│   └── provisioning/                  # Configuración de auto-aprovisionamiento y alertas
 │
-├── scripts/                           # Scripts modulares y descriptivos
+├── scripts/                           # Scripts modulares del pipeline de análisis
 │   ├── 01_extraer_calidad_aire.py     # Limpia y clasifica NO2 horario (Dentro / Fuera / Fondo)
 │   ├── 02_extraer_meteorologia.py     # Estandariza fechas y variables climáticas de Bilbao
 │   ├── 03_extraer_trafico.py          # Extrae con PyMuPDF las tablas de aforos de los PDFs
@@ -59,7 +58,6 @@ haizelab/
 │   ├── dashboard_decision_zbe.png     # Dashboard integral de 4 paneles para decisión
 │   └── evolucion_mensual_no2.png      # Gráfico de serie temporal mensual de NO2
 │
-├── ejecutar_todo.py                   # Orquestador para correr todo el pipeline en 1 comando
 ├── Dockerfile                         # Contenedor reproducible (Python 3.11-slim)
 ├── docker-compose.yml                 # Orquestación de servicios Docker
 ├── requirements.txt                   # Dependencias Python
@@ -98,9 +96,13 @@ Al estratificar el NO₂ por régimen de viento en Bilbao para aislar el factor 
 
 ## 🚀 Cómo Ejecutar el Pipeline
 
-### Opción 1: Pipeline Completo en 1 Comando
+### Opción 1: Pipeline Completo Secuencial
 ```bash
-python ejecutar_todo.py
+# En Linux / macOS / Git Bash:
+for script in scripts/0*.py; do python "$script"; done
+
+# En Windows PowerShell:
+Get-ChildItem scripts/0*.py | ForEach-Object { python $_.FullName }
 ```
 
 ### Opción 2: Ejecutar Módulos Individuales
@@ -124,12 +126,9 @@ python scripts/05_analisis_impacto_zbe.py
 python scripts/06_visualizar_decision.py
 ```
 
-### Opción 3: Con Docker (sin instalar dependencias)
+### Opción 3: Con Docker (perfil pipeline)
 ```bash
-# Todo el pipeline en un solo contenedor
-docker compose run --rm todo
-
-# O un servicio específico
+# Ejecución modular de servicios
 docker compose run --rm extraer
 docker compose run --rm analisis
 docker compose run --rm visualizar
@@ -166,13 +165,10 @@ Permite consultar y visualizar métricas de calidad del aire, meteorología y tr
 cp .env.example .env
 # Editar .env con un editor de texto
 
-# 2. Generar el CSV reducido para la demo de NO2 (solo la primera vez)
-python ingesta/preparar_datos_demo.py
-
-# 3. Arrancar todos los servicios
+# 2. Arrancar todos los servicios (el CSV de demo ya está incluido)
 docker compose up -d --build
 
-# 4. Comprobar estado (esperar ~60 s al primer arranque)
+# 3. Comprobar estado (esperar ~60 s al primer arranque)
 docker compose ps
 ```
 
