@@ -1,284 +1,287 @@
-# HaizeLab — Análisis Multivariable del Impacto de la ZBE de Bilbao
+# HaizeLab: Monitorizacion y Analisis Multivariable de la ZBE de Bilbao
 
-Estudio integral de evaluación del impacto de la **Zona de Bajas Emisiones (ZBE) de Bilbao** (aprobada el 15 de junio de 2024), estructurado en una arquitectura modular que combina:
-1. **Calidad del Aire (NO₂)**: Red de control continuo de Open Data Euskadi (2022–2026).
-2. **Meteorología y Deweathering**: Estación oficial de Monte Banderas (Bilbao).
-3. **Aforos Oficiales de Tráfico**: Memorias de intensidad media diaria (IMD) de la Diputación Foral de Bizkaia (2018–2025).
+> Evaluacion de impacto de la Zona de Bajas Emisiones (ZBE) en la calidad del aire de Bilbao (2022-2026).
+> Proyecto desarrollado por el equipo Haizen Lab (Alfred, Inigo y Kerman) para el Reto 0 (SBD, MIA, BDA y PIA).
 
 ---
 
-## 🧭 Estructura del Proyecto
+## 1. Resumen y objetivos del proyecto
 
-El proyecto está organizado en capas separadas para garantizar la trazabilidad entre datos crudos, datos limpios, scripts modulares y visualizaciones:
+La Zona de Bajas Emisiones (ZBE) de Bilbao comenzo a operar en el distrito de Abando el 15 de junio de 2024 (Fase 1: restriccion a vehiculos sin distintivo ambiental de la DGT) y el 16 de junio de 2025 (Fase 2: restriccion a vehiculos con distintivo B para no residentes), en horario de lunes a viernes de 7:00 a 20:00.
+
+El objetivo del proyecto es responder con rigor analitico a la pregunta del Ayuntamiento de Bilbao: ¿ha reducido la ZBE los niveles de dioxido de nitrogeno (NO2) en el centro de la ciudad de forma atribuible a las restricciones de trafico?
+
+Para resolver este problema, el repositorio integra dos componentes complementarios:
+1. **Infraestructura de datos en tiempo real (BDA)**: Ingesta de fuentes publicas mediante Node-RED, almacenamiento en series temporales con InfluxDB 2.9 y cuadros de mando interactivos con control de acceso por roles en Grafana 11.2.
+2. **Pipeline de analisis analitico y econometrico (SBD)**: Control por meteorologia (Open-Meteo), modelo cuasiexperimental de Diferencias en Diferencias (Diff-in-Diff) frente a estaciones de control metropolitano y contraste con aforos de trafico de accesos y circunvalacion.
+
+---
+
+## 2. Arquitectura del sistema
+
+```
+                  +----------------------------------------------+
+                  |                   FUENTES                    |
+                  +-------+--------------+--------------+--------+
+                          |              |              |
+                    Open-Meteo API   Bilbao Open Data  Historico NO2
+                    (cada 15 min)     (cada 5 min)     (Demo acelerada)
+                          |              |              |
+                          v              v              v
+                  +----------------------------------------------+
+                  |                   Node-RED                   |
+                  |             (http://localhost:1880)          |
+                  |   Flujos: meteo | trafico | aire_demo        |
+                  +----------------------+-----------------------+
+                                         | Token: nodered-write
+                                         v
+                  +----------------------------------------------+
+                  |                  InfluxDB 2                  |
+                  |             (http://localhost:8086)          |
+                  |   Buckets: aire, meteo, trafico, aire_demo   |
+                  +----------------------+-----------------------+
+                                         | Token: read-all
+                                         v
+                  +----------------------------------------------+
+                  |                   Grafana                    |
+                  |             (http://localhost:3000)          |
+                  |   Dashboards, alertas y control de acceso    |
+                  +----------------------------------------------+
+```
+
+![Arquitectura en Tiempo Real](docs/img/arquitectura_tiempo_real.png)
+
+---
+
+## 3. Estructura del repositorio
 
 ```
 haizelab/
-├── datos/
-│   ├── crudo/                         # Datos brutos originales (sin modificar)
-│   │   ├── calidad_aire/              # CSVs originales de Open Data Euskadi (2022–2026)
-│   │   ├── meteorologia/              # Ficheros meteorológicos originales (Banderas, Feria...)
-│   │   └── trafico/                   # Memorias oficiales en PDF de la Diputación (2022–2025)
-│   │
-│   └── procesados/                    # Datos limpios y estructurados
-│       ├── calidad_aire/              # no2_horario_limpio.csv, inventario_estaciones.csv
-│       ├── meteorologia/              # meteo_bilbao_horario.csv, resumen_meteo_periodos.csv
-│       ├── trafico/                   # trafico_accesos_bilbao.csv, trafico_circunvalacion.csv
-│       └── unificados/                # dataset_unificado_horario.csv, sintesis_ejecutiva_zbe.csv
-│
-├── docs/                              # Documentación técnica y arquitectura
-│   └── infraestructura-explicada.md   # Justificación y decisiones técnicas de InfluxDB y Node-RED
-│
-├── influxdb/                          # Configuración y provisión de InfluxDB 2
-│   └── init-influxdb.sh               # Provisión de buckets y tokens de mínimo privilegio
-│
-├── ingesta/                           # Pipelines de preparación para ingesta continua
-│   ├── preparar_datos_demo.py         # Extracción de subconjunto de demo de NO2
-│   └── no2_demo_reducido.csv          # Dataset local para demo (ignorado en git)
-│
-├── nodered/                           # Servicio de flujos Node-RED
-│   ├── Dockerfile                     # Imagen personalizada con node-red-contrib-influxdb
-│   ├── entrypoint.sh                  # Inyección segura de tokens sin persistencia en git
-│   ├── flows.json                     # Flujos declarativos (meteo, tráfico, aire_demo)
-│   └── settings.js                    # Configuración de runtime y módulos externos
-│
-├── grafana/                           # Servicio de visualización y dashboards
-│   ├── entrypoint.sh                  # Inyección automática del token read-all en datasource
-│   ├── generate_dashboard.py          # Script generador del cuadro de mando en JSON
-│   ├── dashboards/                    # Manifiesto del dashboard ZBE Bilbao
-│   └── provisioning/                  # Configuración de auto-aprovisionamiento
-│
-├── scripts/                           # Scripts modulares y descriptivos
-│   ├── 01_extraer_calidad_aire.py     # Limpia y clasifica NO2 horario (Dentro / Fuera / Fondo)
-│   ├── 02_extraer_meteorologia.py     # Estandariza fechas y variables climáticas de Bilbao
-│   ├── 03_extraer_trafico.py          # Extrae con PyMuPDF las tablas de aforos de los PDFs
-│   ├── 04_unificar_datos.py           # Cruza calidad del aire + meteo + tráfico por hora
-│   ├── 05_analisis_impacto_zbe.py     # Modelo Diff-in-Diff y control estratificado por viento
-│   └── 06_visualizar_decision.py      # Genera el dashboard de decisión ejecutiva y gráficos
-│
-├── salida/                            # Informes gráficos para toma de decisión
-│   ├── dashboard_decision_zbe.png     # Dashboard integral de 4 paneles para decisión
-│   └── evolucion_mensual_no2.png      # Gráfico de serie temporal mensual de NO2
-│
-├── ejecutar_todo.py                   # Orquestador para correr todo el pipeline en 1 comando
-├── Dockerfile                         # Contenedor reproducible (Python 3.11-slim)
-├── docker-compose.yml                 # Orquestación de servicios Docker
-├── requirements.txt                   # Dependencias Python
-└── .gitignore                         # Excluye datos crudos y ficheros pesados
+|-- data/                              # Directorio de trabajo del modulo SBD
+|   |-- raw/                           # Datos brutos descargados de fuentes abiertas
+|   `-- clean/                         # Datasets limpios e integrados para el notebook
+|       |-- calendario_zbe_limpio.csv  # Calendario laboral, horario y festivos de Bilbao
+|       |-- calidad_aire_limpio.csv    # Serie horaria saneada de NO2 y contaminantes
+|       |-- meteorologia_limpia.csv    # Serie meteorologica horaria de Bilbao
+|       `-- dataset_integrado_zbe.csv  # Dataset maestro unificado tras operaciones de JOIN
+|
+|-- datos/                             # Datos historicos organizados por tematica
+|   |-- crudo/                         # Copias de trabajo locales
+|   `-- procesados/                    # Datasets particionados y comprimidos para Git
+|       |-- calidad_aire/              # Inventario y serie comprimida no2_horario_limpio.zip
+|       |-- meteorologia/              # Resumenes y serie horaria de Bilbao
+|       |-- trafico/                   # Series de aforos de accesos y circunvalacion
+|       `-- unificados/                # Tablas de sintesis ejecutiva y regresiones
+|
+|-- docs/                              # Documentacion tecnica e informes
+|   |-- img/                           # Graficas analiticas y capturas de servicios
+|   |-- informe-cliente-sbd.md         # Informe ejecutivo para el cliente (maximo 4 paginas)
+|   |-- infraestructura-explicada.md   # Justificacion tecnica de InfluxDB, Node-RED y Grafana
+|   |-- organigrama-datos.md           # Esquema org, buckets, measurements, fields y tags
+|   |-- propuesta-modelo-ia.md         # Propuesta tecnica de modelo de IA (Reto 0 - Modulo MIA)
+|   `-- MIA_Haizen_Lab.pdf             # Documento oficial de entrega en formato PDF (MIA)
+|
+|-- grafana/                           # Servicio de cuadros de mando y alertas
+|   |-- dashboards/
+|   |   `-- haizelab-overview.json     # Dashboard auto-provisionado de la ZBE
+|   |-- provisioning/
+|   |   |-- access-control/setup-access.sh # Configuracion de equipos y usuarios por API
+|   |   |-- alerting/alerting.yaml     # Reglas de alerta oficiales OMS y UE
+|   |   `-- dashboards/dashboards.yaml # Proveedor automatico de dashboards
+|   `-- entrypoint.sh                  # Inyeccion de token read-all en arranque
+|
+|-- influxdb/                          # Base de datos de series temporales
+|   `-- init-influxdb.sh               # Creacion automatica de buckets y tokens
+|
+|-- ingesta/                           # Modulos de adquisicion y carga
+|   |-- carga_historica.py             # Carga masiva a InfluxDB mediante Line Protocol
+|   |-- descargar_y_limpiar.py         # Pipeline reproducible de ETL del modulo SBD
+|   `-- no2_demo_reducido.csv          # Muestra historica para reproduccion acelerada
+|
+|-- notebooks/                         # Analisis interactivo reproducible
+|   `-- zbe_bilbao.ipynb               # Cuaderno Jupyter con EDA, Diff-in-Diff y conclusiones
+|
+|-- salida/                            # Graficos exportados de alta resolucion
+|   |-- dashboard_decision_zbe.png     # Panel de decision ejecutiva (4 cuadrantes)
+|   `-- evolucion_mensual_no2.png      # Comparativa mensual dentro vs. fuera de la ZBE
+|
+|-- scripts/                           # Scripts modulares de soporte analitico
+|   |-- 01_extraer_calidad_aire.py     # ETL de calidad de aire
+|   |-- 02_extraer_meteorologia.py     # ETL de meteorologia
+|   |-- 03_extraer_trafico.py          # ETL de aforos de trafico
+|   |-- 04_unificar_datos.py           # Cruce y alineamiento espaciotemporal
+|   |-- 05_analisis_impacto_zbe.py     # Estimacion del modelo Diff-in-Diff
+|   |-- 06_visualizar_decision.py      # Generacion de graficas ejecutivas
+|   `-- generar_informe_docx.py        # Generador del informe Word en Arial 11 (4 paginas)
+|
+|-- .env.example                       # Plantilla de variables de entorno segura
+|-- Dockerfile                         # Entorno de ejecucion reproducible Python 3.11
+|-- docker-compose.yml                 # Orquestacion multicontenedor completa
+`-- requirements.txt                   # Dependencias de Python
 ```
 
 ---
 
-## 🎯 Panel para la Toma de Decisión: ¿Avanzamos con el Proyecto?
+## 4. Guia de puesta en marcha
 
-El script `scripts/06_visualizar_decision.py` genera el dashboard `salida/dashboard_decision_zbe.png` estructurado en **4 pruebas empíricas**:
+### Paso 1: Clonar el repositorio y situarse en la rama de trabajo
+```bash
+git clone https://github.com/ai-somorrostro/haizelab.git
+cd haizelab
+git checkout develop
+```
 
-### 1. Prueba de Calidad del Aire (NO₂)
-* **Dentro ZBE** (Mazarredo + Mª Díaz de Haro): cayó de **25.62 µg/m³** a **21.89 µg/m³** (**-14.6%**).
-* **Control Urbano Fuera ZBE** (18 estaciones Gran Bilbao): cayó de 15.92 µg/m³ a 13.71 µg/m³ (-13.9%).
-* **Efecto Neto Dentro vs Fuera (Diff-in-Diff)**: **-1.59 µg/m³** de reducción adicional en el interior de la ZBE.
+### Paso 2: Configurar las variables de entorno
+Copiar el fichero de ejemplo:
+```bash
+cp .env.example .env
+```
+Los valores por defecto permiten arrancar directamente en local de forma segura.
 
-### 2. Prueba Causal de Tráfico (Accesos Oficiales a Bilbao)
-* **Acceso San Mamés** (principal vía de acceso hacia la ZBE / Ensanche):
-  * 2022: 51.386 veh./día
-  * 2023: 50.127 veh./día
-  * **2024: 45.052 veh./día (-10.12% de desplome en el año de implantación de la ZBE)**.
-* Los accesos de circunvalación norte (ej. Deusto-Enekuri) subieron un +3.01%, demostrando desvío de tráfico hacia las rondas.
+### Paso 3: Arrancar los contenedores
+Construir y levantar los servicios en segundo plano:
+```bash
+docker compose up -d --build
+```
 
-### 3. Prueba de Control Climático (Monte Banderas)
-Al estratificar el NO₂ por régimen de viento en Bilbao para aislar el factor meteorológico:
-* **En calma atmosférica (< 2 m/s)** (cuando el viento no dispersa y dominan las emisiones locales):
-  * Pre-ZBE: **32.32 µg/m³**
-  * Post-ZBE: **26.78 µg/m³** (**-17.14% de reducción neta en calma**).
-* La velocidad del viento post-ZBE fue ligeramente menor (4.12 m/s frente a 4.29 m/s previo), descartando que el aire se limpiara por causas meteorológicas.
-
-> **VEREDICTO**: **PROYECTO VIABLE Y JUSTIFICADO**.
-> Existe coherencia causal completa: la restricción ZBE provocó un descenso real de tráfico (-10% en San Mamés) que redujo el NO₂ en el centro (-17% en calma atmosférica), superando el efecto de la tendencia metropolitana.
+### Paso 4: Comprobar el estado de los servicios
+Esperar entre 25 y 40 segundos a que InfluxDB y Grafana completen sus comprobaciones de salud:
+```bash
+docker compose ps
+```
+Los cuatro servicios deben encontrarse en estado saludable (`Up` o `healthy`):
+* `haizelab_influxdb`: puerto `8086`
+* `haizelab_influxdb_setup`: finalizado correctamente con codigo `0`
+* `haizelab_nodered`: puerto `1880`
+* `haizelab_grafana`: puerto `3000`
 
 ---
 
-## 🚀 Cómo Ejecutar el Pipeline
+## 5. Acceso a los servicios y credenciales
 
-### Opción 1: Pipeline Completo en 1 Comando
-```bash
-python ejecutar_todo.py
-```
+Todos los puertos quedan expuestos exclusivamente en `127.0.0.1`:
 
-### Opción 2: Ejecutar Módulos Individuales
-```bash
-# 1. Extraer Calidad del Aire
-python scripts/01_extraer_calidad_aire.py
-
-# 2. Extraer Meteorología
-python scripts/02_extraer_meteorologia.py
-
-# 3. Extraer Tráfico desde los PDFs
-python scripts/03_extraer_trafico.py
-
-# 4. Unificar Datasets
-python scripts/04_unificar_datos.py
-
-# 5. Análisis Estadístico y Diff-in-Diff
-python scripts/05_analisis_impacto_zbe.py
-
-# 6. Generar Gráficos y Dashboard de Decisión
-python scripts/06_visualizar_decision.py
-```
-
-### Opción 3: Con Docker (sin instalar dependencias)
-```bash
-# Todo el pipeline en un solo contenedor
-docker compose run --rm todo
-
-# O un servicio específico
-docker compose run --rm extraer
-docker compose run --rm analisis
-docker compose run --rm visualizar
-```
+| Servicio | URL Local | Usuario | Clave | Descripcion |
+|---|---|---|---|---|
+| Grafana | http://localhost:3000 | Usuarios de equipo | Ver tabla de roles | Cuadro de mando y alertas |
+| Node-RED | http://localhost:1880 | Libre en local | - | Gestion de flujos de ingesta |
+| InfluxDB | http://localhost:8086 | admin | Segun `INFLUXDB_ADMIN_PASSWORD` | Explorador de datos y tokens |
 
 ---
 
-## 📦 Dependencias
+## 6. Control de acceso y roles en Grafana
 
-Instalación rápida en local:
+Para dar respuesta a los requerimientos departamentales solicitados por la direccion, se aprovisionan tres equipos diferenciados con autenticacion estricta (acceso anonimo deshabilitado):
+
+| Equipo | Usuarios de prueba | Credenciales | Rol en Grafana | Permisos asignados |
+|---|---|---|---|---|
+| Cupula Directiva | `directora` | Gestionada via `.env` (`GRAFANA_DEFAULT_PASSWORD`) | Viewer | Visualiza todos los paneles, sin permisos de modificacion |
+| Equipo Analisis | `analista1` a `analista6` | Gestionada via `.env` (`GRAFANA_DEFAULT_PASSWORD`) | Viewer | Acceso de visualizacion a sus paneles asignados (home: `haizelab-analisis`) |
+| Equipo IT | `it_admin1` (Admin), `it_admin2`, `it_admin3` (Editor) | Gestionada via `.env` (`GRAFANA_DEFAULT_PASSWORD`) | Admin / Editor | Permiso total para editar paneles, datasources y alertas |
+
+> *Nota de seguridad:* Por buenas practicas y criterios de seguridad de despliegue, las credenciales no se almacenan en texto claro en el repositorio. Para entornos de desarrollo o evaluacion local, se configuran a traves de `.env` (siguiendo la plantilla [.env.example](.env.example), con valor base por defecto `${GRAFANA_DEFAULT_PASSWORD}[sufijo]`).
+
+---
+
+## 7. Flujos de ingesta en Node-RED
+
+En http://localhost:1880 se encuentran tres flujos automatizados:
+1. **meteo (cada 15 minutos)**: Consulta la API de Open-Meteo (Bilbao), procesa variables ambientales y escribe en el bucket `meteo`.
+2. **trafico (cada 5 minutos)**: Consulta el servicio GeoJSON de Bilbao Open Data (81 tramos), filtra valores anomalos y escribe en el bucket `trafico`.
+3. **aire_demo (cada 5 segundos)**: Emite en streaming acelerado los datos horarios de cuatro estaciones estrategicas (Mazarredo, Maria Diaz de Haro, Europa y Arraiz) para demostraciones en vivo.
+
+---
+
+## 8. InfluxDB 2: Buckets y tokens de acceso
+
+El contenedor inicial `influxdb_setup` genera los buckets con sus politicas de retencion y los tokens de minimo privilegio:
+
+| Bucket | Retencion | Descripcion | Measurement |
+|---|---|---|---|
+| `aire` | Infinita | Serie historica oficial de contaminantes (2022-2026) | `contaminantes` |
+| `meteo` | Infinita | Meteorologia historica y datos en tiempo real | `clima` |
+| `trafico` | 30 dias | Intensidad, ocupacion y velocidad de 81 tramos | `estado` |
+| `aire_demo` | 7 dias | Datos acelerados para la prueba en vivo | `contaminantes` |
+
+### Tokens segregados:
+* `nodered-write`: Escritura permitida exclusivamente en `meteo`, `trafico` y `aire_demo`. No tiene permisos en `aire`.
+* `batch-write`: Escritura para scripts de carga masiva en `aire` y `meteo`.
+* `read-all`: Lectura sobre los 4 buckets para cuadros de mando (Grafana).
+* `mcp-read-only` (`INFLUXDB_MCP_TOKEN`): Lectura sobre los 4 buckets solo para el servidor MCP (`influx-mcp`). Autogenerado por `influxdb_setup`.
+* `admin`: Restringido exclusivamente al aprovisionamiento interno del sistema.
+
+---
+
+## 9. Pipeline de analisis del modulo SBD
+
+### Opcion A: Ejecucion dentro de Docker (Recomendada)
+```bash
+# Descarga, control de calidad e integracion de datos
+docker compose run --rm sbd-pipeline
+
+# Ejecucion automatica del notebook completo
+docker compose run --rm sbd-notebook
+```
+
+### Opcion B: Ejecucion en entorno local
+Instalacion de librerias:
 ```bash
 pip install -r requirements.txt
 ```
-Librerías principales: `pandas>=2.0`, `numpy>=1.24`, `matplotlib>=3.7`, `scipy>=1.11`, `pymupdf>=1.24`, `openpyxl>=3.1`.
 
+Ejecucion del pipeline:
+```bash
+# 1. Ingesta, limpieza y construccion del dataset integrado
+python ingesta/descargar_y_limpiar.py
+
+# 2. Carga historica en InfluxDB (opcional)
+python ingesta/carga_historica.py --bucket all
+
+# 3. Generacion del informe impreso en Word (4 paginas en Arial 11)
+python scripts/generar_informe_docx.py
+```
 
 ---
 
-## 🐳 Infraestructura: InfluxDB, Node-RED y Grafana
+## 10. Resultados principales de la evaluacion de la ZBE
 
-En esta sección explico cómo funciona la capa de datos en tiempo real que he añadido al proyecto.
-Permite consultar y visualizar métricas de calidad del aire, meteorología y tráfico en directo.
+El analisis econometrico realizado a partir del diseno unificado de 8 estaciones (2 dentro: Mazarredo y Maria Diaz de Haro; 5 de control metropolitano del Gran Bilbao: Europa, Barakaldo, Basauri, Erandio, Castrejana; y 1 de fondo: Monte Arraiz) arroja los siguientes resultados consensuados:
 
-### Requisitos previos
+1. **Reduccion real de NO2 y estimador causal neto**:
+   * Dentro de la ZBE: descenso de **25,50 a 21,90 ug/m3** (**-3,59 ug/m3**, o **-14,08%** bruto antes/despues).
+   * En estaciones de control exterior (Gran Bilbao): descenso de **18,25 a 16,29 ug/m3** (**-1,96 ug/m3**, o **-10,75%**).
+   * **Efecto neto causal (Diff-in-Diff)**: reduccion neta atribuible a la ZBE de **-1,63 ug/m3** (error estandar 0,12; p-valor < 0,001), equivalente a un **-6,39% (~ -6,4%)** sobre la linea de base interior de 25,5 ug/m3. El titular causal solido es este -6,4% y no el -14% bruto, dado que mas de la mitad del descenso ocurrio tambien en el resto de la metropolis por meteorologia y renovacion vehicular.
+2. **Control meteorologico por regimen de viento**:
+   * En situaciones de calma atmosferica (< 2 m/s, baja dispersion), el NO2 interior paso de 28,10 ug/m3 a 25,47 ug/m3 en Fase 1 (**-9,4%**) y a 23,56 ug/m3 en Fase 2 (**-16,2%**), con una media post global de 24,35 ug/m3 (**-13,4%**). Esto confirma que en los momentos de mayor peligro sanitario el aire esta significativamente mas limpio.
+3. **Contraste con volumenes de trafico (San Mames) y control placebo**:
+   * En 2024 (Fase 1), el acceso de San Mames mostro una disuasion inicial del **-10,12%** (-5.075 vehiculos/dia).
+   * En 2025 (Fase 2), se registro un rebote a 48.543 vehiculos/dia (+7,75% interanual), situando la caida neta 2023–2025 en un **-3,16%** (~ -3,2%). Presentar la serie completa evita sesgos de seleccion (cherry-picking) y evidencia una adaptacion progresiva de los conductores.
+   * **Control placebo de SO2**: la variacion neta en Diff-in-Diff del dioxido de azufre fue de **+0,33 ug/m3** (-3,94% bruto dentro), validando que las mejoras son atribuibles especificamente al trafico fósil y no a dinamicas industriales o portuarias.
+4. **Veredicto institucional y limitaciones tecnicas asumidas**:
+   * **Veredicto:** *Efecto reductor confirmado pero moderado*.
+   * Se asumen con total honestidad cientifica cinco limitaciones tecnicas: (1) representatividad espacial acotada a 2 estaciones interiores, (2) magnitud absoluta moderada (-1,63 ug/m3) frente a la variabilidad climatica, (3) normalizacion post-pandemia en la base previa (2022-2023), (4) factores concurrentes (renovacion de la flota y descuentos en transporte publico), y (5) concentraciones ambientales medidas en sensores vs. emisiones directas en tubo de escape.
 
-- Docker >= 24 con Docker Compose v2 (incluido en Docker Desktop)
-- 2 GB de RAM libres para los contenedores
-- Puertos 8086, 1880 y 3000 disponibles en localhost (`127.0.0.1`)
+---
 
-### Primer arranque (desde cero)
+## 11. Autores, Roles Scrum y Entregables del Reto
 
-```bash
-# 1. Copiar el fichero de variables de entorno y editar con credenciales reales
-cp .env.example .env
-# Editar .env con un editor de texto
+Proyecto desarrollado por el equipo **Haizen Lab** para el Reto 0 («HERE WE GO») del Centro de Formacion Somorrostro:
+* **Alfred Gabriel** (Product Owner / PIA): Arquitectura Docker Compose, servicio MCP, orquestación del pipeline y control de versiones mediante Git Feature Branching.
+* **Iñigo Bilbao** (Scrum Master / MIA): Diseño del modelo predictivo contrafactual de Machine Learning (HistGradientBoosting), validación temporal, tests de placebo y memoria MIA.
+* **Kerman Irusta** (Lead Data Engineer / BDA): Flujos Node-RED en tiempo real, gestión de series temporales en InfluxDB 2.9 (4 tokens de seguridad), dashboards y control de acceso RBAC en Grafana 11.2.
 
-# 2. Generar el CSV reducido para la demo de NO2 (solo la primera vez)
-python ingesta/preparar_datos_demo.py
-
-# 3. Arrancar todos los servicios
-docker compose up -d --build
-
-# 4. Comprobar estado (esperar ~60 s al primer arranque)
-docker compose ps
-```
-
-### Reinicio (sin borrar datos)
-
-```bash
-docker compose up -d
-```
-
-### Borrar todo (incluidos datos de InfluxDB)
-
-```bash
-docker compose down -v
-```
-
-### Variables de entorno (.env)
-
-| Variable | Descripcion | Ejemplo |
-|---|---|---|
-| `INFLUXDB_ORG` | Nombre de la organizacion en InfluxDB | `haizenlab` |
-| `INFLUXDB_BUCKET_PRINCIPAL` | Bucket principal (datos historicos ZBE) | `aire` |
-| `INFLUXDB_ADMIN_USER` | Usuario administrador de InfluxDB | `admin` |
-| `INFLUXDB_ADMIN_PASSWORD` | Contrasena del administrador | *(segura)* |
-| `INFLUXDB_ADMIN_TOKEN` | Token maestro de InfluxDB | *(aleatorio largo)* |
-| `INFLUXDB_RETENTION_METEO` | Retencion bucket meteo (segundos) | `7776000` (90 dias) |
-| `INFLUXDB_RETENTION_TRAFICO` | Retencion bucket trafico (segundos) | `2592000` (30 dias) |
-| `INFLUXDB_RETENTION_AIRE_DEMO` | Retencion bucket aire_demo (segundos) | `604800` (7 dias) |
-
-Los tokens `INFLUXDB_NODERED_WRITE_TOKEN` e `INFLUXDB_READ_TOKEN` se generan
-automaticamente en el primer arranque y se almacenan en el volumen `influxdb_tokens`
-(nunca en git).
-
-### Buckets de InfluxDB
-
-| Bucket | Measurement | Tags | Fields | Retencion |
-|---|---|---|---|---|
-| `aire` | *(datos historicos ZBE)* | — | — | Infinita |
-| `meteo` | `clima` | `ubicacion`, `fuente` | `temp_c`, `viento_kmh`, `viento_dir`, `lluvia_mm`, `humedad` | 90 dias |
-| `trafico` | `estado` | `codigo_seccion` | `intensidad`, `ocupacion`, `velocidad` | 30 dias |
-| `aire_demo` | `contaminantes` | `estacion`, `zona` | `no2`, `fecha_original` | 7 dias |
-
-> **Nota sobre el viento**: El historico `datos/procesados/meteorologia/meteo_bilbao_horario.csv`
-> guarda el viento en **m/s**. El flujo `meteo` solicita a Open-Meteo los datos en **km/h**
-> (`wind_speed_unit=kmh`). Si en el futuro se carga el historico en InfluxDB,
-> multiplicar la columna de viento por 3.6 antes de ingresarla.
-
-### Tokens y permisos
-
-| Token | Permisos | Usado por |
-|---|---|---|
-| Admin (`INFLUXDB_ADMIN_TOKEN`) | Todo | Solo docker-compose (setup inicial) |
-| nodered-write | Escritura en `meteo`, `trafico`, `aire_demo` (no en `aire`) | Node-RED |
-| read-all | Lectura en los 4 buckets | Grafana (puerto 3000), MCP (futuro) |
-
-### Visualización en Grafana (Puerto 3000)
-
-Grafana 11.2.0 está integrado en Docker Compose con auto-provisionamiento completo:
-- **URL:** [http://localhost:3000](http://localhost:3000)
-- **Acceso:** Acceso directo habilitado (o usuario `admin` con la contraseña configurada en `.env`).
-- **Datasource:** `InfluxDB-HaizeLab` (Flux, organización `haizenlab`, token de lectura `read-all` inyectado dinámicamente).
-- **Dashboard:** `HaizeLab — Monitor ZBE Bilbao en Tiempo Real` cargado por defecto:
-  - **Calidad del Aire (ZBE):** Indicadores y calibradores (*gauges*) con umbrales de alerta y evolución temporal de NO₂ comparando dentro vs fuera de la ZBE.
-  - **Meteorología:** Series temporales de temperatura, humedad, viento y lluvia en Bilbao.
-  - **Tráfico:** Intensidad vehicular media, ocupación de vías y velocidad.
-
-### Flujos de Node-RED
-
-| Flujo | Frecuencia | Fuente | Destino |
-|---|---|---|---|
-| **meteo** | Cada 15 min | [Open-Meteo API](https://api.open-meteo.com) (Bilbao 43.263,-2.935) | `meteo` → `clima` |
-| **trafico** | Cada 5 min | [Bilbao Open Data](https://www.bilbao.eus/aytoonline/srvDatasetTrafico?formato=geojson) (81 tramos) | `trafico` → `estado` |
-| **aire_demo** | Cada 5 s | `ingesta/no2_demo_reducido.csv` (4 estaciones, 2022-2026) | `aire_demo` → `contaminantes` |
-
-**Campos del API de trafico Bilbao** (verificados 2026-10-05):
-- `CodigoSeccion`: identificador unico del tramo (81 valores)
-- `Intensidad`: vehiculos/hora (integer)
-- `Ocupacion`: porcentaje de ocupacion de la via 0-100 (integer)
-- `Velocidad`: velocidad media km/h (integer)
-- `FechaHora`: timestamp de la ultima medicion del sensor
-
-**Estaciones flujo aire_demo**:
-- `Mazarredo` (zona: dentro ZBE)
-- `MDiazDeHaro` (zona: dentro ZBE — reclasificacion de M_DIAZ_HARO)
-- `Europa` (zona: fuera ZBE)
-- `Arraiz` (zona: fondo regional)
-
-### Como comprobar que llegan datos
-
-```bash
-# Ver estado de los contenedores
-docker compose ps
-
-# Logs en tiempo real
-docker compose logs -f nodered
-docker compose logs -f influxdb
-
-# Consultar datos con la CLI de InfluxDB (dentro del contenedor)
-docker exec haizelab_influxdb influx query \
-  --org haizenlab \
-  --token <INFLUXDB_ADMIN_TOKEN> \
-  'from(bucket:"meteo") |> range(start:-1h) |> limit(n:5)'
-
-# Interfaz web de InfluxDB
-# Abrir http://localhost:8086 en el navegador
-# Usuario: admin, Contrasena: la de .env
-
-# Editor de flujos de Node-RED
-# Abrir http://localhost:1880 en el navegador
-```
+### Entregables Oficiales Disponibles en el Repositorio
+* **SBD (Informe Ejecutivo Impreso en Arial 11, máx. 4 páginas de cuerpo)**:
+  * Documento Word editable: [`docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx`](docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx)
+  * Documento PDF oficial compilado: [`docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf`](docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf)
+  * Cuaderno reproducible ejecutado: [`notebooks/zbe_bilbao.ipynb`](notebooks/zbe_bilbao.ipynb)
+* **MIA (Memoria de Modelos de IA)**:
+  * Memoria PDF oficial: [`docs/MIA_Haizen_Lab.pdf`](docs/MIA_Haizen_Lab.pdf)
+  * Propuesta detallada en Markdown: [`docs/propuesta-modelo-ia.md`](docs/propuesta-modelo-ia.md)
+* **BDA (Infraestructura de Datos y Series Temporales)**:
+  * Organigrama de datos y capturas de pantalla: [`docs/organigrama-datos.md`](docs/organigrama-datos.md)
+  * Flujos de Node-RED exportados: [`nodered/flows.json`](nodered/flows.json)
+  * Dashboards de Grafana aprovisionados: [`grafana/dashboards/haizelab-overview.json`](grafana/dashboards/haizelab-overview.json) y [`grafana/dashboards/haizelab-analisis-zbe.json`](grafana/dashboards/haizelab-analisis-zbe.json)
+* **PIA (Contenerización, Código y MCP)**:
+  * Orquestación de servicios: [`docker-compose.yml`](docker-compose.yml)
+  * Servidor MCP solo lectura: [`mcp/`](mcp/) e interfaz JSON-RPC en puerto 5001.

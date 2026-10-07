@@ -34,19 +34,20 @@ import argparse
 import os
 import sys
 import zipfile
-from io import StringIO
 from pathlib import Path
 
 import pandas as pd
 import requests
-from dotenv import load_dotenv
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 DIR_BASE = Path(__file__).resolve().parent.parent
 DIR_PROCESADOS = DIR_BASE / "datos" / "procesados"
+DIR_DATA_CLEAN = DIR_BASE / "data" / "clean"
 
 ARCHIVO_NO2_ZIP  = DIR_PROCESADOS / "calidad_aire" / "no2_horario_limpio.zip"
+ARCHIVO_NO2_CSV  = DIR_DATA_CLEAN / "calidad_aire_limpio.csv"
 ARCHIVO_METEO    = DIR_PROCESADOS / "meteorologia" / "meteo_bilbao_horario.csv"
+ARCHIVO_METEO_CLEAN = DIR_DATA_CLEAN / "meteorologia_limpia.csv"
 
 BATCH_SIZE = 5_000   # puntos por petición POST a InfluxDB
 
@@ -54,14 +55,26 @@ BATCH_SIZE = 5_000   # puntos por petición POST a InfluxDB
 # ── Utilidades ─────────────────────────────────────────────────────────────────
 
 def cargar_env() -> dict:
-    """Lee .env del directorio raíz y devuelve configuración de InfluxDB."""
-    load_dotenv(DIR_BASE / ".env")
-    url   = os.environ.get("INFLUXDB_URL",          "http://localhost:8086")
-    org   = os.environ.get("INFLUXDB_ORG",          "haizenlab")
-    token = os.environ.get("INFLUXDB_ADMIN_TOKEN",   "")
+    """Lee .env del directorio raíz de forma tolerante (sin requerir python-dotenv forzoso)."""
+    env_path = DIR_BASE / ".env"
+    if env_path.exists():
+        with open(env_path, encoding="utf-8") as f:
+            for linea in f:
+                linea = linea.strip()
+                if not linea or linea.startswith("#") or "=" not in linea:
+                    continue
+                k, v = linea.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+
+    url   = os.environ.get("INFLUXDB_URL", "http://localhost:8086")
+    org   = os.environ.get("INFLUXDB_ORG", "haizenlab")
+    token = os.environ.get("INFLUXDB_BATCH_WRITE_TOKEN") or os.environ.get("INFLUXDB_ADMIN_TOKEN", "")
     if not token:
-        print("ERROR: INFLUXDB_ADMIN_TOKEN no encontrado en .env", file=sys.stderr)
-        sys.exit(1)
+        if any("--dry-run" in arg for arg in sys.argv):
+            token = "dry-run-token"
+        else:
+            print("ERROR: INFLUXDB_BATCH_WRITE_TOKEN ni INFLUXDB_ADMIN_TOKEN encontrados en .env", file=sys.stderr)
+            sys.exit(1)
     return {"url": url, "org": org, "token": token}
 
 
@@ -73,7 +86,7 @@ def ts_a_nanosegundos(serie: pd.Series) -> pd.Series:
 def escribir_batch(cfg: dict, bucket: str, lineas: list[str], dry_run: bool) -> None:
     """Envía un batch de line protocol a InfluxDB."""
     if dry_run:
-        print(f"  [DRY-RUN] Saltando escritura de {len(lineas)} puntos → bucket '{bucket}'")
+        print(f"  [DRY-RUN] Saltando escritura de {len(lineas)} puntos -> bucket '{bucket}'")
         return
 
     payload = "\n".join(lineas)
@@ -97,12 +110,12 @@ def enviar_dataframe(cfg: dict, bucket: str, lineas_gen, dry_run: bool) -> int:
         if len(batch) >= BATCH_SIZE:
             escribir_batch(cfg, bucket, batch, dry_run)
             total += len(batch)
-            print(f"    → {total:,} puntos enviados...", end="\r", flush=True)
+            print(f"    -> {total:,} puntos enviados...", end="\r", flush=True)
             batch = []
     if batch:
         escribir_batch(cfg, bucket, batch, dry_run)
         total += len(batch)
-    print(f"    → {total:,} puntos enviados. ✓           ")
+    print(f"    -> {total:,} puntos enviados. [OK]           ")
     return total
 
 
@@ -133,28 +146,41 @@ def generar_lp_no2(df_chunk: pd.DataFrame):
 
 
 def cargar_no2(cfg: dict, dry_run: bool) -> None:
-    """Lee el ZIP de NO2, parsea con pandas y sube al bucket 'aire'."""
-    if not ARCHIVO_NO2_ZIP.exists():
-        print(f"ERROR: No se encontró {ARCHIVO_NO2_ZIP}", file=sys.stderr)
+    """Lee el fichero de NO2 (ZIP de procesados o CSV limpio) y sube al bucket 'aire'."""
+    if ARCHIVO_NO2_ZIP.exists():
+        fichero_fuente = ARCHIVO_NO2_ZIP
+        es_zip = True
+    elif ARCHIVO_NO2_CSV.exists():
+        fichero_fuente = ARCHIVO_NO2_CSV
+        es_zip = False
+    else:
+        print(f"ERROR: No se encontro ni {ARCHIVO_NO2_ZIP} ni {ARCHIVO_NO2_CSV}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"\n[NO2] Abriendo ZIP: {ARCHIVO_NO2_ZIP.name}")
-    with zipfile.ZipFile(ARCHIVO_NO2_ZIP) as z:
-        nombre_interno = z.namelist()[0]
-        print(f"  Fichero interno: {nombre_interno}")
-        with z.open(nombre_interno) as f:
-            contenido = f.read().decode("utf-8")
-
-    # Leer con pandas en chunks para no cargar todo en RAM
+    print(f"\n[NO2] Abriendo fuente: {fichero_fuente.name}")
     chunk_size = 50_000
-    reader = pd.read_csv(StringIO(contenido), chunksize=chunk_size)
-
     total_global = 0
-    for n_chunk, chunk in enumerate(reader, 1):
-        filas_antes = len(chunk)
-        chunk = chunk.dropna(subset=["no2"])
-        print(f"  Chunk {n_chunk}: {filas_antes:,} filas → {len(chunk):,} válidas")
-        total_global += enviar_dataframe(cfg, "aire", generar_lp_no2(chunk), dry_run)
+
+    if es_zip:
+        with zipfile.ZipFile(fichero_fuente) as z:
+            nombre_interno = z.namelist()[0]
+            print(f"  Fichero interno: {nombre_interno}")
+            with z.open(nombre_interno) as f:
+                reader = pd.read_csv(f, chunksize=chunk_size)
+                for n_chunk, chunk in enumerate(reader, 1):
+                    filas_antes = len(chunk)
+                    chunk = chunk.dropna(subset=["no2"])
+                    print(f"  Chunk {n_chunk}: {filas_antes:,} filas -> {len(chunk):,} validas")
+                    total_global += enviar_dataframe(cfg, "aire", generar_lp_no2(chunk), dry_run)
+    else:
+        reader = pd.read_csv(fichero_fuente, chunksize=chunk_size)
+        for n_chunk, chunk in enumerate(reader, 1):
+            if "ts_local" in chunk.columns and "ts" not in chunk.columns:
+                chunk["ts"] = chunk["ts_local"]
+            filas_antes = len(chunk)
+            chunk = chunk.dropna(subset=["no2"])
+            print(f"  Chunk {n_chunk}: {filas_antes:,} filas -> {len(chunk):,} validas")
+            total_global += enviar_dataframe(cfg, "aire", generar_lp_no2(chunk), dry_run)
 
     print(f"[NO2] Total puntos cargados en bucket 'aire': {total_global:,}")
 
@@ -205,13 +231,19 @@ def generar_lp_meteo(df: pd.DataFrame):
 
 
 def cargar_meteo(cfg: dict, dry_run: bool) -> None:
-    """Lee el CSV de meteorología y sube al bucket 'meteo'."""
-    if not ARCHIVO_METEO.exists():
-        print(f"ERROR: No se encontró {ARCHIVO_METEO}", file=sys.stderr)
+    """Lee el CSV de meteorologia (de procesados o clean) y sube al bucket 'meteo'."""
+    if ARCHIVO_METEO.exists():
+        fichero_fuente = ARCHIVO_METEO
+    elif ARCHIVO_METEO_CLEAN.exists():
+        fichero_fuente = ARCHIVO_METEO_CLEAN
+    else:
+        print(f"ERROR: No se encontro ni {ARCHIVO_METEO} ni {ARCHIVO_METEO_CLEAN}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"\n[METEO] Leyendo: {ARCHIVO_METEO.name}")
-    df = pd.read_csv(ARCHIVO_METEO)
+    print(f"\n[METEO] Leyendo: {fichero_fuente.name}")
+    df = pd.read_csv(fichero_fuente)
+    if "ts_local" in df.columns and "ts" not in df.columns:
+        df["ts"] = df["ts_local"]
     print(f"  {len(df):,} filas | columnas: {list(df.columns)}")
 
     total = enviar_dataframe(cfg, "meteo", generar_lp_meteo(df), dry_run)

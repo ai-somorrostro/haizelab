@@ -91,8 +91,17 @@ def main():
     DIR_PROCESADOS.mkdir(parents=True, exist_ok=True)
     ficheros = sorted(DIR_CRUDO.rglob("*BANDERAS*.csv"))
 
-    if not ficheros:
-        sys.exit(f"ERROR: No se han encontrado ficheros de BANDERAS en {DIR_CRUDO}")
+    if not DIR_CRUDO.exists() or not ficheros:
+        print("\n" + "=" * 70)
+        print("AVISO: La carpeta con datos originales brutos no está presente:")
+        print(f"  {DIR_CRUDO}")
+        print("Los datos crudos están excluidos del repositorio para mantenerlo ligero.")
+        print("El dataset limpio de meteorología ya está disponible en:")
+        print(f"  {DIR_PROCESADOS / 'meteo_bilbao_horario.csv'}")
+        print("Puedes ejecutar directamente el análisis cruzado con:")
+        print("  python scripts/04_unificar_datos.py")
+        print("=" * 70 + "\n")
+        return
 
     print(f"Leyendo {len(ficheros)} ficheros meteorológicos de Monte Banderas...")
     dfs = []

@@ -74,21 +74,31 @@ TEAM_IT=$(api_post "/api/teams" '{"name":"IT","email":"it@haizelab.eus"}')
 ID_TEAM_IT=$(echo "$TEAM_IT" | grep -o '"teamId":[0-9]*' | grep -o '[0-9]*')
 echo "[acceso] Team IT: id=$ID_TEAM_IT"
 
-# ──── 2. Home dashboard del equipo Análisis ───────────────────────────────────
-# Cada equipo de Análisis aterriza en su propio home dashboard.
-# El UID del dashboard de equipo se asume "haizelab-overview" (el auto-provisionado).
-# Para un home dashboard por equipo, se configura la preferencia del team.
+# ──── 2. Home dashboard por equipo ──────────────────────────────────────────
+# Según rúbrica: al loguearse deben acceder directamente al panel que corresponda.
+#   - Análisis: aterriza en el panel técnico "haizelab-analisis"
+#   - Dirección: aterriza en el monitor general "haizelab-overview"
 echo "[acceso] Configurando home dashboard del team Análisis..."
 if [ -n "$ID_TEAM_ANL" ]; then
-  # Buscar el ID numérico del dashboard por UID
-  DASH_INFO=$(api_get "/api/dashboards/uid/haizelab-overview")
+  DASH_INFO=$(api_get "/api/dashboards/uid/haizelab-analisis")
   DASH_ID=$(echo "$DASH_INFO" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
   if [ -n "$DASH_ID" ]; then
     api_put "/api/teams/$ID_TEAM_ANL/preferences" \
       "{\"homeDashboardId\":$DASH_ID,\"theme\":\"dark\",\"timezone\":\"browser\"}"
-    echo "[acceso] Home dashboard Análisis → id=$DASH_ID"
+    echo "[acceso] Home dashboard Análisis → id=$DASH_ID (haizelab-analisis)"
   else
-    echo "[acceso] AVISO: Dashboard 'haizelab-overview' no encontrado aún. Skipping."
+    echo "[acceso] AVISO: Dashboard 'haizelab-analisis' no encontrado aún. Skipping."
+  fi
+fi
+
+echo "[acceso] Configurando home dashboard del team Dirección..."
+if [ -n "$ID_TEAM_DIR" ]; then
+  DASH_DIR_INFO=$(api_get "/api/dashboards/uid/haizelab-overview")
+  DASH_DIR_ID=$(echo "$DASH_DIR_INFO" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+  if [ -n "$DASH_DIR_ID" ]; then
+    api_put "/api/teams/$ID_TEAM_DIR/preferences" \
+      "{\"homeDashboardId\":$DASH_DIR_ID,\"theme\":\"dark\",\"timezone\":\"browser\"}"
+    echo "[acceso] Home dashboard Dirección → id=$DASH_DIR_ID (haizelab-overview)"
   fi
 fi
 
@@ -108,21 +118,21 @@ crear_usuario() {
   echo "[acceso] Usuario '$login' ($role) creado."
 }
 
+# Prefijo de contraseña parametrizable vía entorno
+PASS_BASE="${GRAFANA_DEFAULT_PASSWORD:-haize2024}"
+
 # Dirección: 1 usuario ejemplo (Viewer)
-crear_usuario "Directora ZBE"         "directora@haizelab.eus"     "directora"  "Viewer"  "haize2024dir"
+crear_usuario "Directora ZBE"         "directora@haizelab.eus"     "directora"  "Viewer"  "${PASS_BASE}dir"
 
 # Análisis: 6 usuarios (Viewer con home dashboard)
-crear_usuario "Analista 1"  "analista1@haizelab.eus"  "analista1"  "Viewer"  "haize2024a1"
-crear_usuario "Analista 2"  "analista2@haizelab.eus"  "analista2"  "Viewer"  "haize2024a2"
-crear_usuario "Analista 3"  "analista3@haizelab.eus"  "analista3"  "Viewer"  "haize2024a3"
-crear_usuario "Analista 4"  "analista4@haizelab.eus"  "analista4"  "Viewer"  "haize2024a4"
-crear_usuario "Analista 5"  "analista5@haizelab.eus"  "analista5"  "Viewer"  "haize2024a5"
-crear_usuario "Analista 6"  "analista6@haizelab.eus"  "analista6"  "Viewer"  "haize2024a6"
+for i in 1 2 3 4 5 6; do
+  crear_usuario "Analista $i" "analista$i@haizelab.eus" "analista$i" "Viewer" "${PASS_BASE}a$i"
+done
 
 # IT: 3 usuarios (Editor/Admin)
-crear_usuario "IT Admin 1"  "it1@haizelab.eus"  "it_admin1"  "Admin"   "haize2024it1"
-crear_usuario "IT Admin 2"  "it2@haizelab.eus"  "it_admin2"  "Editor"  "haize2024it2"
-crear_usuario "IT Admin 3"  "it3@haizelab.eus"  "it_admin3"  "Editor"  "haize2024it3"
+crear_usuario "IT Admin 1"  "it1@haizelab.eus"  "it_admin1"  "Admin"   "${PASS_BASE}it1"
+crear_usuario "IT Admin 2"  "it2@haizelab.eus"  "it_admin2"  "Editor"  "${PASS_BASE}it2"
+crear_usuario "IT Admin 3"  "it3@haizelab.eus"  "it_admin3"  "Editor"  "${PASS_BASE}it3"
 
 # ──── 4. Añadir usuarios a sus teams ─────────────────────────────────────────
 añadir_a_team() {

@@ -2,19 +2,23 @@
 # ==================
 # Orquestacion del proyecto HaizeLab.
 #
-# Servicios de analisis (originales, no modificados):
-#   extraer, analisis, visualizar, todo
-#
 # Servicios de infraestructura de datos en tiempo real:
-#   influxdb     — base de datos de series temporales (InfluxDB 2.9.1)
-#   influxdb_setup — contenedor efimero: crea buckets y tokens en el primer arranque
-#   nodered      — flujos meteo, trafico, aire_demo
+#   influxdb       — base de datos de series temporales (InfluxDB 2.9.1)
+#   influxdb_setup — contenedor efimero: crea buckets y 4 tokens (primer arranque)
+#   nodered        — flujos meteo, trafico, aire_demo
+#   grafana        — dashboards con aprovisionamiento automatico
+#   influx-mcp     — servidor MCP solo lectura (token autogenerado)
+#
+# Servicios de analisis batch (perfil "pipeline"):
+#   extraer, analisis, visualizar
 #
 # Arranque completo desde cero (PRIMER USO):
-#   1. cp .env.example .env
-#   2. Editar .env con credenciales seguras
-#   3. python ingesta/preparar_datos_demo.py   (genera el CSV reducido)
-#   4. docker compose up -d --build
+#   1. cp .env.example .env  && editar con credenciales seguras
+#   2. docker compose up -d --build
+#      (el CSV de demo esta incluido en ingesta/no2_demo_reducido.csv)
+#
+# Carga historica en InfluxDB (opcional, bucket 'aire'):
+#   python ingesta/carga_historica.py --bucket all
 #
 # Reinicio sin borrar datos:
 #   docker compose up -d
@@ -57,15 +61,33 @@ services:
       - ./salida:/app/salida
     command: python scripts/06_visualizar_decision.py
 
-  todo:
-    profiles: ["pipeline"]
+
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Servicios Reto 0 — Módulo SBD (Notebook e Ingesta reproducible)
+  # ────────────────────────────────────────────────────────────────────────────
+  sbd-pipeline:
+    profiles: ["pipeline", "sbd"]
     build: .
     image: haizelab:latest
-    container_name: haizelab_todo
+    container_name: haizelab_sbd_pipeline
     volumes:
+      - ./data:/app/data
+      - ./ingesta:/app/ingesta
       - ./datos:/app/datos
-      - ./salida:/app/salida
-    command: python ejecutar_todo.py
+    command: python ingesta/descargar_y_limpiar.py
+
+  sbd-notebook:
+    profiles: ["pipeline", "sbd"]
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_sbd_notebook
+    volumes:
+      - ./data:/app/data
+      - ./notebooks:/app/notebooks
+      - ./docs/img:/app/docs/img
+      - ./ingesta:/app/ingesta
+    command: python -c "import nbformat; from nbclient import NotebookClient; nb = nbformat.read('notebooks/zbe_bilbao.ipynb', as_version=4); NotebookClient(nb, timeout=600, kernel_name='python3').execute(); nbformat.write(nb, 'notebooks/zbe_bilbao.ipynb'); print('[OK] Notebook ejecutado con exito en Docker')"
 
   # ────────────────────────────────────────────────────────────────────────────
   # Servicios Reto 0 — Módulo SBD (Notebook e Ingesta reproducible)
@@ -125,11 +147,14 @@ services:
 
   # ────────────────────────────────────────────────────────────────────────────
   # influxdb_setup — contenedor efimero de inicializacion
-  # Crea los 3 buckets adicionales y genera 2 tokens con minimos permisos:
+  # Crea los 3 buckets adicionales y genera 4 tokens con minimos permisos:
   #   - nodered-write: escritura en meteo, trafico, aire_demo (NO en aire)
-  #   - read-all: lectura de los 4 buckets (para Grafana y MCP futuro)
+  #   - batch-write: escritura en aire y meteo (carga historica)
+  #   - read-all: lectura de los 4 buckets (para Grafana)
+  #   - mcp-read-only: lectura de los 4 buckets (solo servidor MCP)
   # Los tokens se guardan en el volumen influxdb_tokens (/tokens/tokens.env)
-  # Si el fichero ya existe (reinicio sin -v), sale sin recrear nada.
+  # Si el fichero ya existe con los 4 tokens (reinicio sin -v), sale sin recrear.
+  # Si existe sin INFLUXDB_MCP_TOKEN (volumen antiguo), solo añade ese token.
   # ────────────────────────────────────────────────────────────────────────────
   influxdb_setup:
     image: influxdb:2.9.1
@@ -174,7 +199,7 @@ services:
       INFLUXDB_URL:                 http://influxdb:8086
       INFLUXDB_ORG:                 ${INFLUXDB_ORG}
       AIRE_DEMO_CSV:                /data/no2_demo_reducido.csv
-      NODE_RED_CREDENTIAL_SECRET:   ${INFLUXDB_ADMIN_TOKEN}
+      NODE_RED_CREDENTIAL_SECRET:   ${NODE_RED_CREDENTIAL_SECRET:-haizelab_nodered_secret_2024}
       # INFLUXDB_NODERED_WRITE_TOKEN se carga desde /tokens/tokens.env via entrypoint.sh
     volumes:
       - nodered_data:/data
@@ -208,13 +233,14 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${INFLUXDB_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${INFLUXDB_ADMIN_PASSWORD:-haizelab2024seguro}
+      - GF_SECURITY_ADMIN_PASSWORD=${INFLUXDB_ADMIN_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_USERS_AUTO_ASSIGN_ORG_NAME=HaizeLab
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/haizelab-overview.json
       - INFLUXDB_ORG=${INFLUXDB_ORG:-haizenlab}
+      - GRAFANA_DEFAULT_PASSWORD=${GRAFANA_DEFAULT_PASSWORD:-haize2024}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/entrypoint.sh:/entrypoint.sh:ro
@@ -230,6 +256,42 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # influx-mcp — MCP Server solo lectura para InfluxDB 2.x (mludvig/influxdb-mcp)
+  # Token: INFLUXDB_MCP_TOKEN autogenerado por influxdb_setup (Token 4) via
+  # volumen influxdb_tokens. Override opcional con INFLUXDB_MCP_TOKEN en .env.
+  # HTTP: http://127.0.0.1:5001/mcp/ (para OpenCode remote y Antigravity serverUrl)
+  # ────────────────────────────────────────────────────────────────────────────
+  influx-mcp:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    image: haizelab_influx_mcp:latest
+    container_name: haizelab_influx_mcp
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      influxdb_setup:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:5001:5001"
+    environment:
+      INFLUXDB_HOST: influxdb
+      INFLUXDB_PORT: 8086
+      INFLUXDB_ORG: ${INFLUXDB_ORG}
+      INFLUXDB_TOKEN: ${INFLUXDB_MCP_TOKEN:-}
+      MCP_LISTEN_HOST: 0.0.0.0
+      MCP_LISTEN_PORT: 5001
+    volumes:
+      - influxdb_tokens:/tokens:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,json; r=urllib.request.Request('http://127.0.0.1:5001/mcp/', data=json.dumps({'jsonrpc':'2.0','method':'ping','id':1}).encode(), headers={'Content-Type':'application/json','Accept':'application/json, text/event-stream'}); urllib.request.urlopen(r)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 # ────────────────────────────────────────────────────────────────────────────
 # Volumenes con nombre

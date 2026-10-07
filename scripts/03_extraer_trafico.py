@@ -92,6 +92,8 @@ def extraer_accesos(pdf_2023: Path, pdf_2025: Path) -> pd.DataFrame:
         # Variaciones clave
         var_23_24 = ((imd_24 - imd_23) / imd_23 * 100) if (imd_23 and imd_24) else None
         var_22_24 = ((imd_24 - imd_22) / imd_22 * 100) if (imd_22 and imd_24) else None
+        var_23_25 = ((imd_25 - imd_23) / imd_23 * 100) if (imd_23 and imd_25) else None
+        var_24_25 = ((imd_25 - imd_24) / imd_24 * 100) if (imd_24 and imd_25) else None
 
         registros.append({
             "acceso": nombre_raw,
@@ -107,7 +109,9 @@ def extraer_accesos(pdf_2023: Path, pdf_2025: Path) -> pd.DataFrame:
             "imd_2025": imd_25,
             "pct_pesados_2025": pct_pes,
             "var_pct_23_24": round(var_23_24, 2) if var_23_24 is not None else None,
-            "var_pct_22_24": round(var_22_24, 2) if var_22_24 is not None else None
+            "var_pct_22_24": round(var_22_24, 2) if var_22_24 is not None else None,
+            "var_pct_23_25": round(var_23_25, 2) if var_23_25 is not None else None,
+            "var_pct_24_25": round(var_24_25, 2) if var_24_25 is not None else None
         })
 
     return pd.DataFrame(registros)
@@ -155,7 +159,16 @@ def main():
     pdf_2025 = DIR_CRUDO / "2025.pdf"
 
     if not pdf_2025.exists() or not pdf_2023.exists():
-        sys.exit(f"ERROR: Se necesitan {pdf_2023} y {pdf_2025} en {DIR_CRUDO}")
+        print("\n" + "=" * 70)
+        print("AVISO: Las memorias de tráfico oficiales en PDF no están presentes en:")
+        print(f"  {DIR_CRUDO}")
+        print("Los documentos PDF originales están excluidos del repositorio para mantenerlo ligero.")
+        print("Los datos procesados de aforos y accesos ya están disponibles en:")
+        print(f"  {DIR_PROCESADOS / 'trafico_accesos_bilbao.csv'}")
+        print("Puedes ejecutar directamente el análisis cruzado con:")
+        print("  python scripts/04_unificar_datos.py")
+        print("=" * 70 + "\n")
+        return
 
     print(f"Extrayendo accesos a Bilbao desde:\n  - {pdf_2023.name}\n  - {pdf_2025.name}")
     df_accesos = extraer_accesos(pdf_2023, pdf_2025)

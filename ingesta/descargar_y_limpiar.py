@@ -237,7 +237,7 @@ def descargar_meteorologia(forzar=False):
     datos = r.json().get("hourly", {})
     df_meteo = pd.DataFrame(datos)
     df_meteo.to_csv(f_salida, index=False)
-    print(f"[OK] Guardada meteorología cruda en {f_salida} ({len(df_meteo):,} horas)")
+    print(f"[OK] Guardada meteorologia cruda en data/raw/{f_salida.parent.name}/{f_salida.name} ({len(df_meteo):,} horas)")
     return f_salida
 
 
@@ -358,7 +358,7 @@ def generar_calendario_zbe_festivos(forzar=False):
 
     df = pd.DataFrame(filas)
     df.to_csv(f_salida, index=False)
-    print(f"[OK] Guardado calendario ZBE con festivos en {f_salida} ({len(df):,} días)")
+    print(f"[OK] Guardado calendario ZBE con festivos en data/raw/calendario/{f_salida.name} ({len(df):,} dias)")
     return f_salida
 
 
@@ -376,7 +376,7 @@ def descargar_trafico_geojson(forzar=False):
         r = requests.get(URL_TRAFICO_GEOJSON, timeout=20)
         if r.status_code == 200:
             f_salida.write_bytes(r.content)
-            print(f"[OK] Guardado tráfico GeoJSON en {f_salida} ({len(r.content):,} bytes)")
+            print(f"[OK] Guardado trafico GeoJSON en data/raw/trafico/{f_salida.name} ({len(r.content):,} bytes)")
         else:
             print(f"[!] HTTP {r.status_code} al descargar GeoJSON de tráfico")
     except Exception as e:
@@ -522,7 +522,7 @@ def limpiar_calidad_aire():
     # Guardar dataset limpio en data/clean/
     f_salida = DIR_DATA_CLEAN / "calidad_aire_limpio.csv"
     df_aire_limpio.to_csv(f_salida, index=False)
-    print(f"[OK] Guardado calidad de aire limpia en {f_salida} ({len(df_aire_limpio):,} filas)")
+    print(f"[OK] Guardado calidad de aire limpia en data/clean/{f_salida.name} ({len(df_aire_limpio):,} filas)")
 
     # Guardar inventario de auditoría de calidad
     filas_inv = []
@@ -596,7 +596,7 @@ def limpiar_meteorologia():
 
     f_salida = DIR_DATA_CLEAN / "meteorologia_limpia.csv"
     df_limpio.to_csv(f_salida, index=False)
-    print(f"[OK] Guardada meteorología limpia en {f_salida} ({len(df_limpio):,} horas)")
+    print(f"[OK] Guardada meteorologia limpia en data/clean/{f_salida.name} ({len(df_limpio):,} horas)")
     return df_limpio
 
 
@@ -611,7 +611,7 @@ def limpiar_calendario():
     df = pd.read_csv(f_crudo)
     f_salida = DIR_DATA_CLEAN / "calendario_zbe_limpio.csv"
     df.to_csv(f_salida, index=False)
-    print(f"[OK] Calendario ZBE validado y guardado en {f_salida} ({len(df):,} días)")
+    print(f"[OK] Calendario ZBE validado y guardado en data/clean/{f_salida.name} ({len(df):,} dias)")
     return df
 
 
@@ -681,7 +681,7 @@ def integrar_datasets():
     # Guardar dataset integrado en data/clean/
     f_salida = DIR_DATA_CLEAN / "dataset_integrado_zbe.csv"
     df_completo.to_csv(f_salida, index=False)
-    print(f"[OK] Guardado dataset integrado maestro en {f_salida} ({len(df_completo):,} filas)")
+    print(f"[OK] Guardado dataset integrado maestro en data/clean/{f_salida.name} ({len(df_completo):,} filas)")
 
     return df_completo
 

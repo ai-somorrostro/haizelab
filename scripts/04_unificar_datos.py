@@ -95,30 +95,47 @@ def main():
     no2_post = df_unificado[df_unificado.periodo.isin(["fase1", "fase2"])]["no2_dentro"].mean()
     var_no2_dentro = ((no2_post - no2_pre) / no2_pre) * 100
 
-    # NO2 dentro en calma (< 2 m/s)
-    calma_pre = df_unificado[(df_unificado.periodo == "previo") & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
-    calma_post = df_unificado[(df_unificado.periodo.isin(["fase1", "fase2"])) & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
-    var_no2_calma = ((calma_post - calma_pre) / calma_pre) * 100
-
     # NO2 control fuera
     fuera_pre = df_unificado[df_unificado.periodo == "previo"]["no2_fuera"].mean()
     fuera_post = df_unificado[df_unificado.periodo.isin(["fase1", "fase2"])]["no2_fuera"].mean()
     var_no2_fuera = ((fuera_post - fuera_pre) / fuera_pre) * 100
 
+    # Impacto neto Diferencias en Diferencias (Diff-in-Diff)
+    efecto_neto_did = (no2_post - no2_pre) - (fuera_post - fuera_pre)
+    var_neta_did_pct = (efecto_neto_did / no2_pre) * 100
+
+    # NO2 dentro en calma (< 2 m/s)
+    calma_pre = df_unificado[(df_unificado.periodo == "previo") & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
+    calma_f1 = df_unificado[(df_unificado.periodo == "fase1") & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
+    calma_f2 = df_unificado[(df_unificado.periodo == "fase2") & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
+    calma_post = df_unificado[(df_unificado.periodo.isin(["fase1", "fase2"])) & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
+    var_no2_calma_f1 = ((calma_f1 - calma_pre) / calma_pre) * 100
+    var_no2_calma_f2 = ((calma_f2 - calma_pre) / calma_pre) * 100
+    var_no2_calma_post = ((calma_post - calma_pre) / calma_pre) * 100
+
     # Tráfico San Mamés
     row_sm = df_traf[df_traf.acceso.str.contains("SAN MAMES", case=False, na=False)]
-    traf_sm_var = row_sm["var_pct_23_24"].iloc[0] if not row_sm.empty else np.nan
+    traf_sm_23 = row_sm["imd_2023"].iloc[0] if not row_sm.empty else None
+    traf_sm_24 = row_sm["imd_2024"].iloc[0] if not row_sm.empty else None
+    traf_sm_25 = row_sm["imd_2025"].iloc[0] if not row_sm.empty else None
+    traf_sm_var_23_24 = row_sm["var_pct_23_24"].iloc[0] if not row_sm.empty else np.nan
+    traf_sm_var_23_25 = row_sm["var_pct_23_25"].iloc[0] if not row_sm.empty else np.nan
+    traf_sm_var_24_25 = row_sm["var_pct_24_25"].iloc[0] if not row_sm.empty else np.nan
 
     # Tráfico Total
     row_tot = df_traf[df_traf.acceso.str.contains("TOTAL", case=False, na=False)]
     traf_tot_var = row_tot["var_pct_23_24"].iloc[0] if not row_tot.empty else np.nan
 
     sintesis = pd.DataFrame([
-        {"indicador": "NO2 Dentro ZBE (Absoluto)", "unidad": "ug/m3", "valor_previo": round(no2_pre, 2), "valor_post": round(no2_post, 2), "variacion_pct": round(var_no2_dentro, 2)},
-        {"indicador": "NO2 Dentro ZBE (En Calma Atmosferica)", "unidad": "ug/m3", "valor_previo": round(calma_pre, 2), "valor_post": round(calma_post, 2), "variacion_pct": round(var_no2_calma, 2)},
-        {"indicador": "NO2 Control Fuera ZBE", "unidad": "ug/m3", "valor_previo": round(fuera_pre, 2), "valor_post": round(fuera_post, 2), "variacion_pct": round(var_no2_fuera, 2)},
-        {"indicador": "Trafico Acceso San Mames (Puerta ZBE)", "unidad": "veh/dia", "valor_previo": row_sm["imd_2023"].iloc[0] if not row_sm.empty else None, "valor_post": row_sm["imd_2024"].iloc[0] if not row_sm.empty else None, "variacion_pct": traf_sm_var},
-        {"indicador": "Trafico Total Accesos Bilbao", "unidad": "veh/dia", "valor_previo": row_tot["imd_2023"].iloc[0] if not row_tot.empty else None, "valor_post": row_tot["imd_2024"].iloc[0] if not row_tot.empty else None, "variacion_pct": traf_tot_var},
+        {"indicador": "NO2 Dentro ZBE (Caida Bruta)", "unidad": "ug/m3", "valor_previo": round(no2_pre, 2), "valor_post": round(no2_post, 2), "variacion_pct": round(var_no2_dentro, 2)},
+        {"indicador": "NO2 Control Fuera ZBE (Gran Bilbao)", "unidad": "ug/m3", "valor_previo": round(fuera_pre, 2), "valor_post": round(fuera_post, 2), "variacion_pct": round(var_no2_fuera, 2)},
+        {"indicador": "Impacto Neto ZBE (Diff-in-Diff Atribuible)", "unidad": "ug/m3", "valor_previo": 0.0, "valor_post": round(efecto_neto_did, 2), "variacion_pct": round(var_neta_did_pct, 2)},
+        {"indicador": "NO2 Dentro en Calma (Fase 1 vs Pre)", "unidad": "ug/m3", "valor_previo": round(calma_pre, 2), "valor_post": round(calma_f1, 2), "variacion_pct": round(var_no2_calma_f1, 2)},
+        {"indicador": "NO2 Dentro en Calma (Post Global vs Pre)", "unidad": "ug/m3", "valor_previo": round(calma_pre, 2), "valor_post": round(calma_post, 2), "variacion_pct": round(var_no2_calma_post, 2)},
+        {"indicador": "Trafico San Mames (2023->2024 Inicial)", "unidad": "veh/dia", "valor_previo": traf_sm_23, "valor_post": traf_sm_24, "variacion_pct": traf_sm_var_23_24},
+        {"indicador": "Trafico San Mames (2023->2025 Consolidado)", "unidad": "veh/dia", "valor_previo": traf_sm_23, "valor_post": traf_sm_25, "variacion_pct": traf_sm_var_23_25},
+        {"indicador": "Trafico San Mames (Rebote 2024->2025)", "unidad": "veh/dia", "valor_previo": traf_sm_24, "valor_post": traf_sm_25, "variacion_pct": traf_sm_var_24_25},
+        {"indicador": "Trafico Total Accesos Bilbao (2023->2024)", "unidad": "veh/dia", "valor_previo": row_tot["imd_2023"].iloc[0] if not row_tot.empty else None, "valor_post": row_tot["imd_2024"].iloc[0] if not row_tot.empty else None, "variacion_pct": traf_tot_var},
     ])
 
     f_sintesis = DIR_UNIFICADOS / "sintesis_ejecutiva_zbe.csv"
