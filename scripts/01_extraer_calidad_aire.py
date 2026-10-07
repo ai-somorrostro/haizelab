@@ -44,43 +44,21 @@ FECHA_FASE1 = pd.Timestamp("2024-06-15")  # Entrada en vigor Fase 1
 FECHA_FASE2 = pd.Timestamp("2025-06-16")  # Fase 2
 
 ESTACIONES = {
-    # --- DENTRO de la ZBE (barrios Abando e Indautxu) ---
+    # --- DENTRO de la ZBE (distrito Abando: Abando e Indautxu) ---
     "mazarredo":    ("Mazarredo",         "dentro"),
     "diaz de haro": ("Mª Díaz de Haro",   "dentro"),
     "m diaz haro":  ("Mª Díaz de Haro",   "dentro"),
+    "m_diaz_haro":  ("Mª Díaz de Haro",   "dentro"),
 
-    # --- FUERA: municipios del Gran Bilbao / Control Urbano ---
+    # --- FUERA: Grupo de Control Urbano Metropolitano (5 estaciones del Gran Bilbao) ---
     "europa":       ("Europa",            "fuera"),
-    "erandio":      ("Erandio",           "fuera"),
     "barakaldo":    ("Barakaldo",         "fuera"),
     "basauri":      ("Basauri",           "fuera"),
-    "sestao":       ("Sestao",            "fuera"),
-    "muskiz":       ("Muskiz",            "fuera"),
-    "zierbena":     ("Zierbena",          "fuera"),
-    "santurce":     ("Santurce",          "fuera"),
-    "abanto":       ("Abanto",            "fuera"),
+    "erandio":      ("Erandio",           "fuera"),
     "castrejana":   ("Castrejana",        "fuera"),
-    "zalla":        ("Zalla",             "fuera"),
-    "lemona":       ("Lemona",            "fuera"),
-    "larrabetzu":   ("Larrabetzu",        "fuera"),
-    "durango":      ("Durango",           "fuera"),
-    "llodio":       ("Llodio",            "fuera"),
-    "lasarte":      ("Lasarte-Oria",      "fuera"),
-    "andoain":      ("Andoain",           "fuera"),
-    "hernani":      ("Hernani",           "fuera"),
-    "easo":         ("Easo",              "fuera"),
-    "categorrieta": ("Ategorrieta",       "fuera"),
-    "anorga":       ("Anorga",            "fuera"),
 
-    # --- FONDO: Regional / Marino / Rural ---
+    # --- FONDO: Regional / Sin tráfico directo (Gran Bilbao) ---
     "arraiz":       ("Arraiz",            "fondo"),
-    "serantes":     ("Serantes",          "fondo"),
-    "montorra":     ("Montorra",          "fondo"),
-    "sangroniz":    ("Sangroniz",         "fondo"),
-    "mundaka":      ("Mundaka",           "fondo"),
-    "pagoeta":      ("Pagoeta",           "fondo"),
-    "valderejo":    ("Valderejo",         "fondo"),
-    "elciego":      ("Elciego",           "fondo"),
 }
 
 
@@ -89,13 +67,15 @@ def norm(s):
         return ""
     t = unicodedata.normalize("NFKD", str(s))
     t = "".join(c for c in t if not unicodedata.combining(c)).lower()
+    t = t.replace("_", " ")
     return re.sub(r"\s+", " ", t).strip()
 
 
 def clasificar(texto):
     t = norm(texto)
     for clave, (nombre, zona) in ESTACIONES.items():
-        if clave in t or clave.replace(" ", "") in t.replace(" ", ""):
+        clave_norm = norm(clave)
+        if clave_norm in t or clave_norm.replace(" ", "") in t.replace(" ", ""):
             return nombre, zona
     return str(texto).strip(), "sin_clasificar"
 
@@ -199,7 +179,8 @@ def main():
     print("=" * 70)
 
     DIR_PROCESADOS.mkdir(parents=True, exist_ok=True)
-    ficheros = sorted(p for p in DIR_CRUDO.glob("**/*") if p.suffix.lower() in (".csv", ".xlsx", ".xls", ".txt"))
+    ficheros_todos = sorted(p for p in DIR_CRUDO.glob("**/*") if p.suffix.lower() in (".csv", ".xlsx", ".xls", ".txt"))
+    ficheros = [f for f in ficheros_todos if clasificar(f.stem)[1] != "sin_clasificar"]
 
     if not DIR_CRUDO.exists() or not ficheros:
         print("\n" + "=" * 70)
@@ -213,7 +194,7 @@ def main():
         print("=" * 70 + "\n")
         return
 
-    print(f"Leyendo {len(ficheros)} ficheros de calidad del aire...")
+    print(f"Leyendo {len(ficheros)} ficheros correspondientes a las estaciones objetivo...")
     partes = [p for p in (procesar_fichero(f) for f in ficheros) if p is not None]
     if not partes:
         sys.exit("ERROR: No se ha podido leer ningún fichero.")
@@ -221,6 +202,7 @@ def main():
     df = pd.concat(partes, ignore_index=True)
     df[["estacion", "zona"]] = df["estacion_raw"].apply(lambda x: pd.Series(clasificar(x)))
     df = df.dropna(subset=["ts"]).drop(columns="estacion_raw")
+    df = df[df["zona"].isin(["dentro", "fuera", "fondo"])].copy()
     df.loc[df["no2"] < 0, "no2"] = np.nan
     df = df.drop_duplicates(subset=["estacion", "ts"]).sort_values(["estacion", "ts"])
 

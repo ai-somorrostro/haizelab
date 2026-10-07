@@ -1,6 +1,10 @@
 indicador,unidad,valor_previo,valor_post,variacion_pct
-NO2 Dentro ZBE (Absoluto),ug/m3,22.49,19.14,-14.88
-NO2 Dentro ZBE (En Calma Atmosferica),ug/m3,30.61,24.33,-20.51
-NO2 Control Fuera ZBE,ug/m3,15.67,13.52,-13.72
-Trafico Acceso San Mames (Puerta ZBE),veh/dia,50127.0,45052.0,-10.12
-Trafico Total Accesos Bilbao,veh/dia,141005.0,143587.0,1.83
+NO2 Dentro ZBE (Caida Bruta),ug/m3,25.63,21.89,-14.57
+NO2 Control Fuera ZBE (Gran Bilbao),ug/m3,18.25,16.33,-10.54
+Impacto Neto ZBE (Diff-in-Diff Atribuible),ug/m3,0.0,-1.81,-7.07
+NO2 Dentro en Calma (Fase 1 vs Pre),ug/m3,32.32,27.41,-15.21
+NO2 Dentro en Calma (Post Global vs Pre),ug/m3,32.32,26.78,-17.17
+Trafico San Mames (2023->2024 Inicial),veh/dia,50127.0,45052.0,-10.12
+Trafico San Mames (2023->2025 Consolidado),veh/dia,50127.0,48543.0,-3.16
+Trafico San Mames (Rebote 2024->2025),veh/dia,45052.0,48543.0,7.75
+Trafico Total Accesos Bilbao (2023->2024),veh/dia,141005.0,143587.0,1.83

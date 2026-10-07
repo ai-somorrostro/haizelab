@@ -92,6 +92,8 @@ def extraer_accesos(pdf_2023: Path, pdf_2025: Path) -> pd.DataFrame:
         # Variaciones clave
         var_23_24 = ((imd_24 - imd_23) / imd_23 * 100) if (imd_23 and imd_24) else None
         var_22_24 = ((imd_24 - imd_22) / imd_22 * 100) if (imd_22 and imd_24) else None
+        var_23_25 = ((imd_25 - imd_23) / imd_23 * 100) if (imd_23 and imd_25) else None
+        var_24_25 = ((imd_25 - imd_24) / imd_24 * 100) if (imd_24 and imd_25) else None
 
         registros.append({
             "acceso": nombre_raw,
@@ -107,7 +109,9 @@ def extraer_accesos(pdf_2023: Path, pdf_2025: Path) -> pd.DataFrame:
             "imd_2025": imd_25,
             "pct_pesados_2025": pct_pes,
             "var_pct_23_24": round(var_23_24, 2) if var_23_24 is not None else None,
-            "var_pct_22_24": round(var_22_24, 2) if var_22_24 is not None else None
+            "var_pct_22_24": round(var_22_24, 2) if var_22_24 is not None else None,
+            "var_pct_23_25": round(var_23_25, 2) if var_23_25 is not None else None,
+            "var_pct_24_25": round(var_24_25, 2) if var_24_25 is not None else None
         })
 
     return pd.DataFrame(registros)

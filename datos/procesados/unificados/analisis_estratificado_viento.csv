@@ -1,10 +1,10 @@
 periodo,regimen_viento,no2_dentro,no2_fuera
-fase1,Calma (<2 m/s),25.27,16.9
-fase1,Fuerte (>5 m/s),14.58,10.3
-fase1,Moderado (2-5 m/s),21.05,14.57
-fase2,Calma (<2 m/s),23.64,16.36
-fase2,Fuerte (>5 m/s),13.03,9.73
-fase2,Moderado (2-5 m/s),18.33,13.45
-previo,Calma (<2 m/s),30.61,20.27
-previo,Fuerte (>5 m/s),14.89,11.03
-previo,Moderado (2-5 m/s),22.9,16.17
+fase1,Calma (<2 m/s),27.41,21.34
+fase1,Fuerte (>5 m/s),16.76,11.98
+fase1,Moderado (2-5 m/s),23.66,17.89
+fase2,Calma (<2 m/s),26.31,20.61
+fase2,Fuerte (>5 m/s),15.78,10.41
+fase2,Moderado (2-5 m/s),21.8,16.16
+previo,Calma (<2 m/s),32.32,24.67
+previo,Fuerte (>5 m/s),18.63,11.7
+previo,Moderado (2-5 m/s),26.55,19.0

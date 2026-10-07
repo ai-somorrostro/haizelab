@@ -80,55 +80,65 @@ El flujo de ingeniería de datos se estructuró en cinco fases reproducibles:
 
 ## 4. Resultados analíticos y modelo Diff-in-Diff
 
-La tabla sintética resume la evolución media de la concentración de $\text{NO}_2$ antes y después del 15 de junio de 2024:
+La tabla sintética resume la evolución media de la concentración de $\text{NO}_2$ antes y después del 15 de junio de 2024 a partir de las 8 estaciones oficiales del diseño metropolitano:
 
-| Zona / Estación | Media Pre-ZBE | Media Post-ZBE | Variación Absoluta | Variación Relativa |
+| Zona / Estación | Media Pre-ZBE | Media Post-ZBE | Variación Absoluta | Variación Relativa Bruta |
 |---|:---:|:---:|:---:|:---:|
-| **Dentro ZBE (Mazarredo + Mª Díaz Haro)** | **25,60 µg/m³** | **21,24 µg/m³** | **-4,36 µg/m³** | **-17,03%** |
-| Control Fuera (Gran Bilbao Urbano) | 15,92 µg/m³ | 13,38 µg/m³ | -2,54 µg/m³ | -15,95% |
-| Fondo Regional (Monte Arraiz) | 8,45 µg/m³ | 7,62 µg/m³ | -0,83 µg/m³ | -9,82% |
-| Estación Mazarredo (Interior tráfico) | 26,85 µg/m³ | 22,10 µg/m³ | -4,75 µg/m³ | -17,69% |
+| **Dentro ZBE (Mazarredo + Mª Díaz Haro)** | **25,50 µg/m³** | **21,90 µg/m³** | **-3,59 µg/m³** | **-14,08%** |
+| Control Fuera (5 est. Gran Bilbao Urbano) | 18,25 µg/m³ | 16,29 µg/m³ | -1,96 µg/m³ | -10,75% |
+| Fondo Regional (Monte Arraiz) | 8,73 µg/m³ | 8,16 µg/m³ | -0,57 µg/m³ | -6,53% |
+| Estación Mazarredo (Interior tráfico) | 26,71 µg/m³ | 22,86 µg/m³ | -3,85 µg/m³ | -14,41% |
+| Estación Mª Díaz de Haro (Interior urbano) | 24,28 µg/m³ | 20,95 µg/m³ | -3,33 µg/m³ | -13,71% |
 | Estación Europa (Bilbao Norte control) | 21,30 µg/m³ | 18,35 µg/m³ | -2,95 µg/m³ | -13,85% |
 
-El descenso bruto observado en el centro de Bilbao fue de $-4,36\ \mu\text{g/m}^3$. Descontando la tendencia general exterior ($-2,54\ \mu\text{g/m}^3$ atribuible a meteorología favorable y modernización del parque móvil), se obtiene un **efecto neto atribuible a la ZBE de -1,28 µg/m³** (error estándar $0,66$; $p\text{-valor} < 0,05$).
+El titular real del impacto es más modesto y riguroso que la simple caída antes/después: mientras que en el interior el $\text{NO}_2$ cayó $-3,59\ \mu\text{g/m}^3$ ($-14,08\%$ bruto), fuera del perímetro las estaciones comparables del Gran Bilbao también descendieron $-1,96\ \mu\text{g/m}^3$ ($-10,75\%$) por meteorología favorable y renovación natural de la flota. 
+
+Por tanto, el **impacto causal neto atribuible a la ZBE mediante Diferencias en Diferencias es de -1,63 µg/m³** (error estándar $0,12$; $t = -13,41$; $p\text{-valor} < 0,001$), lo que representa una **reducción neta de en torno al -6,4%** sobre la base previa de $25,50\ \mu\text{g/m}^3$.
 
 ---
 
 ## 5. Visualizaciones seleccionadas e interpretación causal
 
 ### Figura 1: Evolución mensual del NO2 dentro vs. fuera de la ZBE (2022–2026)
-* **Presentación:** Serie temporal agregada por mes entre estaciones interiores (Abando) y estaciones exteriores del Gran Bilbao entre enero de 2022 y febrero de 2026, señalando la entrada en vigor de la Fase 1.
+* **Presentación:** Serie temporal agregada por mes entre estaciones interiores (Abando: Mazarredo y Mª Díaz de Haro) y estaciones exteriores del Gran Bilbao entre enero de 2022 y febrero de 2026, señalando la entrada en vigor de la Fase 1.
 * **Gráfica:** ![Evolución Mensual NO2](img/g1_evolucion_mensual_no2.png)
-* **Interpretacion causal:** Durante 2022 y 2023 ambas series presentan picos invernales sincronizados por inversión térmica ($> 34\ \mu\text{g/m}^3$). A partir de junio de 2024, la serie interior se desacopla a la baja: en el invierno 2024–2025 el máximo interior no superó los $28\ \mu\text{g/m}^3$, evidenciando un cambio estructural local no explicado por el clima regional.
+* **Interpretación causal:** Durante 2022 y 2023 ambas series presentan picos invernales sincronizados por inversión térmica ($> 34\ \mu\text{g/m}^3$). A partir de junio de 2024, la serie interior se desacopla a la baja: en el invierno 2024–2025 el máximo interior no superó los $28\ \mu\text{g/m}^3$, evidenciando un cambio estructural local no explicado por el clima regional.
 
 ### Figura 2: Modelo cuasiexperimental de Diferencias en Diferencias (Diff-in-Diff)
-* **Presentación:** Estimación visual de la trayectoria real de tratamiento frente a la contrafactual proyectada a partir del grupo de control exterior.
+* **Presentación:** Estimación visual de la trayectoria real de tratamiento frente a la contrafactual proyectada a partir del grupo de control exterior del Gran Bilbao.
 * **Gráfica:** ![Diff in Diff](img/g2_diff_in_diff_visual.png)
-* **Interpretación causal:** En ausencia de la ordenanza, el centro de Bilbao habría descendido únicamente a $22,52\ \mu\text{g/m}^3$. El valor real observado cayó hasta $21,24\ \mu\text{g/m}^3$. La brecha vertical entre ambas trayectorias cuantifica el impacto causal directo de la política: **-1,28 µg/m³ adicionales de reducción neta**.
+* **Interpretación causal:** En ausencia de la ordenanza, el centro de Bilbao habría descendido únicamente a $23,53\ \mu\text{g/m}^3$. El valor real observado cayó hasta $21,90\ \mu\text{g/m}^3$. La brecha vertical cuantifica el impacto causal directo de la política: **-1,63 µg/m³ adicionales de reducción neta atribuible** ($-6,4\%$).
 
 ### Figura 3: Control meteorológico bajo calma atmosférica (viento < 2 m/s)
-* **Presentación:** Aislamiento de horas de baja ventilación ($< 2\text{ m/s}$ en Monte Banderas), donde no existe dispersión mecánica y el aire depende de las emisiones a pie de calle.
+* **Presentación:** Aislamiento de horas de baja ventilación ($< 2\text{ m/s}$), donde no existe dispersión mecánica y el aire depende directamente de las emisiones a pie de calle.
 * **Gráfica:** ![Dispersión NO2 y Viento](img/g6_dispersion_no2_viento.png)
-* **Interpretación causal:** Con vientos superiores a $5\text{ m/s}$ la dilución forzada homogeneiza las zonas. En calma, el $\text{NO}_2$ interior pasó de $30,6$ a $24,3\ \mu\text{g/m}^3$ (**-20,5% de caída neta**). La ZBE es especialmente protectora en los episodios de mayor riesgo respiratorio para la población.
+* **Interpretación causal:** En calma atmosférica, el $\text{NO}_2$ en el interior pasó de $28,10\ \mu\text{g/m}^3$ pre-ZBE a $25,47\ \mu\text{g/m}^3$ en Fase 1 (**-9,4%**) y a $23,56\ \mu\text{g/m}^3$ en Fase 2 (**-16,2%**), con una media post global de $24,35\ \mu\text{g/m}^3$ (**-13,4%**). Esto confirma que en los episodios de estancamiento invernal la atmósfera urbana está significativamente más protegida.
 
 ### Figura 4: Panel multivariable de decisión y correlación con aforos de tráfico
-* **Presentación:** Panel integral de cuatro cuadrantes combinando concentraciones de $\text{NO}_2$, evolución de intensidades vehiculares en el acceso de San Mamés y límites anuales de la directiva europea ($40\ \mu\text{g/m}^3$).
+* **Presentación:** Panel integral de cuatro cuadrantes combinando series de $\text{NO}_2$, aforos de acceso en San Mamés (Diputación de Bizkaia) y variaciones netas consolidadas.
 * **Gráfica:** ![Dashboard Decisión](img/dashboard_decision_v1.png)
-* **Interpretación causal:** La reducción de contaminantes se acompaña de una caída del **10,12% en el tráfico diario del acceso de San Mamés** ($-5.075$ vehículos/día laborable), sin saturación inducida en las vías de circunvalación. Menos vehículos circulando generaron menos emisiones directas.
+* **Interpretación causal:** El acceso de San Mamés registró en 2024 un descenso acusado del **-10,12%** ($50.127 \to 45.052$ veh/día, $-5.075$ veh/día laborable). En 2025 se observó un rebote parcial a $48.543$ veh/día (+7,75% interanual), dejando la reducción neta 2023–2025 en un **-3,16%** ($\approx -3,2\%$). Este comportamiento refleja una disuasión inicial fuerte seguida de adaptación progresiva de los usuarios. Asimismo, el test placebo con dióxido de azufre ($\text{SO}_2$) mostró una variación neutra en Diff-in-Diff de **+0,33 µg/m³** ($-3,94\%$ bruto dentro), validando que la mejora es atribuible a las restricciones al tráfico fósil.
 
 ---
 
 ## 6. Conclusiones estratégicas y recomendaciones
 
-### Conclusiones clave
-1. **Impacto neto probado:** La ZBE de Bilbao funciona y ha generado una reducción neta atribuible de **-1,28 µg/m³ de NO2** (entre un $-6\%$ y $-8\%$ adicional sobre la tendencia metropolitana), concentrándose en días laborables y horario regulado.
-2. **Máxima efectividad en episodios críticos:** En situaciones de calma atmosférica e inversión térmica, la reducción alcanzó el **-20,5%**, disminuyendo sustancialmente las horas de superación de los umbrales de aviso de la OMS ($25\ \mu\text{g/m}^3$).
-3. **Efecto marginal menor en Fase 2:** La Fase 1 (sin etiqueta) concentró el $78\%$ del impacto global. La Fase 2 (etiqueta B) ha mostrado una ganancia marginal más reducida debido al elevado volumen de exenciones y autorizaciones vigentes en el centro urbano.
+### Conclusiones clave: Efecto confirmado pero moderado
+1. **Impacto neto probado pero moderado:** La ZBE ha generado una reducción neta atribuible de **-1,63 µg/m³ de NO2** (en torno a un **-6,4%** sobre la base previa), sustancialmente menor que el titular bruto del $-14\%$ antes/después debido a la tendencia general de mejora en todo el Gran Bilbao.
+2. **Eficacia protectora en episodios críticos:** En situaciones de calma e inversión térmica, la reducción interior alcanza entre el **-9,4% y el -16,2%**, disminuyendo las horas de superación de los umbrales de aviso de la OMS.
+3. **Rendimientos decrecientes entre fases:** La Fase 1 (sin etiqueta) concentró la mayor parte del beneficio. La Fase 2 (etiqueta B) aportó una ganancia marginal más reducida, coincidiendo con la estabilización y rebote parcial del tráfico de acceso en 2025 ($-3,2\%$ neto respecto a 2023).
+
+### Cinco limitaciones metodológicas honestas
+1. **Tamaño muestral espacial reducido:** Solo dos estaciones oficiales fijas dentro del perímetro (Mazarredo y Mª Díaz de Haro), lo que restringe la representatividad en calles secundarias.
+2. **Magnitud absoluta moderada:** El impacto neto ($-1,63\ \mu\text{g/m}^3$) es modesto frente a la variabilidad estacional y climática interanual.
+3. **Inercia del periodo previo:** Los años 2022 y 2023 reflejaban aún pautas de movilidad en progresiva normalización tras el COVID-19.
+4. **Factores concurrentes metropolitanos:** Coexistencia de bonificaciones al transporte público, expansión ciclable y renovación tecnológica vegetativa del parque móvil.
+5. **Inmisión ambiental vs. emisiones de escape:** Las estaciones registran concentraciones en el aire ($µ\text{g/m}^3$), influenciadas por el relieve y cañones urbanos, no emisiones brutas directas.
 
 ### Recomendaciones técnicas al Ayuntamiento
-* **Auditoría de exenciones:** Revisar los permisos de acceso temporal y plazas en rotación para evitar fugas de tráfico hacia parkings subterráneos.
-* **Micro-sensorización IoT:** Instalar sensores calibrados complementarios en cañones urbanos de alta exposición (Alameda Urquijo y colegios).
-* **Mantenimiento del esquema horario:** Preservar la vigencia de lunes a viernes de 7:00 a 20:00, descartando restricciones nocturnas innecesarias.
+* **Mantener la regulación actual y priorizar la electrificación del reparto urbano:** No se aconseja un endurecimiento drástico inmediato a turismos (coste socioeconómico alto con ganancia marginal decreciente); priorizar furgonetas y distribución de última milla.
+* **Instalación de sensores en bordes de la ZBE:** Monitorizar arterias límite (Autonomía, Sagrado Corazón, Deusto) para descartar efectos de desplazamiento de tráfico (*spillover*).
+* **Mantenimiento del esquema horario:** Preservar la vigencia de lunes a viernes de 7:00 a 20:00 h, descartando restricciones nocturnas innecesarias.
 
 ---
 
