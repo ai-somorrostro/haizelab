@@ -92,7 +92,13 @@ SEED = 42
 np.random.seed(SEED)
 
 # Rutas del proyecto
-DIR_RAIZ = Path("..").resolve() if Path("..").resolve().name == "haizelab" else Path(".").resolve()
+def _buscar_raiz():
+    for p in [Path("."), Path(".."), Path("../..")]:
+        if (p.resolve() / "docker-compose.yml").exists():
+            return p.resolve()
+    return Path(".").resolve()
+
+DIR_RAIZ = _buscar_raiz()
 sys.path.insert(0, str(DIR_RAIZ))
 
 from ingesta.descargar_y_limpiar import (

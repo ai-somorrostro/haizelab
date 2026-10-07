@@ -118,21 +118,21 @@ crear_usuario() {
   echo "[acceso] Usuario '$login' ($role) creado."
 }
 
+# Prefijo de contraseña parametrizable vía entorno
+PASS_BASE="${GRAFANA_DEFAULT_PASSWORD:-haize2024}"
+
 # Dirección: 1 usuario ejemplo (Viewer)
-crear_usuario "Directora ZBE"         "directora@haizelab.eus"     "directora"  "Viewer"  "haize2024dir"
+crear_usuario "Directora ZBE"         "directora@haizelab.eus"     "directora"  "Viewer"  "${PASS_BASE}dir"
 
 # Análisis: 6 usuarios (Viewer con home dashboard)
-crear_usuario "Analista 1"  "analista1@haizelab.eus"  "analista1"  "Viewer"  "haize2024a1"
-crear_usuario "Analista 2"  "analista2@haizelab.eus"  "analista2"  "Viewer"  "haize2024a2"
-crear_usuario "Analista 3"  "analista3@haizelab.eus"  "analista3"  "Viewer"  "haize2024a3"
-crear_usuario "Analista 4"  "analista4@haizelab.eus"  "analista4"  "Viewer"  "haize2024a4"
-crear_usuario "Analista 5"  "analista5@haizelab.eus"  "analista5"  "Viewer"  "haize2024a5"
-crear_usuario "Analista 6"  "analista6@haizelab.eus"  "analista6"  "Viewer"  "haize2024a6"
+for i in 1 2 3 4 5 6; do
+  crear_usuario "Analista $i" "analista$i@haizelab.eus" "analista$i" "Viewer" "${PASS_BASE}a$i"
+done
 
 # IT: 3 usuarios (Editor/Admin)
-crear_usuario "IT Admin 1"  "it1@haizelab.eus"  "it_admin1"  "Admin"   "haize2024it1"
-crear_usuario "IT Admin 2"  "it2@haizelab.eus"  "it_admin2"  "Editor"  "haize2024it2"
-crear_usuario "IT Admin 3"  "it3@haizelab.eus"  "it_admin3"  "Editor"  "haize2024it3"
+crear_usuario "IT Admin 1"  "it1@haizelab.eus"  "it_admin1"  "Admin"   "${PASS_BASE}it1"
+crear_usuario "IT Admin 2"  "it2@haizelab.eus"  "it_admin2"  "Editor"  "${PASS_BASE}it2"
+crear_usuario "IT Admin 3"  "it3@haizelab.eus"  "it_admin3"  "Editor"  "${PASS_BASE}it3"
 
 # ──── 4. Añadir usuarios a sus teams ─────────────────────────────────────────
 añadir_a_team() {
