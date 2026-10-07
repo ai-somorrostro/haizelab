@@ -74,21 +74,31 @@ TEAM_IT=$(api_post "/api/teams" '{"name":"IT","email":"it@haizelab.eus"}')
 ID_TEAM_IT=$(echo "$TEAM_IT" | grep -o '"teamId":[0-9]*' | grep -o '[0-9]*')
 echo "[acceso] Team IT: id=$ID_TEAM_IT"
 
-# ──── 2. Home dashboard del equipo Análisis ───────────────────────────────────
-# Cada equipo de Análisis aterriza en su propio home dashboard.
-# El UID del dashboard de equipo se asume "haizelab-overview" (el auto-provisionado).
-# Para un home dashboard por equipo, se configura la preferencia del team.
+# ──── 2. Home dashboard por equipo ──────────────────────────────────────────
+# Según rúbrica: al loguearse deben acceder directamente al panel que corresponda.
+#   - Análisis: aterriza en el panel técnico "haizelab-analisis"
+#   - Dirección: aterriza en el monitor general "haizelab-overview"
 echo "[acceso] Configurando home dashboard del team Análisis..."
 if [ -n "$ID_TEAM_ANL" ]; then
-  # Buscar el ID numérico del dashboard por UID
-  DASH_INFO=$(api_get "/api/dashboards/uid/haizelab-overview")
+  DASH_INFO=$(api_get "/api/dashboards/uid/haizelab-analisis")
   DASH_ID=$(echo "$DASH_INFO" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
   if [ -n "$DASH_ID" ]; then
     api_put "/api/teams/$ID_TEAM_ANL/preferences" \
       "{\"homeDashboardId\":$DASH_ID,\"theme\":\"dark\",\"timezone\":\"browser\"}"
-    echo "[acceso] Home dashboard Análisis → id=$DASH_ID"
+    echo "[acceso] Home dashboard Análisis → id=$DASH_ID (haizelab-analisis)"
   else
-    echo "[acceso] AVISO: Dashboard 'haizelab-overview' no encontrado aún. Skipping."
+    echo "[acceso] AVISO: Dashboard 'haizelab-analisis' no encontrado aún. Skipping."
+  fi
+fi
+
+echo "[acceso] Configurando home dashboard del team Dirección..."
+if [ -n "$ID_TEAM_DIR" ]; then
+  DASH_DIR_INFO=$(api_get "/api/dashboards/uid/haizelab-overview")
+  DASH_DIR_ID=$(echo "$DASH_DIR_INFO" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+  if [ -n "$DASH_DIR_ID" ]; then
+    api_put "/api/teams/$ID_TEAM_DIR/preferences" \
+      "{\"homeDashboardId\":$DASH_DIR_ID,\"theme\":\"dark\",\"timezone\":\"browser\"}"
+    echo "[acceso] Home dashboard Dirección → id=$DASH_DIR_ID (haizelab-overview)"
   fi
 fi
 

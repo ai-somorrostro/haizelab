@@ -261,9 +261,25 @@ El analisis econometrico realizado a partir del diseno unificado de 8 estaciones
 
 ---
 
-## 11. Autores y reparto del proyecto
+## 11. Autores, Roles Scrum y Entregables del Reto
 
-Proyecto realizado por los alumnos del Centro de Formacion Somorrostro:
-* **Alfred Gabriel**: Ingenieria de datos, modelado econometrico y cuaderno analitico SBD.
-* **Inigo**: Redaccion del informe ejecutivo para el cliente, diseno de visualizaciones y control de calidad de datos.
-* **Kerman**: Despliegue de infraestructura Docker, flujos Node-RED, InfluxDB y configuracion de Grafana.
+Proyecto desarrollado por el equipo **Haizen Lab** para el Reto 0 («HERE WE GO») del Centro de Formacion Somorrostro:
+* **Alfred Gabriel** (Product Owner / PIA): Arquitectura Docker Compose, servicio MCP, orquestación del pipeline y control de versiones mediante Git Feature Branching.
+* **Iñigo Bilbao** (Scrum Master / MIA): Diseño del modelo predictivo contrafactual de Machine Learning (HistGradientBoosting), validación temporal, tests de placebo y memoria MIA.
+* **Kerman Irusta** (Lead Data Engineer / BDA): Flujos Node-RED en tiempo real, gestión de series temporales en InfluxDB 2.9 (4 tokens de seguridad), dashboards y control de acceso RBAC en Grafana 11.2.
+
+### Entregables Oficiales Disponibles en el Repositorio
+* **SBD (Informe Ejecutivo Impreso en Arial 11, máx. 4 páginas de cuerpo)**:
+  * Documento Word editable: [`docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx`](docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx)
+  * Documento PDF oficial compilado: [`docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf`](docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf)
+  * Cuaderno reproducible ejecutado: [`notebooks/zbe_bilbao.ipynb`](notebooks/zbe_bilbao.ipynb)
+* **MIA (Memoria de Modelos de IA)**:
+  * Memoria PDF oficial: [`docs/MIA_Haizen_Lab.pdf`](docs/MIA_Haizen_Lab.pdf)
+  * Propuesta detallada en Markdown: [`docs/propuesta-modelo-ia.md`](docs/propuesta-modelo-ia.md)
+* **BDA (Infraestructura de Datos y Series Temporales)**:
+  * Organigrama de datos y capturas de pantalla: [`docs/organigrama-datos.md`](docs/organigrama-datos.md)
+  * Flujos de Node-RED exportados: [`nodered/flows.json`](nodered/flows.json)
+  * Dashboards de Grafana aprovisionados: [`grafana/dashboards/haizelab-overview.json`](grafana/dashboards/haizelab-overview.json) y [`grafana/dashboards/haizelab-analisis-zbe.json`](grafana/dashboards/haizelab-analisis-zbe.json)
+* **PIA (Contenerización, Código y MCP)**:
+  * Orquestación de servicios: [`docker-compose.yml`](docker-compose.yml)
+  * Servidor MCP solo lectura: [`mcp/`](mcp/) e interfaz JSON-RPC en puerto 5001.

@@ -168,3 +168,22 @@ from(bucket: "aire")
 | Percentil 90                         | `quantile(q: 0.9)`                        |
 | Máximo de sesión                     | `max()`                                   |
 | Top 5 tramos congestión              | `sort(desc: true) |> limit(n: 5)`        |
+
+---
+
+## Evidencias Visuales y Capturas de Pantalla (Rúbrica BDA)
+
+### 1. InfluxDB 2 — Data Explorer y Estructura de Buckets
+Visualización de los cuatro buckets aprovisionados (`aire`, `meteo`, `trafico`, `aire_demo`) y consulta Flux de verificación de series temporales:
+![Data Explorer InfluxDB](img/influxdb_data_explorer.png)
+
+### 2. Node-RED — Orquestación de Flujos de Ingesta en Tiempo Real
+Flujos activos para captura meteorológica (Open-Meteo cada 15 min), aforos de tráfico urbano (cada 5 min) y reproducción acelerada del histórico:
+![Flujo Node-RED Meteorología](img/nodered_flujo_meteo.png)
+![Flujo Node-RED Tráfico](img/nodered_flujo_trafico.png)
+
+### 3. Grafana — Monitorización Multivariable y Control de Acceso
+Cuadros de mando interactivos aprovisionados automáticamente con paneles de calidad del aire, tráfico y meteorología:
+![Grafana Monitor Calidad del Aire](img/grafana_evolucion_no2.jpg)
+![Grafana Monitor Meteorológico](img/grafana_meteo.png)
+![Grafana Monitor Tráfico Bilbao](img/grafana_trafico.png)

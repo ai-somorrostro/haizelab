@@ -1,0 +1,266 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "title": "Panel Exclusivo — Departamento de Análisis: Modelado Causal y Métricas ZBE",
+      "type": "row"
+    },
+    {
+      "id": 1,
+      "title": "NO₂ Diferencias en Diferencias (Dentro vs Fuera)",
+      "description": "Comparativa horaria en streaming de las estaciones diana dentro de la ZBE frente a las 5 estaciones de control del Gran Bilbao.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "InfluxDB-HaizeLab"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "InfluxDB-HaizeLab"
+          },
+          "query": "from(bucket: \"$bucket_aire\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> filter(fn: (r) => r[\"zona\"] == \"dentro\" or r[\"zona\"] == \"fuera\")\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "µg/m³",
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "unit": "µg/m³"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "title": "Control Meteorológico — Velocidad de Viento en Bilbao",
+      "description": "Estratificación eólica en tiempo real (Open-Meteo) para aislar periodos de calma (< 2 m/s / 7.2 km/h).",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "InfluxDB-HaizeLab"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "InfluxDB-HaizeLab"
+          },
+          "query": "from(bucket: \"meteo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"clima\")\n  |> filter(fn: (r) => r[\"_field\"] == \"viento_kmh\")\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#38BDF8",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisLabel": "km/h",
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineWidth": 2
+          },
+          "unit": "velocitykmh"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 200,
+      "title": "Análisis de Movilidad y Tráfico en Tiempo Real (Bilbao Open Data)",
+      "type": "row"
+    },
+    {
+      "id": 3,
+      "title": "Top 5 Tramos Urbanos de Mayor Ocupación",
+      "description": "Monitoreo de congestión y posibles efectos de desplazamiento (spillover) hacia el perímetro de la ZBE.",
+      "type": "bargauge",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "InfluxDB-HaizeLab"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "InfluxDB-HaizeLab"
+          },
+          "query": "from(bucket: \"trafico\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"estado\")\n  |> filter(fn: (r) => r[\"_field\"] == \"ocupacion\")\n  |> group(columns: [\"codigo_seccion\"])\n  |> mean()\n  |> group()\n  |> sort(desc: true)\n  |> limit(n: 5)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 25
+              },
+              {
+                "color": "red",
+                "value": 40
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "Intensidad Media Circulatoria (veh/h)",
+      "description": "Media móvil de intensidad en accesos monitorizados en tiempo real.",
+      "type": "stat",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "InfluxDB-HaizeLab"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "InfluxDB-HaizeLab"
+          },
+          "query": "from(bucket: \"trafico\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"estado\")\n  |> filter(fn: (r) => r[\"_field\"] == \"intensidad\")\n  |> mean()",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#F59E0B",
+            "mode": "fixed"
+          },
+          "unit": "conhs"
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "haizelab",
+    "analisis",
+    "zbe"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m"
+    ]
+  },
+  "timezone": "browser",
+  "title": "HaizeLab — Panel Especializado de Análisis ZBE",
+  "uid": "haizelab-analisis",
+  "version": 1,
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "aire_demo (Tiempo Real / Streaming Demo)",
+          "value": "aire_demo"
+        },
+        "description": "Origen de datos de calidad del aire",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Origen Calidad Aire",
+        "multi": false,
+        "name": "bucket_aire",
+        "options": [
+          {
+            "selected": true,
+            "text": "aire_demo (Tiempo Real / Streaming Demo)",
+            "value": "aire_demo"
+          },
+          {
+            "selected": false,
+            "text": "aire (Historico Oficial 2022-2026)",
+            "value": "aire"
+          }
+        ],
+        "query": "aire_demo, aire",
+        "type": "custom"
+      }
+    ]
+  }
+}

@@ -349,6 +349,11 @@ f_g1 = DIR_IMG / "g1_evolucion_mensual_no2.png"
 plt.savefig(f_g1, dpi=200)
 plt.show()
 
+# Resumen anual impreso para contraste numérico
+resumen_anual_zona = df_integrado.groupby([df_integrado["ts_local"].dt.year.rename("año"), "zona"])["no2"].mean().unstack("zona").round(2)
+print("--- CONCENTRACIÓN MEDIA ANUAL DE NO2 POR ZONA (µg/m³) ---")
+display(resumen_anual_zona)
+
 print(\"\"\"
 [Interpretación de la Gráfica 1]:
 Se observa una marcada estacionalidad invernal en todas las zonas por factores meteorológicos (inversiones térmicas).
@@ -420,9 +425,11 @@ caida_fuera_no_zbe = resumen_p2.loc[(False, "fuera"), "Caída_Abs"]
 
 did_horario_zbe = caida_dentro_zbe - caida_fuera_zbe
 did_nocturno = caida_dentro_no_zbe - caida_fuera_no_zbe
+ratio_horario = abs(caida_dentro_zbe) / abs(caida_dentro_no_zbe) if caida_dentro_no_zbe != 0 else np.nan
 
-print(f"Efecto Neto en Horario ZBE (L-V 7-20h): {did_horario_zbe:+.2f} µg/m³")
-print(f"Efecto Neto Fuera de Horario (Noches y Fines de Semana): {did_nocturno:+.2f} µg/m³")"""))
+print(f"Efecto Neto en Horario ZBE (L-V 7-20h): {did_horario_zbe:+.2f} µg/m³ (Caída dentro: {caida_dentro_zbe:.2f} µg/m³)")
+print(f"Efecto Neto Fuera de Horario (Noches y Fines de Semana): {did_nocturno:+.2f} µg/m³ (Caída dentro: {caida_dentro_no_zbe:.2f} µg/m³)")
+print(f"En el interior de la ZBE, el descenso en horario regulado ({caida_dentro_zbe:.2f} µg/m³) es {ratio_horario:.1f} veces superior al no regulado ({caida_dentro_no_zbe:.2f} µg/m³).")"""))
 
     cells.append(nbf.v4.new_code_cell("""# 13. Gráfica 3: Perfil Horario Medio Diario por Zona (Pre vs Post)
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
@@ -569,11 +576,17 @@ f_g6 = DIR_IMG / "g6_dispersion_no2_viento.png"
 plt.savefig(f_g6, dpi=200)
 plt.show()
 
-print(\"\"\"
+var_calma_f1 = ((f1_v[0] - pre_v[0]) / pre_v[0]) * 100
+var_calma_f2 = ((f2_v[0] - pre_v[0]) / pre_v[0]) * 100
+var_calma_f1_f2 = ((f2_v[0] - f1_v[0]) / f1_v[0]) * 100
+promedio_post_calma = (f1_v[0] + f2_v[0]) / 2
+var_post_global_calma = ((promedio_post_calma - pre_v[0]) / pre_v[0]) * 100
+
+print(f\"\"\"
 [Interpretación de la Gráfica 6]:
 Bajo calma atmosférica (< 2 m/s), cuando no hay dispersión mecánica y dominan las emisiones locales directas,
-el NO2 en el interior de la ZBE descendió de 28.10 µg/m³ a 25.47 µg/m³ (-9.4% en Fase 1) y a 23.56 µg/m³ (-16.2% en Fase 2),
-con un promedio post global de 24.35 µg/m³ (-13.4%).
+el NO2 en el interior de la ZBE descendió de {pre_v[0]:.2f} µg/m³ a {f1_v[0]:.2f} µg/m³ ({var_calma_f1:+.1f}% en Fase 1) y a {f2_v[0]:.2f} µg/m³ ({var_calma_f2:+.1f}% en Fase 2 vs previo, {var_calma_f1_f2:+.1f}% marginal vs Fase 1),
+con un promedio post global en calma de {promedio_post_calma:.2f} µg/m³ ({var_post_global_calma:+.1f}% vs previo).
 Esto descarta que la mejora de calidad del aire sea un artefacto de mayor ventilación eólica en el periodo posterior.
 \"\"\")"""))
 
@@ -667,8 +680,8 @@ plt.show()
 print(f\"\"\"
 [Comparativa de Métodos y Limitaciones]:
 1. Regresión Diff-in-Diff con controles climáticos: Efecto neto de {coef_zbe_controlado:+.2f} µg/m³.
-2. Machine Learning Contrafactual (GBM): Efecto neto de {efecto_neto_gbm:+.2f} µg/m³.
-Ambos métodos convergen en un impacto atribuible de entre -1.5 y -2.1 µg/m³.
+2. Machine Learning Contrafactual (GBM): Efecto neto de {efecto_neto_gbm:+.2f} µg/m³ ({(efecto_neto_gbm / media_contrafactual_post)*100:+.1f}%).
+Ambos modelos confirman de forma independiente el impacto reductor neto atribuible al controlar la influencia meteorológica.
 Limitaciones: El modelo ML asume que la relación meteorología-emisiones previa se mantiene constante;
 no captura mejoras tecnológicas progresivas de la flota externa al centro, mientras que Diff-in-Diff sí las descuenta.
 \"\"\")"""))
@@ -788,9 +801,13 @@ no2_d_pre = fases_comp.loc["dentro", ("no2", "previo")]
 no2_d_f1 = fases_comp.loc["dentro", ("no2", "fase1")]
 no2_d_f2 = fases_comp.loc["dentro", ("no2", "fase2")]
 
-print(f"Evolución Dentro ZBE: Previo={no2_d_pre} µg/m³ -> Fase 1={no2_d_f1} µg/m³ -> Fase 2={no2_d_f2} µg/m³")
-print(f"Cambio Previo -> Fase 1: {((no2_d_f1 - no2_d_pre)/no2_d_pre)*100:+.2f}%")
-print(f"Cambio Fase 1 -> Fase 2: {((no2_d_f2 - no2_d_f1)/no2_d_f1)*100:+.2f}%")"""))
+var_f1 = ((no2_d_f1 - no2_d_pre) / no2_d_pre) * 100
+var_f2 = ((no2_d_f2 - no2_d_f1) / no2_d_f1) * 100
+var_f2_vs_pre = ((no2_d_f2 - no2_d_pre) / no2_d_pre) * 100
+
+print(f"Evolución Dentro ZBE: Previo={no2_d_pre:.2f} µg/m³ -> Fase 1={no2_d_f1:.2f} µg/m³ -> Fase 2={no2_d_f2:.2f} µg/m³")
+print(f"Cambio Previo -> Fase 1: {var_f1:+.2f}%")
+print(f"Cambio Fase 1 -> Fase 2: {var_f2:+.2f}% ({var_f2_vs_pre:+.2f}% acumulado vs Previo)")"""))
 
     cells.append(nbf.v4.new_code_cell("""# 24. Gráfica 10: Comparativa por Fases ZBE
 fig, ax = plt.subplots(figsize=(9, 5))
@@ -825,12 +842,43 @@ f_g10 = DIR_IMG / "g10_comparativa_fase1_vs_fase2.png"
 plt.savefig(f_g10, dpi=200)
 plt.show()
 
-print(\"\"\"
+print(f\"\"\"
 [Interpretación de la Gráfica 10]:
-El mayor salto reductor se produjo con la Fase 1 (-14.6%), al expulsar a los vehículos más contaminantes.
-La Fase 2 aportó una reducción adicional más moderada (-2.5%), lo que sugiere rendimientos decrecientes
-en la exclusión de flotas más modernas (etiqueta B) y una progresiva adaptación del parque móvil bilbaíno.
+El primer escalón regulatorio (Fase 1) redujo la concentración interior un {var_f1:.1f}% ({no2_d_pre:.2f} -> {no2_d_f1:.2f} µg/m³) al excluir vehículos sin distintivo.
+La Fase 2 aportó una reducción adicional de {var_f2:.1f}% ({no2_d_f1:.2f} -> {no2_d_f2:.2f} µg/m³, acumulando {var_f2_vs_pre:.1f}% vs periodo previo),
+evidenciando una ganancia progresiva continuada en el centro urbano.
 \"\"\")"""))
+
+    # Contraste de Tráfico
+    cells.append(nbf.v4.new_markdown_cell("""### P6. Contraste Empírico con Aforos de Tráfico Vehicular (Accesos ZBE)
+
+Para comprobar si la reducción de concentraciones contaminantes se acompaña de una alteración real en la intensidad circulatoria, se analizan los aforos oficiales de la Diputación Foral de Bizkaia en los principales accesos a la capital (2018–2025)."""))
+
+    cells.append(nbf.v4.new_code_cell("""# 25. Contraste Empírico con Aforos de Tráfico (San Mamés y Accesos ZBE)
+f_trafico = DIR_RAIZ / "datos" / "procesados" / "trafico" / "trafico_accesos_bilbao.csv"
+if not f_trafico.exists():
+    f_trafico = DIR_RAIZ / "data" / "clean" / "trafico_accesos_bilbao.csv"
+
+if f_trafico.exists():
+    df_trafico = pd.read_csv(f_trafico)
+    print("--- AFOROS HISTÓRICOS DE ACCESOS A BILBAO (Diputación Foral de Bizkaia) ---")
+    display(df_trafico)
+    
+    sm = df_trafico[df_trafico["acceso"].str.contains("SAN MAMES", case=False, na=False)]
+    if not sm.empty:
+        imd_23 = sm["imd_2023"].iloc[0]
+        imd_24 = sm["imd_2024"].iloc[0]
+        imd_25 = sm["imd_2025"].iloc[0]
+        var_23_24 = ((imd_24 - imd_23) / imd_23) * 100
+        var_24_25 = ((imd_25 - imd_24) / imd_24) * 100
+        var_23_25 = ((imd_25 - imd_23) / imd_23) * 100
+        print(f"\\nAcceso San Mamés (Entrada directa ZBE):")
+        print(f"  - Año 2023: {imd_23:,.0f} veh/día")
+        print(f"  - Año 2024 (Fase 1): {imd_24:,.0f} veh/día ({var_23_24:+.2f}%)")
+        print(f"  - Año 2025 (Fase 2): {imd_25:,.0f} veh/día (Rebote interanual de {var_24_25:+.2f}%)")
+        print(f"  - Variación neta consolidada 2023 -> 2025: {var_23_25:+.2f}%")
+else:
+    print("AVISO: Archivo de tráfico no encontrado en rutas previstas.")"""))
 
     # -------------------------------------------------------------------------
     # CÉLDA 6: CONCLUSIONES, RECOMENDACIONES Y LIMITACIONES
@@ -842,11 +890,11 @@ en la exclusión de flotas más modernas (etiqueta B) y una progresiva adaptaci�
 ### Conclusiones Clave para la Cúpula del Ayuntamiento de Bilbao
 
 1. **Efecto Reductor Confirmado pero Moderado:**
-   La ZBE ha logrado reducir la concentración de $NO_2$ en el interior de Abando e Indautxu en **-1,63 µg/m³** netos según el modelo econométrico de Diferencias en Diferencias frente a las 5 estaciones de control del Gran Bilbao (un **-6,4%** relativo atribuible sobre la línea de base de 25,50 µg/m³, frente al -14,1% de caída bruta antes/después), y en **-2,08 µg/m³** según el modelo contrafactual de *Gradient Boosting*. En episodios de calma atmosférica (< 2 m/s), la concentración interior descendió un **-9,4%** en Fase 1 y un **-16,2%** en Fase 2 (-13,4% global post), ratificando la mejora en situaciones de baja dispersión.
+   La ZBE ha logrado reducir la concentración de $NO_2$ en el interior de Abando e Indautxu en **-1,63 µg/m³** netos según el modelo econométrico de Diferencias en Diferencias frente a las 5 estaciones de control del Gran Bilbao (un **-6,4%** relativo atribuible sobre la línea de base de 25,50 µg/m³, frente al -14,1% de caída bruta antes/después), y en **-2,87 µg/m³** según el modelo contrafactual de *Gradient Boosting* (-11,6%). En episodios de calma atmosférica (< 2 m/s), la concentración interior descendió un **-9,4%** en Fase 1 y un **-16,2%** en Fase 2 vs previo (-13,4% global post), ratificando la mejora en situaciones de baja dispersión.
 2. **Coherencia Causal Temporal y Mecánica:**
-   La reducción es un **25% más acusada durante el horario regulado** (lunes a viernes de 07:00 a 20:00) que en horario nocturno o fines de semana. Asimismo, los contaminantes vehiculares directos ($NO$, $NO_x$, $CO$) caen con fuerza (-14% a -39%), mientras que el dióxido de azufre ($SO_2$, test placebo) presenta un efecto neto Diff-in-Diff no significativo de **+0,33 µg/m³** (-3,9% bruto dentro), validando que el efecto es estrictamente vehicular y no un artefacto atmosférico.
-3. **Rendimientos Decrecientes entre Fases y Dinámica de Tráfico:**
-   La Fase 1 (exclusión de vehículos sin etiqueta) concentró el **85% del impacto total acumulado**. La Fase 2 (etiqueta B no residentes) ha tenido un impacto marginal adicional mucho menor (-2,5%). En paralelo, el aforo del acceso de San Mamés mostró una disuasión inicial marcada en 2024 (-10,1%), seguida de un rebote en 2025 (48.543 veh/día) que situó la caída 2023–2025 en un -3,2%, lo que confirma una adaptación progresiva del parque vehicular y un impacto sostenido pero moderado.
+   La reducción en el centro urbano es **3,4 veces más acusada durante el horario regulado** (-2,93 µg/m³ de lunes a viernes de 07:00 a 20:00) que en horario nocturno o fines de semana (-0,86 µg/m³). Asimismo, los contaminantes vehiculares directos ($NO$, $NO_x$, $CO$) caen con fuerza (-14% a -39%), mientras que el dióxido de azufre ($SO_2$, test placebo) presenta un efecto neto Diff-in-Diff no significativo de **+0,33 µg/m³** (-3,9% bruto dentro), validando que el efecto es estrictamente vehicular y no un artefacto atmosférico.
+3. **Dinámica de Fases Regulatorias y Aforos de Tráfico:**
+   En concentraciones interiores, la Fase 1 supuso una bajada de **-9,7%** (25,50 a 23,02 µg/m³), profundizada en Fase 2 hasta 21,11 µg/m³ (**-8,3%** adicional, acumulando un -17,2% bruto). En paralelo, el aforo del acceso de San Mamés mostró una disuasión inicial marcada en 2024 (-10,1% interanual: 50.127 a 45.052 veh/día), seguida de un rebote en 2025 (48.543 veh/día) que situó la caída consolidada 2023–2025 en un -3,2%, lo que confirma una adaptación progresiva del parque vehicular y un impacto sostenido pero moderado.
 
 ---
 
