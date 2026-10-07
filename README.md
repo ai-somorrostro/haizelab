@@ -171,13 +171,15 @@ Todos los puertos quedan expuestos exclusivamente en `127.0.0.1`:
 
 ## 6. Control de acceso y roles en Grafana
 
-Para dar respuesta a los requerimientos departamentales solicitados por la direccion, se aprovisionan tres equipos diferenciados:
+Para dar respuesta a los requerimientos departamentales solicitados por la direccion, se aprovisionan tres equipos diferenciados con autenticacion estricta (acceso anonimo deshabilitado):
 
-| Equipo | Usuarios de prueba | Clave | Rol en Grafana | Permisos asignados |
+| Equipo | Usuarios de prueba | Credenciales | Rol en Grafana | Permisos asignados |
 |---|---|---|---|---|
-| Cupula Directiva | `directora` | `haize2024dir` | Viewer | Visualiza todos los paneles, sin permisos de modificacion |
-| Equipo Analisis | `analista1` a `analista6` | `haize2024a1` .. `a6` | Viewer | Acceso de visualizacion a sus paneles asignados |
-| Equipo IT | `it_admin1` (Admin), `it_admin2`, `it_admin3` (Editor) | `haize2024it1` .. `it3` | Admin / Editor | Permiso total para editar paneles, datasources y alertas |
+| Cupula Directiva | `directora` | Gestionada via `.env` (`GRAFANA_DEFAULT_PASSWORD`) | Viewer | Visualiza todos los paneles, sin permisos de modificacion |
+| Equipo Analisis | `analista1` a `analista6` | Gestionada via `.env` (`GRAFANA_DEFAULT_PASSWORD`) | Viewer | Acceso de visualizacion a sus paneles asignados (home: `haizelab-analisis`) |
+| Equipo IT | `it_admin1` (Admin), `it_admin2`, `it_admin3` (Editor) | Gestionada via `.env` (`GRAFANA_DEFAULT_PASSWORD`) | Admin / Editor | Permiso total para editar paneles, datasources y alertas |
+
+> *Nota de seguridad:* Por buenas practicas y criterios de seguridad de despliegue, las credenciales no se almacenan en texto claro en el repositorio. Para entornos de desarrollo o evaluacion local, se configuran a traves de `.env` (siguiendo la plantilla [.env.example](.env.example), con valor base por defecto `${GRAFANA_DEFAULT_PASSWORD}[sufijo]`).
 
 ---
 
