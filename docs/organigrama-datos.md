@@ -85,9 +85,9 @@ from(bucket: "aire")
 | `fecha_original`     | string  | Timestamp del dato histórico (ISO)   |
 
 **Umbrales de alerta configurados:**
-- > 25 µg/m³ → ⚠️ Aviso (OMS)
-- > 40 µg/m³ → 🔴 Superación límite EU
-- > 200 µg/m³ → 🚨 Pico horario crítico
+- > 25 µg/m³ → Aviso (OMS)
+- > 40 µg/m³ → Superación límite EU
+- > 200 µg/m³ → Pico horario crítico
 
 ---
 
