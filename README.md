@@ -8,49 +8,20 @@
 
 ## 🚀 Despliegue en Vivo y Demostración Interactiva
 
-Para la defensa del proyecto y evaluación por el tribunal, todos los componentes han sido desplegados y configurados para acceso interactivo inmediato:
+Para la defensa del proyecto y evaluación, todos los componentes se encuentran desplegados y configurados para acceso interactivo inmediato:
 
 | Entorno / Servicio | Acceso / URL | Credenciales / Token | Finalidad y Estado |
 |---|---|---|---|
 | **Presentación Web Oficial** | [haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app) | Libre (Acceso público global) | Despliegue en producción (Vercel). Presentación interactiva del proyecto con diapositivas, arquitectura y cuadros de mando embebidos en tiempo real. |
 | **Cuadro de Mando Ejecutivo (Grafana)** | Embebido en Diapositiva 10 o [Acceso Directo](https://developments-near-falls-colony.trycloudflare.com/public-dashboards/7682f12f758249fb8947da0858fd1b3d) | Token Público: `7682f12f758249fb8947da0858fd1b3d` | Relojes de NO₂ por estación en tiempo real, histórico acumulado y ratios de cumplimiento normativo (OMS / UE). Sin requerir login. |
-| **Cuadro de Mando Analítico (Grafana)** | Embebido en Diapositiva 11 o [Acceso Directo](https://developments-near-falls-colony.trycloudflare.com/public-dashboards/2ce28d0a8bd5455ab30ce40353b34b8b) | Token Público: `2ce28d0a8bd5455ab30ce40353b34b8b` | Análisis multivariable: contraste dentro vs. fuera de la ZBE, aforos de tráfico y correlación meteorológica. |
-| **Túnel Seguro Cloudflare** | `https://developments-near-falls-colony.trycloudflare.com` | Túnel activo hacia `localhost:3000` | Exposición segura de Grafana sin abrir puertos en el router ni comprometer la red local. |
+| **Cuadro de Mando Analítico (Grafana)** | Embebido en Diapositiva 10 o [Acceso Directo](https://developments-near-falls-colony.trycloudflare.com/public-dashboards/2ce28d0a8bd5455ab30ce40353b34b8b) | Token Público: `2ce28d0a8bd5455ab30ce40353b34b8b` | Análisis multivariable: contraste dentro vs. fuera de la ZBE, aforos de tráfico y correlación meteorológica. |
+| **InfluxDB 2.9 (En Vivo / Interactivo)** | Embebido en Diapositiva 11 o [Acceso Directo](https://most-filling-sorry-county.trycloudflare.com) | Usuario `admin` (Clave en `.env`) | Data Explorer, consultas Flux en tiempo real a los 4 buckets y gestión de series temporales. |
+| **Node-RED 5.0 (En Vivo / Interactivo)** | Embebido en Diapositiva 11 o [Acceso Directo](https://oclc-abc-gibraltar-store.trycloudflare.com) | Acceso directo | Editor de flujos de streaming en tiempo real (`meteo`, `trafico`, `aire_demo`). |
+| **Túneles Seguros Cloudflare** | `*.trycloudflare.com` | Activos hacia puertos 3000, 8086 y 1880 | Exposición segura de Grafana, InfluxDB y Node-RED sin abrir puertos en el router. |
 | **Grafana Corporativo (Local)** | `http://localhost:3000` | RBAC: `directora`, `analista1-6`, `it_admin1-3` (Clave en `.env`) | Panel completo con control de acceso por roles (Viewer, Editor, Admin), alertas y datasource InfluxDB. |
-| **Node-RED (Local)** | `http://localhost:1880` | Acceso directo local | Gestión y monitorización de flujos de ingesta (`meteo`, `trafico`, `aire_demo`). |
-| **InfluxDB 2.9 (Local)** | `http://localhost:8086` | Usuario `admin` (Clave en `.env`) | Motor de series temporales, Data Explorer, buckets segregados y tokens de seguridad. |
+| **Node-RED (Local)** | `http://localhost:1880` | Acceso directo local | Gestión y monitorización local de flujos de ingesta. |
+| **InfluxDB 2.9 (Local)** | `http://localhost:8086` | Usuario `admin` (Clave en `.env`) | Motor de series temporales local. |
 | **Servidor MCP de Contexto** | `http://localhost:5001` | Token `mcp-read-only` | Servidor Model Context Protocol para consulta de series temporales por agentes de IA. |
-
----
-
-## 🎯 Matriz de Cobertura y Cumplimiento de Rúbricas Oficiales (Calificación Objetivo: 10 / 10)
-
-El proyecto ha sido diseñado e implementado siguiendo con rigor absoluto los criterios de nivel **5 - Excelente** de las cuatro rúbricas de evaluación del Centro de Formación Somorrostro:
-
-### 1. BDA — Big Data Aplicado (10 / 10)
-* **Manipulación y análisis de datos (40% - Nivel 5)**: Doble flujo completamente optimizado y automatizado. En **Node-RED** se gestionan tres flujos continuos respetando estrictamente sus cadencias de tiempo (meteo cada 15 min, tráfico cada 5 min y streaming de NO₂ cada 5 s mediante nodos buffer/delay). En **Pandas**, el pipeline de extracción y saneamiento (`ingesta/descargar_y_limpiar.py`) implementa operaciones vectorizadas, control estricto de nulos, tipado de baja huella en memoria (`category`, `float32`) e indexación temporal unificada en `Europe/Madrid`.
-* **Gestión de Series Temporales - InfluxDB (30% - Nivel 5)**: Cuatro buckets con retenciones diferenciadas (`aire` y `meteo` infinitas, `trafico` 30 días, `aire_demo` 7 días). Uso óptimo de **tags** de baja cardinalidad (`estacion`, `tipo_estacion`, `tramo_id`, `fase_zbe`, `laborable`) para evitar la explosión de índices, y **fields** numéricos para lecturas analíticas instantáneas. Seguridad robusta con **4 tokens independientes de mínimos privilegios** (`nodered-write`, `batch-write`, `read-all`, `mcp-read-only`) creados automáticamente en el bootstrap.
-* **Visualización y Monitorización - Grafana (30% - Nivel 5)**: Dos cuadros de mando de alta interactividad (`haizelab-overview` y `haizelab-analisis-zbe`) con visualizaciones avanzadas (gauges, series comparativas temporales, mapas de calor, paneles agregados). Estadísticas complejas implementadas en lenguaje Flux. Alertas declarativas configuradas para los límites oficiales de la OMS (25 µg/m³ diario) y la Directiva UE (40 µg/m³ anual y 200 µg/m³ horario). Control de permisos óptimo con **RBAC aprovisionado por API** (`directora` y `analistas` como Viewers con home dashboard personalizado; `it_admin` como Admin/Editor).
-
-### 2. MIA — Modelos de Inteligencia Artificial (10 / 10)
-* **Principios y aplicaciones de IA (RA1 a, b - 15% - Nivel 5)**: Fundamentación teórica rigurosa sobre el uso de la IA en la gobernanza ambiental urbana y smart cities, recopilando antecedentes en monitorización predictiva de calidad del aire.
-* **Técnicas de IA (RA1 c - 10% - Nivel 5)**: Caracterización detallada de técnicas de Machine Learning supervisado (modelos basados en árboles y boosting) frente a modelos clásicos estadísticos (ARIMA/SARIMAX) y redes neuronales profundas (LSTM), justificando su idoneidad para datos tabulares y meteorológicos.
-* **Aplicación de IA y eficiencia operativa (RA1 d - 10% - Nivel 5)**: Propuesta de valor clara para el Ayuntamiento de Bilbao: anticipar con 24-48 horas episodios de alta contaminación para activar protocolos dinámicos de tráfico y optimizar recursos municipales.
-* **Requisitos y clasificación de modelos (RA2 a, b - 10% - Nivel 5)**: Especificación formal de requisitos funcionales y no funcionales (baja latencia, interpretabilidad, soporte a no linealidades atmosféricas, ejecución eficiente en CPU) y clasificación sistemática del catálogo de modelos.
-* **Caracterización de modelos de IA (RA2 c, d, e, f - 15% - Nivel 5)**: Caracterización exhaustiva de las cuatro familias exigidas en la rúbrica: (1) *Automatización* (orquestación de reentrenamiento continuo), (2) *Razonamiento impreciso* (lógica difusa para clasificar índices continuos de dispersión), (3) *Sistemas basados en reglas* (protocolos de emergencia por superación de umbrales UE), y (4) *Visión artificial* (reconocimiento OCR/ANPR de distintivos ambientales en accesos).
-* **Selección y adecuación del modelo (RA2 g - 10% - Nivel 5)**: Selección formal del estimador **HistGradientBoostingRegressor** combinado con un diseño cuasiexperimental de **Diferencias en Diferencias (Diff-in-Diff)**, justificando su capacidad de aislar el efecto causal frente a perturbaciones meteorológicas. Documentado íntegramente en [`docs/propuesta-modelo-ia.md`](docs/propuesta-modelo-ia.md) y [`docs/MIA_Haizen_Lab.pdf`](docs/MIA_Haizen_Lab.pdf).
-
-### 3. PIA — Programación de Inteligencia Artificial (10 / 10)
-* **Feature branching (25% - Nivel 5)**: Estrategia estricta de branching Git. Rama `main` protegida, integración continua a través de `develop`, ramas específicas por funcionalidad (`feature/...`), corrección (`fix/...`) y documentación (`docs/...`), con nombres autodescriptivos e integración ordenada mediante revisión.
-* **Limpieza del repositorio (20% - Nivel 5)**: Repositorio profesional e higiénico. Archivo `.gitignore` blindado que excluye entornos virtuales, caches (`__pycache__`), archivos binarios efímeros y secretos (`.env`). Commits atómicos con mensajes semánticos siguiendo la convención Conventional Commits (`feat:`, `fix:`, `docs:`). Cero secretos expuestos en código.
-* **Docker y Compose (30% - Nivel 5)**: Stack multicontenedor orquestado completamente en [`docker-compose.yml`](docker-compose.yml). Dockerfiles ajustados a su propósito con imágenes oficiales ligeras (Alpine / Slim). Servicios vinculados en red interna aislada (`haizelab_net`), exposición de puertos restringida exclusivamente a `127.0.0.1`, inicialización automatizada (`influxdb_setup`), comprobaciones de salud (`healthchecks`) e inyección limpia de variables mediante `.env`.
-
-### 4. SBD — Sistemas de Big Data (RA1) (10 / 10)
-* **Adquisición y exploración de datos (15% - Nivel 5)**: Adquisición de cuatro fuentes abiertas heterogéneas: Red de Calidad del Aire del Gobierno Vasco (series horarias históricas), Aforos de Tráfico del Ayuntamiento de Bilbao (GeoJSON y series históricas), API de Open-Meteo (variables meteorológicas horarias) y Calendario oficial de Bilbao (festivos y horario ZBE). Exploración y control de calidad exhaustivo de cada fuente.
-* **Integración y construcción del conjunto de datos (15% - Nivel 5)**: Alineamiento espaciotemporal a nivel horario mediante `pandas`, tratamiento riguroso de zonas horarias (`Europe/Madrid`), validación de duplicados y generación del dataset maestro unificado [`data/clean/dataset_integrado_zbe.csv`](data/clean/dataset_integrado_zbe.csv).
-* **Análisis y obtención de información (15% - Nivel 5)**: Planteamiento y respuesta fundamentada a la pregunta de negocio del Ayuntamiento. Estimación causal neta (**-6,39%** / **-1,63 µg/m³**, p < 0,001), control por régimen de viento en calma (**-13,4%**), análisis de evolución del tráfico en San Mamés (-10,12% en 2024; rebote a +7,75% en 2025; neto **-3,16%**) y test de falsación con control placebo de SO₂ (+0,33 µg/m³ neto).
-* **Selección y uso de herramientas (15% - Nivel 5)**: Selección y justificación técnica de cada componente de la arquitectura (Python/Pandas para ETL analítico, InfluxDB para series temporales de alta frecuencia, Node-RED para streaming ligero, Grafana para analítica y alertas, Docker Compose para reproducibilidad).
-* **Organización y comunicación del trabajo (15% - Nivel 5)**: Entrega de documentación ejecutiva de máxima calidad: Informe de Cliente en Word y PDF (máximo 4 páginas en Arial 11, [`docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf`](docs/Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf)), Notebook interactivo documentado ([`notebooks/zbe_bilbao.ipynb`](notebooks/zbe_bilbao.ipynb)) y presentación interactiva en Vercel.
 
 ---
 
@@ -71,49 +42,6 @@ Para dar respuesta rigurosa, HaizeLab implementa dos subsistemas acoplados:
 ---
 
 ## 2. Arquitectura Global del Sistema
-
-```
-+---------------------------------------------------------------------------------------+
-|                                    FUENTES EXTERNAS                                   |
-+-------------------+-----------------------------------+-------------------------------+
-                    |                                   |                               |
-       Open-Meteo API (JSON)            Bilbao Open Data (GeoJSON)       Red Calidad Aire GV (CSV)
-         (Cada 15 minutos)                   (Cada 5 minutos)             (Histórico + Streaming)
-                    |                                   |                               |
-                    +--------------------+--------------+-------------------------------+
-                                         |
-                                         v
-+---------------------------------------------------------------------------------------+
-|                                NODE-RED (Ingesta Streaming)                           |
-|                                   http://localhost:1880                               |
-|          Flujos: meteo (15m)  |  trafico (5m, 81 tramos)  |  aire_demo (5s delay)      |
-+----------------------------------------+----------------------------------------------+
-                                         | Token de escritura: nodered-write
-                                         v
-+---------------------------------------------------------------------------------------+
-|                                INFLUXDB 2.9 (Series Temporales)                       |
-|                                   http://localhost:8086                               |
-|        Buckets: aire (inf.) | meteo (inf.) | trafico (30d) | aire_demo (7d)           |
-|        Tags: estacion, tipo_estacion, tramo_id, fase_zbe, laborable                    |
-+--------------------+----------------------------------+-------------------------------+
-                     | Token: read-all                  | Token: mcp-read-only
-                     v                                  v
-+-----------------------------------+   +-----------------------------------------------+
-|      GRAFANA 11.2 (Dashboard)     |   |             SERVIDOR MCP (Python 3.11)        |
-|       http://localhost:3000       |   |               http://localhost:5001           |
-| - Alertas oficiales OMS / UE      |   | - Exposición de contexto a agentes de IA      |
-| - RBAC por API (Dirección, IT)    |   +-----------------------------------------------+
-| - Dashboards públicos embebidos   |
-+--------------------+--------------+
-                     |
-                     v
-+---------------------------------------------------------------------------------------+
-|                              EXPOSICIÓN SEGURA A INTERNET                             |
-|                                                                                       |
-|   Túnel Cloudflare (cloudflared)        --->        Frontend Web en Vercel (Producción) |
-|   developments-near-falls-colony...     --->        https://haizelab-presentacion...  |
-+---------------------------------------------------------------------------------------+
-```
 
 ![Arquitectura en Tiempo Real](docs/img/arquitectura_tiempo_real.png)
 
