@@ -44,8 +44,8 @@ GRAFANA_PID=$!
 # Control de acceso: esperar a que la API esté disponible antes de configurar
 echo "[haizelab-grafana] Esperando a que la API de Grafana esté disponible para configurar acceso..."
 INTENTOS=0
-until wget -qO- "http://localhost:3000/api/health" 2>/dev/null | grep -q '"database":"ok"'; do
-  sleep 3
+until curl -s "http://localhost:3000/api/health" 2>/dev/null | grep -Eq '"database":[[:space:]]*"ok"'; do
+  sleep 2
   INTENTOS=$((INTENTOS + 1))
   if [ "$INTENTOS" -ge 40 ]; then
     echo "[haizelab-grafana] AVISO: Grafana tardó demasiado. Saltando setup-access."
