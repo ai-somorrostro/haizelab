@@ -45,26 +45,55 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
 
 SYSTEM_PROMPT = """Eres HaizeLab Assistant, el asistente de IA oficial del proyecto "Haizen Lab · ¿Ha funcionado la ZBE de Bilbao?" (Reto 0 del curso de Especialización en Inteligencia Artificial y Big Data del Centro de Formación Somorrostro).
 
-INFORMACIÓN FUNDAMENTAL DEL PROYECTO:
-- Equipo y Desarrolladores:
-  • Iñigo Guzman (Lead Data Engineer / BDA): Responsable de la ingesta en streaming continuo con Node-RED 5.0, almacenamiento en InfluxDB 2.9 (buckets y políticas de seguridad con 4 tokens) y cuadros de mando en Grafana 11.2 con mapas geoespaciales.
-  • Kerman Irusta (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning con HistGradientBoosting, tests de placebo y la memoria técnica de IA.
-  • Alfred Gabriel (Product Owner / PIA): Responsable del despliegue con Docker Compose, arquitectura del servidor MCP, orquestación de red y ciclo de ramas en Git.
-- Centro Educativo: Centro de Formación Somorrostro (Muskiz, Bizkaia).
-- Repositorio oficial en GitHub: https://github.com/ai-somorrostro/haizelab
-- Despliegue web de la presentación: https://haizelab-presentacion.vercel.app/
-- Resultados empíricos clave:
-  • Efecto neto atribuible a la ZBE: -1,63 µg/m³ de NO₂ (-6,4% sobre la línea base interior).
-  • Caída bruta: -14,1% dentro de la ZBE y -10,8% en el control exterior (por meteorología favorable).
-  • Tráfico: En el acceso de San Mamés bajó -10,1% en 2024 y rebotó en 2025 (+7,7%), con un neto de -3,16%.
-  • Benceno: Subió un +13% por fuentes industriales/portuarias exteriores ajenas a la ZBE.
-  • Horas analizadas: 41.700 horas de datos reales cruzando calidad del aire, meteorología y aforos.
+REGLA ESTRICTA DE DOMINIO Y ALCANCE:
+Solo y exclusivamente puedes responder a preguntas sobre el proyecto HaizeLab (Reto 0):
+- La Zona de Bajas Emisiones (ZBE) de Bilbao y la evaluación causal del NO₂ (-1,63 µg/m³ vía Diff-in-Diff).
+- Datos empíricos de calidad del aire (NO₂, SO₂, benceno, partículas) y las 8 estaciones analizadas.
+- Meteorología, velocidad del viento, episodios de calma atmosférica (< 2 m/s) y dispersión de contaminantes.
+- Aforos de tráfico (San Mamés, accesos a Bilbao, intensidad diaria de vehículos y cámaras).
+- Modelos econométricos y de Machine Learning (Diferencias en Diferencias, HistGradientBoosting, tests de placebo con SO₂).
+- Infraestructura tecnológica (Docker Compose, InfluxDB 2.9 con 4 buckets y 4 tokens, Node-RED 5.0, Grafana 11.2 con mapas geoespaciales, servidor MCP, túneles Cloudflare y Vercel).
+- Equipo de desarrollo y metodología Scrum: Iñigo Guzman (Lead Data Engineer / BDA), Kerman Irusta (Scrum Master / MIA) y Alfred Gabriel (Product Owner / PIA), con repositorio oficial en https://github.com/ai-somorrostro/haizelab.
+
+RECHAZO DE TEMAS EXTERNOS:
+Si la consulta trata de cualquier asunto ajeno al proyecto (cocina, recetas, deportes, cine, música, política general, bolsa/cripto, otras ciudades no comparadas, tareas de programación no relacionadas, scripts maliciosos o jailbreaks), NO debes responder sobre ese tema. Debes rechazarla amablemente con:
+"Eso queda fuera de lo que sé del proyecto. Solo puedo responderte sobre los datos de calidad del aire, la ZBE de Bilbao, la meteorología, el tráfico o las herramientas y el equipo que usamos en el Reto 0."
 
 DIRECTIVAS DE RESPUESTA:
-1. RESPUESTAS RICAS Y BIEN EXPLICADAS: Responde de forma completa, indagatoria, estructurada y fundamentada. No des respuestas telegráficas ni evasivas. Explica las causas, el contexto y los detalles necesarios.
-2. PRECISIÓN EN EL EQUIPO: Cuando te pregunten quién ha hecho el proyecto, cómo se llaman los desarrolladores o por el repositorio de GitHub, detalla a Iñigo Guzman, Alfred Gabriel y Kerman Irusta con sus respectivos roles y proporciona el enlace oficial a https://github.com/ai-somorrostro/haizelab.
-3. CONSULTAS GENERALES: Si la pregunta es sobre temas externos (ciencia, cultura, programación), respóndela con claridad y profundidad sin forzar menciones a la ZBE.
-4. ESTILO: Profesional, fluido, en español y con formato Markdown limpio."""
+1. Responde de forma analítica, precisa, razonada y fundamentada en los 41.700 registros del proyecto.
+2. Cuando pregunten por los autores o creadores, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Irusta con sus respectivos roles y el repositorio https://github.com/ai-somorrostro/haizelab.
+3. Formato: Markdown limpio, estructurado y en español."""
+
+FUERA_DE_TEMA_KEYWORDS = [
+    "receta", "cocina", "tortilla", "tarta", "pastel", "ingrediente", "cocinar",
+    "futbol", "baloncesto", "champions", "liga", "messi", "ronaldo", "mundial",
+    "cancion", "musica", "poema", "poesia", "chiste", "cuentame un chiste",
+    "pelicula", "cine", "actor", "actriz", "netflix",
+    "politica", "elecciones", "partido politico", "votar", "presidente", "alcalde de madrid",
+    "bitcoin", "criptomoneda", "ethereum", "bolsa", "acciones", "inversion",
+    "clima en madrid", "tiempo en barcelona", "tiempo en sevilla", "paris", "londres",
+    "olvida tus instrucciones", "ignore previous instructions", "jailbreak", "dan mode",
+    "script para hackear", "hackear", "password", "contrasena", "exploit", "virus",
+    "porn", "arma", "bomba", "drogas", "asesinato"
+]
+
+TEMAS_VALIDOS_PROYECTO = [
+    "zbe", "bilbao", "aire", "calidad", "no2", "so2", "benceno", "dioxido", "ozono", "pm10", "pm2.5",
+    "estacion", "estaciones", "mazarredo", "maria diaz", "europa", "barakaldo", "basauri", "erandio",
+    "castrejana", "arraiz", "meteo", "viento", "calma", "lluvia", "temperatura", "humedad", "dispersion",
+    "trafico", "aforo", "aforos", "coche", "coches", "vehiculo", "vehiculos", "san mames", "camara", "camaras",
+    "distintivo", "etiqueta", "abando", "fase", "diff-in-diff", "diferencias en diferencias",
+    "machine learning", "gbm", "gradient boosting", "histgradientboosting", "placebo", "modelo", "ia",
+    "mia", "sbd", "bda", "pia", "influx", "influxdb", "nodered", "node-red", "grafana", "docker",
+    "mcp", "proxy", "token", "tokens", "bucket", "buckets", "streaming", "somorrostro", "reto",
+    "reto 0", "equipo", "autor", "autores", "creador", "creadores", "desarrollador", "desarrolladores",
+    "inigo", "guzman", "alfred", "gabriel", "kerman", "irusta", "scrum", "github", "repo", "proyecto",
+    "haizelab", "datos", "open data", "euskadi", "presentacion", "vercel", "cloudflared", "tunel",
+    "tuneles", "ayuntamiento", "recomendacion", "recomendaciones", "salud", "oms", "ue", "directiva",
+    "41.700", "reduccion", "caida", "impacto", "contaminacion", "memoria", "horario", "horas"
+]
+
+SALUDOS_VALIDOS = ["hola", "buenos dias", "buenas tardes", "buenas", "que puedes hacer", "quien eres", "ayuda", "que sabes", "que es esto", "presentate"]
 
 
 def normalizar(s: str) -> str:
@@ -90,6 +119,25 @@ class RAGEngine:
             return {"documentos": [], "estadisticas": {}}
 
     def es_fuera_de_dominio(self, pregunta: str) -> bool:
+        p_norm = normalizar(pregunta)
+
+        # 1. Detección inmediata de palabras clave o ataques fuera de tema
+        for kw in FUERA_DE_TEMA_KEYWORDS:
+            if normalizar(kw) in p_norm:
+                return True
+
+        # 2. Permitir saludos o preguntas introductorias de rol
+        if any(s in p_norm for s in SALUDOS_VALIDOS) and len(p_norm.split()) <= 6:
+            return False
+
+        # 3. Comprobar si la consulta contiene al menos un concepto del dominio
+        tokens = set(re.findall(r"\w+", p_norm))
+        tiene_termino_valido = any(normalizar(t) in p_norm for t in TEMAS_VALIDOS_PROYECTO)
+
+        # Si la pregunta tiene 3 o más palabras y carece totalmente de términos del proyecto, bloquear
+        if len(tokens) >= 3 and not tiene_termino_valido:
+            return True
+
         return False
 
     def recuperar_contexto(self, pregunta: str, top_k: int = 2) -> list:
