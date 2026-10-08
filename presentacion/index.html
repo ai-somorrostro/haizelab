@@ -68,32 +68,37 @@ x-connector { display: block; }
    HaizeLab Chatbot Assistant Widget (Neubrutalism UI)
    ──────────────────────────────────────────────────────────────────────────── */
 /* ────────────────────────────────────────────────────────────────────────────
-   HaizeLab Chatbot Assistant Widget (Inspirado en UI PcComponentes)
+   HaizeLab Chatbot Assistant Widget (Inspirado en la estética Claude)
+   Paleta: Cálido Grafito (#1e1e1c / #262522), Terracota Anthropic (#d97757),
+   Texto Crema (#FAF9F5 / #ece8df) y tipografía cuidada de 12.5px.
    ──────────────────────────────────────────────────────────────────────────── */
 #haizelab-chat-btn {
   position: fixed;
   right: 24px;
   bottom: 64px;
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: #1b054c;
-  border: 2px solid #ffffff;
-  box-shadow: 0 6px 20px rgba(27, 5, 76, 0.35);
+  background: #d97757;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(217, 119, 87, 0.45);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  transition: transform .2s ease, box-shadow .2s ease;
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
   outline: none;
 }
 #haizelab-chat-btn svg {
-  stroke: #ffffff;
+  fill: #ffffff;
+  stroke: none;
 }
 #haizelab-chat-btn:hover {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 8px 24px rgba(27, 5, 76, 0.45);
+  transform: translateY(-2px) scale(1.06);
+  background: #e28a6d;
+  box-shadow: 0 10px 30px rgba(217, 119, 87, 0.55);
 }
 #haizelab-chat-btn:active {
   transform: scale(0.96);
@@ -104,15 +109,15 @@ x-connector { display: block; }
   right: 24px;
   bottom: 124px;
   width: var(--chat-w, 360px);
-  height: var(--chat-h, 500px);
+  height: var(--chat-h, 510px);
   min-width: 290px;
   max-width: min(580px, calc(100vw - 20px));
   min-height: 380px;
   max-height: calc(100vh - 140px);
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
+  background: #1e1e1c;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
   z-index: 10000;
@@ -128,14 +133,15 @@ x-connector { display: block; }
 }
 
 .haize-chat-header {
-  background: #1b054c;
-  color: #ffffff;
+  background: #262522;
+  color: #f4efe6;
   padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   user-select: none;
   gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 .haize-chat-title-box {
   display: flex;
@@ -143,19 +149,31 @@ x-connector { display: block; }
   gap: 8px;
   min-width: 0;
 }
+.haize-claude-spark {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(217, 119, 87, 0.18);
+  color: #d97757;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 .haize-chat-title {
-  font-size: 14.5px;
-  font-weight: 700;
+  font-size: 13.5px;
+  font-weight: 600;
   letter-spacing: -0.2px;
-  color: #ffffff;
+  color: #FAF9F5;
   white-space: nowrap;
 }
 .haize-chat-badge {
   font-size: 10px;
-  font-weight: 600;
-  background: #0ea5e9;
-  color: #ffffff;
-  padding: 1px 6px;
+  font-weight: 500;
+  background: rgba(217, 119, 87, 0.2);
+  color: #e5987d;
+  border: 1px solid rgba(217, 119, 87, 0.35);
+  padding: 1px 7px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -163,7 +181,9 @@ x-connector { display: block; }
   white-space: nowrap;
 }
 .haize-chat-badge.offline {
-  background: #dc2626;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
 }
 .haize-chat-actions {
   display: flex;
@@ -175,40 +195,40 @@ x-connector { display: block; }
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 5px;
-  padding: 2px 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 .haize-slider-icon {
   font-size: 10px;
-  color: #ffffff;
+  color: #9c978b;
   line-height: 1;
 }
 #haize-chat-size-slider {
-  width: 52px;
+  width: 50px;
   height: 4px;
   cursor: ew-resize;
-  accent-color: #38bdf8;
+  accent-color: #d97757;
   outline: none;
 }
 .haize-chat-close {
   background: transparent;
   border: none;
-  color: #ffffff;
+  color: #9c978b;
   width: 24px;
   height: 24px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
-  transition: transform .15s, opacity .15s;
-  opacity: 0.9;
+  transition: color .15s, transform .15s;
 }
 .haize-chat-close:hover {
-  transform: scale(1.15);
-  opacity: 1;
+  color: #FAF9F5;
+  transform: scale(1.1);
 }
 
 .haize-chat-messages {
@@ -217,69 +237,85 @@ x-connector { display: block; }
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  background: #ffffff;
+  gap: 12px;
+  background: #1e1e1c;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
+.haize-chat-messages::-webkit-scrollbar {
+  width: 5px;
+}
+.haize-chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
 .haize-chat-msg {
   font-size: 12.5px !important;
-  line-height: 1.45 !important;
+  line-height: 1.55 !important;
   word-break: break-word;
 }
 .haize-chat-msg p {
   font-size: 12.5px !important;
-  line-height: 1.45 !important;
-  margin: 0 0 5px 0 !important;
+  line-height: 1.55 !important;
+  margin: 0 0 6px 0 !important;
   color: inherit !important;
   font-weight: 400 !important;
 }
 .haize-chat-msg strong {
   font-size: 12.5px !important;
-  font-weight: 700 !important;
-  color: inherit !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
 }
 .haize-chat-msg code {
   font-family: 'Space Mono', monospace !important;
   font-size: 11px !important;
-  background: #f1f5f9 !important;
-  padding: 1px 4px !important;
+  background: #141413 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #e5987d !important;
+  padding: 1px 5px !important;
   border-radius: 4px !important;
 }
 .haize-chat-msg.asistente {
   align-self: flex-start;
   width: 100%;
-  color: #1f2937 !important;
+  color: #ece8df !important;
   padding: 2px 0;
   font-size: 12.5px !important;
 }
 .haize-chat-msg.asistente a {
-  color: #0066cc !important;
+  color: #d97757 !important;
   text-decoration: underline !important;
   font-size: 12.5px !important;
 }
 .haize-chat-msg.usuario {
   align-self: flex-end;
   margin-left: auto;
-  background: #fde5d9 !important;
-  color: #2d2019 !important;
-  border-radius: 14px 14px 3px 14px;
-  padding: 8px 12px;
+  background: #2c2b27 !important;
+  color: #FAF9F5 !important;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px 16px 4px 16px;
+  padding: 9px 13px;
   max-width: 82%;
   font-size: 12.5px !important;
-  line-height: 1.4 !important;
+  line-height: 1.45 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 .haize-chat-msg.usuario p {
-  color: #2d2019 !important;
+  color: #FAF9F5 !important;
   font-size: 12.5px !important;
-  line-height: 1.4 !important;
+  line-height: 1.45 !important;
   margin: 0 !important;
 }
 .haize-chat-msg .fuente-tag {
-  display: block;
-  margin-top: 4px;
-  padding-top: 4px;
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
   font-size: 10.5px !important;
-  color: #6b7280 !important;
-  border-top: 1px solid #f3f4f6;
+  color: #d97757 !important;
+  background: rgba(217, 119, 87, 0.1);
+  border: 1px solid rgba(217, 119, 87, 0.25);
+  border-radius: 6px;
 }
 
 .haize-chat-sugerencias {
@@ -289,36 +325,37 @@ x-connector { display: block; }
   margin-top: 10px;
 }
 .haize-sug-btn {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 6px 12px;
+  background: #262522;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 7px 11px;
   font-size: 12px;
-  color: #4b5563;
+  color: #d6d0c4;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
   transition: all .15s ease;
 }
 .haize-sug-btn:hover {
-  background: #f9fafb;
-  color: #111827;
-  border-color: #d1d5db;
+  background: #2e2d29;
+  border-color: #d97757;
+  color: #FAF9F5;
+  transform: translateY(-1px);
 }
 
 .haize-chat-typing {
   align-self: flex-start;
-  padding: 6px 10px;
+  padding: 6px 8px;
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #6b7280;
+  color: #9c978b;
   font-size: 12px;
 }
 .haize-dot {
   width: 5px;
   height: 5px;
-  background: #9ca3af;
+  background: #d97757;
   border-radius: 50%;
   animation: haize-bounce 1.4s infinite ease-in-out both;
 }
@@ -330,77 +367,80 @@ x-connector { display: block; }
 }
 
 .haize-chat-input-box {
-  background: #ffffff;
+  background: #262522;
   padding: 10px 14px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
   display: flex;
   gap: 8px;
   align-items: center;
 }
 .haize-chat-reset-btn {
-  width: 40px;
-  height: 40px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #ffffff;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: #2c2b27;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #ea580c;
+  color: #d97757;
   flex-shrink: 0;
   transition: all .15s ease;
 }
 .haize-chat-reset-btn:hover {
-  border-color: #ea580c;
-  background: #fff7ed;
+  border-color: #d97757;
+  background: rgba(217, 119, 87, 0.15);
 }
 .haize-chat-input-wrapper {
   flex: 1;
   display: flex;
   align-items: center;
-  border: 1.5px solid #0070f3;
-  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
   height: 40px;
-  padding: 0 8px 0 12px;
-  background: #ffffff;
+  padding: 0 6px 0 12px;
+  background: #1e1e1c;
   transition: border-color .15s, box-shadow .15s;
 }
 .haize-chat-input-wrapper:focus-within {
-  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.15);
+  border-color: #d97757;
+  box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.2);
 }
 .haize-chat-input {
   flex: 1;
   border: none;
   background: transparent;
   outline: none;
-  font-size: 13.5px;
-  color: #111827;
+  font-size: 13px;
+  color: #FAF9F5;
   font-family: inherit;
   padding: 0;
 }
 .haize-chat-input::placeholder {
-  color: #9ca3af;
+  color: #78756d;
 }
 .haize-chat-send {
-  background: transparent;
+  background: #d97757;
   border: none;
   width: 28px;
   height: 28px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  color: #0070f3;
+  color: #ffffff;
   flex-shrink: 0;
-  transition: transform .12s;
+  transition: transform .12s, background .15s;
 }
 .haize-chat-send:hover {
-  transform: scale(1.1);
+  background: #e28a6d;
+  transform: scale(1.08);
 }
 .haize-chat-send svg {
-  stroke: #0070f3;
+  stroke: #ffffff;
 }
 
 @media (max-width: 600px) {
@@ -1330,55 +1370,65 @@ x-connector { display: block; }
 </div></div>
 <nav id="nav"><button id="prev" aria-label="Anterior">←</button><span id="contador">1 / 14</span><button id="next" aria-label="Siguiente">→</button><button id="fs" aria-label="Pantalla completa">⛶</button></nav>
 
-<!-- HaizeLab Chatbot Assistant Widget (UI estilo PcComponentes) -->
+<!-- HaizeLab Chatbot Assistant Widget (UI estilo Claude Anthropic) -->
 <div id="haizelab-chat-widget">
-  <button id="haizelab-chat-btn" aria-label="Abrir asistente de HaizeLab" title="Pregunta a HaizeLab Assistant">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+  <button id="haizelab-chat-btn" aria-label="Abrir asistente de HaizeLab" title="Pregunta a HaizeLab Assistant (Reto 0)">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C12 2 13.5 7.5 15.5 9.5C17.5 11.5 23 12 23 12C23 12 17.5 12.5 15.5 14.5C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8.5 14.5C6.5 12.5 1 12 1 12C1 12 6.5 11.5 8.5 9.5C10.5 7.5 12 2 12 2Z"/>
     </svg>
   </button>
 
   <div id="haizelab-chat-panel" class="oculto" role="dialog" aria-labelledby="chat-title" aria-modal="false">
     <header class="haize-chat-header">
       <div class="haize-chat-title-box">
-        <span class="haize-chat-title" id="chat-title">Asistente experto en calidad del aire</span>
-        <span class="haize-chat-badge" id="haize-status-badge">● En línea</span>
+        <div class="haize-claude-spark" title="HaizeLab Assistant">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C12 2 13.5 7.5 15.5 9.5C17.5 11.5 23 12 23 12C23 12 17.5 12.5 15.5 14.5C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8.5 14.5C6.5 12.5 1 12 1 12C1 12 6.5 11.5 8.5 9.5C10.5 7.5 12 2 12 2Z"/>
+          </svg>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="haize-chat-title" id="chat-title">HaizeLab Assistant</span>
+            <span class="haize-chat-badge" id="haize-status-badge">● Reto 0</span>
+          </div>
+          <span style="font-size:10px;color:#9c978b;line-height:1">ZBE Bilbao · Calidad del Aire</span>
+        </div>
       </div>
       <div class="haize-chat-actions">
-        <div class="haize-slider-container" title="Desliza para ajustar el tamaño de la ventana">
+        <div class="haize-slider-container" title="Desliza para ajustar el ancho">
           <span class="haize-slider-icon">↔</span>
           <input type="range" id="haize-chat-size-slider" min="290" max="540" value="360" step="10" aria-label="Ajustar tamaño del chat" />
         </div>
-        <button class="haize-chat-close" id="haize-chat-close-btn" aria-label="Cerrar chat">✕</button>
+        <button class="haize-chat-close" id="haize-chat-close-btn" aria-label="Cerrar chat" title="Cerrar">✕</button>
       </div>
     </header>
 
     <div class="haize-chat-messages" id="haize-chat-msgs">
       <div class="haize-chat-msg asistente">
-        <p>¡Hola! 👋 Soy el <strong>asistente virtual experto en calidad del aire</strong> de HaizeLab impulsado por IA.</p>
-        <p>Analizo los datos reales del Reto 0 (ZBE de Bilbao, 41.700 horas de registros, meteorología y tráfico), pero puedes consultarme cualquier duda.</p>
-        <p>¿En qué puedo ayudarte hoy?</p>
+        <p>Hola. Soy el asistente de <strong>HaizeLab</strong> especializado exclusivamente en nuestro proyecto <strong>Reto 0</strong>.</p>
+        <p>Respondo únicamente a consultas basadas en nuestros datos reales: impacto de la ZBE en Bilbao (-1,63 µg/m³ de NO₂), meteorología, tráfico en accesos, arquitectura técnica y equipo de desarrollo.</p>
+        <p>¿Qué dato del proyecto deseas consultar?</p>
         <div class="haize-chat-sugerencias">
-          <button class="haize-sug-btn" data-sug="¿Quiénes son los desarrolladores y autores de este proyecto?">¿Quiénes son los desarrolladores y autores de este proyecto?</button>
-          <button class="haize-sug-btn" data-sug="¿Por qué el efecto de la ZBE fue moderado (-1.63 µg/m³) y no drástico?">¿Por qué el efecto de la ZBE fue moderado (-1.63 µg/m³)?</button>
-          <button class="haize-sug-btn" data-sug="¿Cómo aislasteis la meteorología del impacto del tráfico?">¿Cómo aislasteis la meteorología del impacto del tráfico?</button>
-          <button class="haize-sug-btn" data-sug="¿Cómo varió el tráfico en San Mamés y por qué repuntó el benceno?">¿Cómo varió el tráfico en San Mamés y el benceno?</button>
+          <button class="haize-sug-btn" data-sug="¿Quiénes son los desarrolladores y autores de este proyecto?">✦ ¿Quiénes son los autores y qué rol tuvo cada uno?</button>
+          <button class="haize-sug-btn" data-sug="¿Cuál fue el impacto neto de la ZBE según el modelo Diff-in-Diff?">✦ Impacto neto real de la ZBE (-1,63 µg/m³)</button>
+          <button class="haize-sug-btn" data-sug="¿Cómo se aisló la meteorología del efecto del tráfico?">✦ ¿Cómo se aisló la meteorología?</button>
+          <button class="haize-sug-btn" data-sug="¿Qué arquitectura tecnológica tiene el proyecto HaizeLab?">✦ Arquitectura tecnológica y contenedores</button>
         </div>
       </div>
     </div>
 
     <form class="haize-chat-input-box" id="haize-chat-form">
       <button type="button" class="haize-chat-reset-btn" id="haize-chat-reset-btn" title="Reiniciar conversación" aria-label="Reiniciar conversación">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
         </svg>
       </button>
       <div class="haize-chat-input-wrapper">
-        <input type="text" class="haize-chat-input" id="haize-chat-input" placeholder="Escribe aquí tu consulta" autocomplete="off" maxlength="250" />
+        <input type="text" class="haize-chat-input" id="haize-chat-input" placeholder="Pregunta sobre los datos del Reto 0..." autocomplete="off" maxlength="250" />
         <button type="submit" class="haize-chat-send" id="haize-chat-send-btn" aria-label="Enviar consulta" title="Enviar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0070f3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
           </svg>
         </button>
       </div>
@@ -1929,7 +1979,8 @@ const Transiciones = (function () {
       zbe: "La ZBE tuvo un efecto reductor neto de **-1,63 µg/m³ de NO₂** (-6,4%). En el interior bajó -14,1% pero en estaciones exteriores también bajó -10,8% debido a meteorología favorable.",
       datos: "El proyecto procesó **41.700 horas de registros** (2022-2026) unificando calidad del aire (8 estaciones), meteorología horaria y aforos de tráfico.",
       trafico: "En el acceso de San Mamés el tráfico cayó un **-10,1% en 2024** y tuvo un rebote parcial en 2025, acumulando una bajada neta del **-3,16%**.",
-      tecnologia: "Arquitectura: InfluxDB 2.9 (series temporales), Node-RED 5.0 (streaming ETL), Grafana 11.2 (mapas) y Python (modelos Diff-in-Diff e IA)."
+      tecnologia: "Arquitectura: InfluxDB 2.9 (series temporales), Node-RED 5.0 (streaming ETL), Grafana 11.2 (mapas) y Python (modelos Diff-in-Diff e IA).",
+      equipo: "El equipo HaizeLab (Reto 0) está compuesto por: **Alfred Gabriel** (Product Owner / Docker, redes, MCP), **Iñigo Guzman** (Lead Data Engineer / Node-RED, InfluxDB, Grafana) y **Kerman Irusta** (Scrum Master / econometría Diff-in-Diff y ML)."
     };
 
     function abrir() {
@@ -2077,16 +2128,18 @@ const Transiciones = (function () {
 
       const qLower = q.toLowerCase();
       let resp = "";
-      if (qLower.includes('calidad') || qLower.includes('zbe') || qLower.includes('mejorado') || qLower.includes('funcionado')) {
+      if (qLower.includes('calidad') || qLower.includes('zbe') || qLower.includes('mejorado') || qLower.includes('funcionado') || qLower.includes('no2') || qLower.includes('resultado')) {
         resp = CONOCIMIENTO_FALLBACK.zbe;
-      } else if (qLower.includes('datos') || qLower.includes('fuentes') || qLower.includes('horas')) {
+      } else if (qLower.includes('datos') || qLower.includes('fuentes') || qLower.includes('horas') || qLower.includes('estacion')) {
         resp = CONOCIMIENTO_FALLBACK.datos;
-      } else if (qLower.includes('trafico') || qLower.includes('tráfico') || qLower.includes('san mames') || qLower.includes('san mamés')) {
+      } else if (qLower.includes('trafico') || qLower.includes('tráfico') || qLower.includes('san mames') || qLower.includes('san mamés') || qLower.includes('vehiculo')) {
         resp = CONOCIMIENTO_FALLBACK.trafico;
-      } else if (qLower.includes('tecnolog') || qLower.includes('stack') || qLower.includes('docker') || qLower.includes('arquitectura')) {
+      } else if (qLower.includes('tecnolog') || qLower.includes('stack') || qLower.includes('docker') || qLower.includes('arquitectura') || qLower.includes('influx') || qLower.includes('grafana') || qLower.includes('node-red')) {
         resp = CONOCIMIENTO_FALLBACK.tecnologia;
+      } else if (qLower.includes('autor') || qLower.includes('quien') || qLower.includes('quién') || qLower.includes('equipo') || qLower.includes('iñigo') || qLower.includes('kerman') || qLower.includes('alfred') || qLower.includes('somorrostro')) {
+        resp = CONOCIMIENTO_FALLBACK.equipo;
       } else {
-        resp = "⚠️ **Backend local desconectado**. Inicia `python chatbot/main.py` para consultar cualquier tema con el modelo de lenguaje en vivo.";
+        resp = "Solo puedo responder a preguntas relacionadas con el proyecto **HaizeLab (Reto 0)**: calidad del aire, impacto de la ZBE de Bilbao, meteorología, tráfico, arquitectura técnica o nuestro equipo de desarrollo.";
       }
 
       agregarMensaje(resp, 'asistente', ['Conocimiento Reto 0']);

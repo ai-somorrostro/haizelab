@@ -7,8 +7,9 @@ while [ ! -f /tokens/tokens.env ]; do
   sleep 1
 done
 
-# Cargar variables de tokens
-. /tokens/tokens.env
+# Cargar exclusivamente el token de lectura (principio de minimo privilegio)
+INFLUXDB_READ_TOKEN=$(grep '^INFLUXDB_READ_TOKEN=' /tokens/tokens.env | cut -d= -f2-)
+export INFLUXDB_READ_TOKEN
 
 echo "[haizelab-grafana] Provisionando datasource InfluxDB-HaizeLab con token de lectura..."
 
