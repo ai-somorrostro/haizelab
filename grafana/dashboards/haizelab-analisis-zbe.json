@@ -42,7 +42,7 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"$bucket_aire\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> filter(fn: (r) => r[\"zona\"] == \"dentro\" or r[\"zona\"] == \"fuera\")\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)",
+          "query": "from(bucket: \"aire_demo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> filter(fn: (r) => r[\"zona\"] == \"dentro\" or r[\"zona\"] == \"fuera\")\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)",
           "refId": "A"
         }
       ],
