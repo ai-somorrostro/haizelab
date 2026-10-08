@@ -297,6 +297,34 @@ services:
       retries: 3
       start_period: 20s
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # chatbot — Asistente RAG local para HaizeLab y presentación web
+  # Expone API FastAPI en http://127.0.0.1:8000 (endpoints /chat, /health, /info)
+  # Funciona en modo RAG determinista offline o conectado a Ollama (OLLAMA_URL)
+  # ────────────────────────────────────────────────────────────────────────────
+  chatbot:
+    build:
+      context: ./chatbot
+      dockerfile: Dockerfile
+    image: haizelab_chatbot:latest
+    container_name: haizelab_chatbot
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      PORT: 8000
+      HOST: 0.0.0.0
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 # ────────────────────────────────────────────────────────────────────────────
 # Volumenes con nombre
 # ────────────────────────────────────────────────────────────────────────────
