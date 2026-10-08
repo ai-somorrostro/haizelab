@@ -1,22 +1,29 @@
 """
 haizelab/chatbot/main.py
 ========================
-Servidor API REST para HaizeLab Assistant (Reto 0).
-Expone:
-  - POST /chat: Consulta con recuperación aumentada (RAG local).
-  - GET /health: Comprobación de estado y liveness probe.
-  - GET /info: Metadatos del sistema, estadísticas y estado del motor.
+Servidor API REST seguro para HaizeLab Assistant (Reto 0).
+Seguridad defensiva implementada:
+  - Rate limiting en memoria por IP (máx. 25 req/min) para prevenir DoS.
+  - Validación de longitud estricta en entradas (max_length=500).
+  - CORS blindado con orígenes autorizados.
+  - Ocultación de topología de red interna (sin exponer host.docker.internal).
+  - Manejo genérico de excepciones sin fuga de stack trace.
 """
 
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import os
+import time
+import logging
+from collections import defaultdict
 import uvicorn
 import httpx
 
 from rag_engine import RAGEngine, OLLAMA_URL, OLLAMA_MODEL
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 app = FastAPI(
     title="HaizeLab Assistant API",
@@ -24,26 +31,54 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Permitir solicitudes CORS desde la presentación local y remota (Vercel)
+# CORS defensivo: orígenes permitidos explícitos
+ORIGENES_PERMITIDOS = [
+    "https://haizelab-presentacion.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ORIGENES_PERMITIDOS,
+    allow_origin_regex=r"^https://.*(vercel\.app|trycloudflare\.com)$",
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 engine = RAGEngine()
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Rate Limiting defensivo en memoria por IP (prevención de Denial of Service)
+# ──────────────────────────────────────────────────────────────────────────────
+HISTORIAL_PETICIONES: Dict[str, List[float]] = defaultdict(list)
+LIMITE_PETICIONES_MINUTO = 25
+VENTANA_SEGUNDOS = 60.0
+
+def verificar_rate_limit(ip_cliente: str):
+    ahora = time.time()
+    marcas = HISTORIAL_PETICIONES[ip_cliente]
+    # Filtrar marcas anteriores a la ventana
+    HISTORIAL_PETICIONES[ip_cliente] = [t for t in marcas if ahora - t < VENTANA_SEGUNDOS]
+    if len(HISTORIAL_PETICIONES[ip_cliente]) >= LIMITE_PETICIONES_MINUTO:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Límite de consultas excedido. Por favor, espera un momento antes de volver a preguntar."
+        )
+    HISTORIAL_PETICIONES[ip_cliente].append(ahora)
+
 
 class ChatMessage(BaseModel):
     role: str = Field(..., description="Rol del emisor: 'user' o 'assistant'")
-    content: str = Field(..., description="Contenido del mensaje")
+    content: str = Field(..., max_length=1500, description="Contenido del mensaje")
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, description="Pregunta formulada por el usuario")
-    history: Optional[List[ChatMessage]] = Field(default=None, description="Historial de conversación")
+    message: str = Field(..., min_length=1, max_length=500, description="Pregunta formulada por el usuario (máx. 500 caracteres)")
+    history: Optional[List[ChatMessage]] = Field(default=None, max_items=10, description="Historial de conversación limitado a 10 turnos")
 
 
 class ChatResponse(BaseModel):
@@ -55,7 +90,7 @@ class ChatResponse(BaseModel):
 
 @app.get("/health")
 async def health_check():
-    """Liveness probe para monitorización y comprobación de conexión desde el cliente web."""
+    """Liveness probe para monitorización."""
     return {
         "status": "ok",
         "service": "haizelab-chatbot",
@@ -65,10 +100,10 @@ async def health_check():
 
 @app.get("/info")
 async def info_check():
-    """Devuelve metadatos del servicio, disponibilidad de Ollama y métricas clave."""
+    """Devuelve metadatos del servicio y métricas sin exponer direcciones internas."""
     ollama_disponible = False
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
+        async with httpx.AsyncClient(timeout=1.5) as client:
             res = await client.get(f"{OLLAMA_URL}/api/tags")
             ollama_disponible = (res.status_code == 200)
     except Exception:
@@ -77,7 +112,6 @@ async def info_check():
     return {
         "proyecto": "Haizen Lab - Reto 0",
         "centro": "Centro de Formación Somorrostro",
-        "ollama_url": OLLAMA_URL,
         "ollama_modelo": OLLAMA_MODEL,
         "ollama_disponible": ollama_disponible,
         "modo_activo": f"ollama/{OLLAMA_MODEL}" if ollama_disponible else "deterministic-rag-local",
@@ -87,8 +121,11 @@ async def info_check():
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(payload: ChatRequest):
-    """Endpoint principal de conversación con RAG local sobre el proyecto."""
+async def chat_endpoint(payload: ChatRequest, request: Request):
+    """Endpoint principal de conversación con RAG local protegido contra abusos."""
+    ip_cliente = request.client.host if request.client else "unknown"
+    verificar_rate_limit(ip_cliente)
+
     try:
         historial_dicts = [h.dict() for h in payload.history] if payload.history else None
         resultado = await engine.responder(payload.message, historial=historial_dicts)
@@ -97,12 +134,18 @@ async def chat_endpoint(payload: ChatRequest):
             fuentes=resultado["fuentes"],
             modelo=resultado["modelo"]
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error interno procesando consulta: {str(e)}")
+        logging.error(f"Error procesando consulta: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Se produjo un error interno procesando la consulta. Por favor, inténtalo de nuevo."
+        )
 
 
 if __name__ == "__main__":
     puerto = int(os.environ.get("PORT", 8000))
     host = os.environ.get("HOST", "0.0.0.0")
-    print(f"[*] Iniciando HaizeLab Chatbot en http://{host}:{puerto}")
+    print(f"[*] Iniciando HaizeLab Chatbot Seguro en http://{host}:{puerto}")
     uvicorn.run("main:app", host=host, port=puerto, reload=False)
