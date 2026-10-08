@@ -118,8 +118,12 @@
           "allLayers": false
         },
         "basemap": {
-          "type": "default",
-          "name": "CartoDB Dark"
+          "type": "xyz",
+          "name": "OpenStreetMap (Bilbao)",
+          "config": {
+            "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            "attribution": "© OpenStreetMap contributors"
+          }
         },
         "layers": [
           {
