@@ -22,6 +22,7 @@ Para la defensa del proyecto y evaluación, todos los componentes se encuentran 
 | **Node-RED (Local)** | `http://localhost:1880` | Acceso directo local | Gestión y monitorización local de flujos de ingesta. |
 | **InfluxDB 2.9 (Local)** | `http://localhost:8086` | Usuario `admin` (Clave en `.env`) | Motor de series temporales local. |
 | **Servidor MCP de Contexto** | `http://localhost:5001` | Token `mcp-read-only` | Servidor Model Context Protocol para consulta de series temporales por agentes de IA. |
+| **HaizeLab Chatbot Assistant (RAG Local)** | `http://localhost:8000` | Libre (CORS habilitado) | Asistente inteligente RAG integrado en la presentación web; responde con datos reales del Reto 0 sin APIs de pago. |
 
 ---
 
@@ -323,3 +324,60 @@ Proyecto desarrollado por el equipo **Haizen Lab** para el Reto 0 ("HERE WE GO")
   * Orquestación de Contenedores: [`docker-compose.yml`](docker-compose.yml)
   * Servidor de Contexto MCP: [`mcp/server.py`](mcp/server.py)
   * Control de Configuración y Variables Seguras: [`.env.example`](.env.example) y [`.gitignore`](.gitignore)
+  * Chatbot Asistente RAG Local: [`chatbot/`](chatbot/) (microservicio FastAPI, motor RAG, dataset precalculado y tests).
+
+---
+
+## 12. Asistente Chatbot RAG Local (HaizeLab Assistant)
+
+Para complementar la defensa del Reto 0 y permitir consultas técnicas interactivas durante la presentación, se ha desarrollado **HaizeLab Assistant**, un asistente conversacional embebido en la esquina inferior derecha de la presentación web ([haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app)).
+
+### Características Principales y Filosofía Técnica
+* **100% Local y Gratuito**: Opera sin recurrir a APIs comerciales de pago en la nube (como OpenAI o Anthropic). Compatible con modelos locales ejecutados en Ollama (`qwen2.5:3b`, `llama3.2:3b`) y equipado con un motor RAG determinista de contingencia.
+* **Cero Alucinaciones y Cifras Exactas**: Para magnitudes cuantitativas críticas (reducción neta de -1,63 µg/m³ en NO₂, -14,1% bruto interior vs. -10,8% control, -10,1% en tráfico de San Mamés, 41.700 horas analizadas, etc.), los datos se derivan directamente con Pandas a partir de los datasets limpios y sintetizados en [`chatbot/knowledge_base.json`](chatbot/knowledge_base.json).
+* **Filtro de Seguridad y Dominio Estricto**: Rechaza consultas fuera del alcance del Reto 0 (recetas, política general, criptomonedas, otras ciudades) y neutraliza intentos de inyección de prompts (*jailbreaks* o peticiones de olvido de directivas).
+* **Aislamiento Ergonómico de Teclado**: El widget de chat bloquea la propagación de eventos `keydown`, de modo que escribir en el chat (usando flechas, barra espaciadora o Enter) no cambia de diapositiva en la presentación.
+* **Degradación Elegante en Producción**: Si el evaluador accede a la versión web desplegada en Vercel sin tener arrancado el microservicio local en su máquina, el widget lo detecta, cambia a estado `● Offline` y proporciona las respuestas clave precomputadas junto con la instrucción de arranque.
+
+### Estructura del Componente (`haizelab/chatbot/`)
+```
+haizelab/chatbot/
+|-- main.py                    # Servidor REST FastAPI (endpoints /chat, /health, /info con CORS)
+|-- rag_engine.py              # Motor RAG local, scoring semántico, conector Ollama y fallback
+|-- precomputar_conocimiento.py # Pipeline reproducible de indexación sobre datasets limpios
+|-- knowledge_base.json        # Base de conocimiento estructurada y estadísticas exactas
+|-- test_preguntas.py          # Batería de 18 pruebas automatizadas (proyecto + trampas)
+|-- requirements.txt           # Dependencias ligeras (FastAPI, Uvicorn, Pydantic, HTTPX)
+`-- Dockerfile                 # Contenedor Python 3.11-slim para Docker Compose
+```
+
+### Arranque en un Solo Comando
+
+#### Opción 1: Mediante Docker Compose (Recomendada)
+```bash
+# Levantar el microservicio del chatbot en segundo plano (puerto 8000)
+docker compose up -d chatbot
+
+# Comprobar estado y salud del servicio
+curl http://127.0.0.1:8000/health
+```
+
+#### Opción 2: Ejecución Local en Python
+```bash
+cd chatbot
+pip install -r requirements.txt
+python main.py
+```
+
+### Regeneración de la Base de Conocimiento
+Si se actualizan los datos de calidad del aire, tráfico o meteorología, el índice se recalcula de forma reproducible con:
+```bash
+python chatbot/precomputar_conocimiento.py
+```
+
+### Batería de Pruebas y Validación (18/18 Superadas)
+El asistente incluye una suite de pruebas automatizadas que evalúa tanto la exactitud de las cifras como el rechazo riguroso de preguntas improcedentes:
+```bash
+python chatbot/test_preguntas.py
+```
+* **Resultados**: 18/18 pruebas superadas con éxito (100%), verificando cero desviaciones en métricas econométricas y rechazo instantáneo de inyecciones de código y temáticas ajenas.
