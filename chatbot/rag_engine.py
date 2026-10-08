@@ -43,16 +43,28 @@ OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:1.5b")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
 
-SYSTEM_PROMPT = """Eres HaizeLab Assistant, un asistente de IA inteligente, rápido, claro y muy conciso.
-Especializado en el proyecto HaizeLab (ZBE de Bilbao, calidad del aire y tráfico), pero con capacidad para responder cualquier consulta general.
+SYSTEM_PROMPT = """Eres HaizeLab Assistant, el asistente de IA oficial del proyecto "Haizen Lab · ¿Ha funcionado la ZBE de Bilbao?" (Reto 0 del curso de Especialización en Inteligencia Artificial y Big Data del Centro de Formación Somorrostro).
 
-DIRECTIVAS ESTRICTAS DE RESPUESTA:
-1. BREVEDAD Y CLARIDAD MÁXIMA: Responde en 1 o 2 frases (máximo 3) claras, directas y sencillas.
-2. SIN RODEOS: Ve directo a la respuesta sin fórmulas de cortesía ni preámbulos vacíos.
-3. CONTEXTO PRECISO:
-   - Si te preguntan sobre el Reto 0, la ZBE de Bilbao, aire o tráfico: responde con los datos clave del proyecto (-1,63 µg/m³ neto por Diff-in-Diff; -14,1% bruto en ZBE vs -10,8% fuera; tráfico San Mamés -10,1% en 2024; benceno +13% por fuentes portuarias).
-   - Si te preguntan sobre cualquier otro tema que NO sea de Bilbao/ZBE (ciencia, cultura, tecnología, dudas cotidianas): responde directamente con la explicación correcta de ese tema, SIN mencionar la ZBE ni mezclar temas forzadamente.
-4. LENGUAJE ACCESIBLE: Frases directas, sencillas y naturales."""
+INFORMACIÓN FUNDAMENTAL DEL PROYECTO:
+- Equipo y Desarrolladores:
+  • Iñigo Bilbao (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning con HistGradientBoosting, tests de placebo y la memoria técnica de IA.
+  • Alfred Gabriel (Product Owner / PIA): Responsable del despliegue con Docker Compose, arquitectura del servidor MCP, orquestación de red y ciclo de ramas en Git.
+  • Kerman Irusta (Lead Data Engineer / BDA): Responsable de la ingesta en streaming continuo con Node-RED, almacenamiento en InfluxDB 2.9 (buckets y políticas de seguridad con 4 tokens) y cuadros de mando en Grafana 11.2 con mapas geoespaciales.
+- Centro Educativo: Centro de Formación Somorrostro (Muskiz, Bizkaia).
+- Repositorio oficial en GitHub: https://github.com/ai-somorrostro/haizelab
+- Despliegue web de la presentación: https://haizelab-presentacion.vercel.app/
+- Resultados empíricos clave:
+  • Efecto neto atribuible a la ZBE: -1,63 µg/m³ de NO₂ (-6,4% sobre la línea base interior).
+  • Caída bruta: -14,1% dentro de la ZBE y -10,8% en el control exterior (por meteorología favorable).
+  • Tráfico: En el acceso de San Mamés bajó -10,1% en 2024 y rebotó en 2025 (+7,7%), con un neto de -3,16%.
+  • Benceno: Subió un +13% por fuentes industriales/portuarias exteriores ajenas a la ZBE.
+  • Horas analizadas: 41.700 horas de datos reales cruzando calidad del aire, meteorología y aforos.
+
+DIRECTIVAS DE RESPUESTA:
+1. RESPUESTAS RICAS Y BIEN EXPLICADAS: Responde de forma completa, indagatoria, estructurada y fundamentada. No des respuestas telegráficas ni evasivas. Explica las causas, el contexto y los detalles necesarios.
+2. PRECISIÓN EN EL EQUIPO: Cuando te pregunten quién ha hecho el proyecto, cómo se llaman los desarrolladores o por el repositorio de GitHub, detalla a Iñigo Bilbao, Alfred Gabriel y Kerman Irusta con sus respectivos roles y proporciona el enlace oficial a https://github.com/ai-somorrostro/haizelab.
+3. CONSULTAS GENERALES: Si la pregunta es sobre temas externos (ciencia, cultura, programación), respóndela con claridad y profundidad sin forzar menciones a la ZBE.
+4. ESTILO: Profesional, fluido, en español y con formato Markdown limpio."""
 
 
 def normalizar(s: str) -> str:
@@ -78,25 +90,37 @@ class RAGEngine:
             return {"documentos": [], "estadisticas": {}}
 
     def es_fuera_de_dominio(self, pregunta: str) -> bool:
-        # Ya no bloqueamos ninguna pregunta general
         return False
 
-    def recuperar_contexto(self, pregunta: str, top_k: int = 2) -> list:
-        p_tokens = set(re.findall(r"\w+", normalizar(pregunta)))
+    def recuperar_contexto(self, pregunta: str, top_k: int = 3) -> list:
+        p_norm = normalizar(pregunta)
+        p_tokens = set(re.findall(r"\w+", p_norm))
         puntuados = []
+
+        terminos_equipo = [
+            "equipo", "autor", "autores", "creador", "creadores", "desarrollador",
+            "desarrolladores", "quien", "quienes", "realizado", "hicieron", "hizo",
+            "github", "participante", "integrante", "inigo", "iñigo", "alfred",
+            "kerman", "somorrostro", "nombre", "nombres", "desarrollo"
+        ]
+        es_tema_equipo = any(t in p_norm for t in terminos_equipo)
 
         for doc in self.docs:
             score = 0
+            doc_id = doc.get("id", "")
+
+            if es_tema_equipo and "equipo" in doc_id:
+                score += 30
+
             for kw in doc.get("palabras_clave", []):
-                if normalizar(kw) in normalizar(pregunta):
+                if normalizar(kw) in p_norm:
                     score += 6
             doc_tokens = set(re.findall(r"\w+", normalizar(doc.get("titulo", "") + " " + doc.get("contenido", ""))))
             score += len(p_tokens.intersection(doc_tokens))
             puntuados.append((score, doc))
 
         puntuados.sort(key=lambda x: x[0], reverse=True)
-        # Solo inyectar si hay relevancia real para mantener el prompt ultra-ligero
-        return [doc for score, doc in puntuados[:top_k] if score >= 3]
+        return [doc for score, doc in puntuados[:top_k] if score >= 2]
 
     async def consultar_gemini(self, pregunta: str, contexto_texto: str, historial: list = None) -> str:
         api_key = os.environ.get("GEMINI_API_KEY", GEMINI_API_KEY)
@@ -182,17 +206,20 @@ class RAGEngine:
 
         if contexto_texto.strip():
             prompt_usuario = (
-                f"DATOS CLAVE DEL PROYECTO:\n{contexto_texto}\n\n"
-                f"PREGUNTA:\n{pregunta}\n\n"
-                f"Responde en máximo 2 o 3 frases claras, sencillas y directas sin rodeos."
+                f"DATOS Y EVIDENCIA DEL PROYECTO:\n{contexto_texto}\n\n"
+                f"CONSULTA DEL USUARIO:\n{pregunta}\n\n"
+                f"Instrucción: Responde de forma completa, bien explicada y estructurada. Si preguntan por los autores o desarrolladores, nombra a Iñigo Bilbao, Alfred Gabriel y Kerman Irusta con sus roles y el repositorio oficial https://github.com/ai-somorrostro/haizelab."
             )
         else:
-            prompt_usuario = pregunta
+            prompt_usuario = (
+                f"CONSULTA DEL USUARIO:\n{pregunta}\n\n"
+                f"Instrucción: Si es sobre el proyecto, equipo o autores, nombra a Iñigo Bilbao, Alfred Gabriel y Kerman Irusta con sus roles y el enlace https://github.com/ai-somorrostro/haizelab. Si es sobre otro tema, responde con claridad y buen nivel de detalle."
+            )
 
         messages.append({"role": "user", "content": prompt_usuario})
 
         try:
-            timeout_cfg = httpx.Timeout(25.0, connect=3.0)
+            timeout_cfg = httpx.Timeout(40.0, connect=4.0)
             async with httpx.AsyncClient(timeout=timeout_cfg) as client:
                 res = await client.post(
                     f"{OLLAMA_URL}/api/chat",
@@ -201,10 +228,10 @@ class RAGEngine:
                         "messages": messages,
                         "stream": False,
                         "options": {
-                            "num_predict": 110,
+                            "num_predict": 420,
                             "temperature": 0.25,
-                            "top_p": 0.85,
-                            "num_ctx": 1024,
+                            "top_p": 0.9,
+                            "num_ctx": 1536,
                             "num_thread": 8
                         }
                     }
@@ -299,6 +326,17 @@ class RAGEngine:
                 f"1) **Aplicar un criterio dinámico**: Modular las restricciones con anticipación durante episodios de inversión térmica y calma (< 2 m/s). "
                 f"2) **Monitorizar puntos críticos soterrados**: Desplegar micro-sensores en túneles e intercambiadores donde el tráfico se desvía. "
                 f"3) **Abrir telemetría en streaming**: Publicar APIs en tiempo real de tráfico y aforos para permitir investigación abierta y auditoría ciudadana."
+            )
+
+        # 7. Dimensión de equipo, desarrolladores y repositorio oficial
+        trata_equipo = any(k in p_norm for k in ["equipo", "autor", "creador", "desarrollador", "quien", "quienes", "realizado", "hicieron", "hizo", "github", "participante", "integrante", "inigo", "alfred", "kerman", "somorrostro"])
+        if trata_equipo:
+            párrafos.append(
+                f"El proyecto HaizeLab ha sido desarrollado por tres alumnos del Centro de Formación Somorrostro (Especialización en IA y Big Data):\n\n"
+                f"- **Iñigo Bilbao** (Scrum Master / MIA): Diseño econométrico Diferencias en Diferencias (Diff-in-Diff), modelo de Machine Learning (HistGradientBoosting), tests de placebo y memoria MIA.\n"
+                f"- **Alfred Gabriel** (Product Owner / PIA): Despliegue con Docker Compose, orquestación de servicios, servidor MCP y gestión de ramas Git.\n"
+                f"- **Kerman Irusta** (Lead Data Engineer / BDA): Ingesta en streaming con Node-RED 5.0, series temporales en InfluxDB 2.9 (4 tokens de seguridad) y dashboards con mapas en Grafana 11.2.\n\n"
+                f"El repositorio oficial en GitHub es: [https://github.com/ai-somorrostro/haizelab](https://github.com/ai-somorrostro/haizelab)."
             )
 
         if párrafos:
