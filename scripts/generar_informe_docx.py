@@ -245,7 +245,7 @@ def construir_documento():
     set_table_borders(t_meta, "single", HEX_BORDER, "4")
     meta_info = [
         ("Cliente Institucional", "Ayuntamiento de Bilbao — Área de Movilidad y Sostenibilidad"),
-        ("Equipo Consultor", "Haizen Lab: Alfred Gabriel, Iñigo Bilbao, Kerman Irusta"),
+        ("Equipo Consultor", "Haizen Lab: Alfred Gabriel, Iñigo Guzman, Kerman Irusta"),
         ("Ámbitos Evaluados", "Calidad del Aire (Euskadi), Tráfico (Bizkaia) y Meteorología (Open-Meteo)"),
         ("Fecha de Entrega", "Octubre de 2026 · Versión Final para Comité de Dirección")
     ]
@@ -497,9 +497,9 @@ def construir_documento():
         r.font.name, r.font.size, r.bold, r.font.color.rgb = "Arial", Pt(8), True, RGB_WHITE
 
     miembros = [
-        ("Alfred Gabriel", "Product Owner / PIA", "Arquitectura Docker Compose, servicio MCP, pipeline y Git Feature Branching."),
-        ("Iñigo Bilbao", "Scrum Master / MIA", "Diseño del modelo predictivo contrafactual (GBM), validación y memoria MIA."),
-        ("Kerman Irusta", "Lead Data Eng. / BDA", "Flujos Node-RED, series InfluxDB, tokens de seguridad y paneles en Grafana.")
+        ("Iñigo Guzman", "Lead Data Eng. / BDA", "Flujos Node-RED, series InfluxDB, tokens de seguridad y paneles en Grafana."),
+        ("Kerman Irusta", "Scrum Master / MIA", "Diseño del modelo predictivo contrafactual (GBM), validación y memoria MIA."),
+        ("Alfred Gabriel", "Product Owner / PIA", "Arquitectura Docker Compose, servicio MCP, pipeline y Git Feature Branching.")
     ]
     for r_i, (nom, rol, resp) in enumerate(miembros):
         bg = HEX_LIGHT_BG if r_i % 2 == 1 else "FFFFFF"

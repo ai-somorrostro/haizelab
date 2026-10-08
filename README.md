@@ -2,7 +2,7 @@
 
 > **Evaluación de impacto de la Zona de Bajas Emisiones (ZBE) en la calidad del aire de Bilbao (2022-2026).**  
 > Reto 0 ("HERE WE GO") — Centro de Formación Somorrostro | Especialización en Inteligencia Artificial y Big Data.  
-> **Equipo Haizen Lab:** Alfred Gabriel (PO / PIA), Iñigo Bilbao (SM / MIA), Kerman Irusta (Lead Data Engineer / BDA).
+> **Equipo Haizen Lab:** Alfred Gabriel (PO / PIA), Iñigo Guzman (Lead Data Engineer / BDA), Kerman Irusta (SM / MIA).
 
 ---
 
@@ -15,9 +15,9 @@ Para la defensa del proyecto y evaluación, todos los componentes se encuentran 
 | **Presentación Web Oficial** | [haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app) | Libre (Acceso público global) | Despliegue en producción (Vercel). Presentación interactiva del proyecto con diapositivas, arquitectura y cuadros de mando embebidos en tiempo real. |
 | **Cuadro de Mando Ejecutivo (Grafana)** | Embebido en Diapositiva 10 o [Acceso Directo](https://developments-near-falls-colony.trycloudflare.com/public-dashboards/7682f12f758249fb8947da0858fd1b3d) | Token Público: `7682f12f758249fb8947da0858fd1b3d` | Relojes de NO₂ por estación en tiempo real, histórico acumulado y ratios de cumplimiento normativo (OMS / UE). Sin requerir login. |
 | **Cuadro de Mando Analítico (Grafana)** | Embebido en Diapositiva 10 o [Acceso Directo](https://developments-near-falls-colony.trycloudflare.com/public-dashboards/2ce28d0a8bd5455ab30ce40353b34b8b) | Token Público: `2ce28d0a8bd5455ab30ce40353b34b8b` | Análisis multivariable: contraste dentro vs. fuera de la ZBE, aforos de tráfico y correlación meteorológica. |
-| **InfluxDB 2.9 (En Vivo / Interactivo)** | Embebido en Diapositiva 11 o [Acceso Directo](https://most-filling-sorry-county.trycloudflare.com) | Usuario `admin` (Clave en `.env`) | Data Explorer, consultas Flux en tiempo real a los 4 buckets y gestión de series temporales. |
-| **Node-RED 5.0 (En Vivo / Interactivo)** | Embebido en Diapositiva 11 o [Acceso Directo](https://oclc-abc-gibraltar-store.trycloudflare.com) | Acceso directo | Editor de flujos de streaming en tiempo real (`meteo`, `trafico`, `aire_demo`). |
-| **Túneles Seguros Cloudflare** | `*.trycloudflare.com` | Activos hacia puertos 3000, 8086 y 1880 | Exposición segura de Grafana, InfluxDB y Node-RED sin abrir puertos en el router. |
+| **InfluxDB 2.9 (En Vivo / Interactivo)** | Embebido en Diapositiva 11 o [Acceso Directo](https://most-filling-sorry-county.trycloudflare.com) | Usuario `admin` (Credenciales protegidas en `.env`) | Data Explorer, consultas Flux en tiempo real a los 4 buckets y gestión de series temporales. |
+| **Node-RED 5.0 (En Vivo / Interactivo)** | Embebido en Diapositiva 11 o [Acceso Directo](https://oclc-abc-gibraltar-store.trycloudflare.com) | Autenticación `adminAuth` (Hash bcrypt protegido) | Editor de flujos de streaming en tiempo real (`meteo`, `trafico`, `aire_demo`). Requiere credenciales de administrador para evitar alteraciones no autorizadas. |
+| **Túneles Seguros Cloudflare** | `*.trycloudflare.com` | Cifrado TLS / QUIC sin puertos NAT expuestos | Exposición segura de Grafana, InfluxDB, Node-RED y Chatbot hacia la web en Vercel resolviendo *Mixed Content*. |
 | **Grafana Corporativo (Local)** | `http://localhost:3000` | RBAC: `directora`, `analista1-6`, `it_admin1-3` (Clave en `.env`) | Panel completo con control de acceso por roles (Viewer, Editor, Admin), alertas y datasource InfluxDB. |
 | **Node-RED (Local)** | `http://localhost:1880` | Acceso directo local | Gestión y monitorización local de flujos de ingesta. |
 | **InfluxDB 2.9 (Local)** | `http://localhost:8086` | Usuario `admin` (Clave en `.env`) | Motor de series temporales local. |
@@ -127,47 +127,172 @@ haizelab/
 
 ---
 
-## 4. Guía de Despliegue y Puesta en Marcha
+## 4. Infraestructura Híbrida: Despliegue en Vercel, Túneles Cloudflare y Visualización Embebida
+
+Para la defensa oficial del proyecto ante el tribunal y evaluación institucional, la arquitectura combina un frontend público global con una pila analítica pesada ejecutada en local:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        WEB PÚBLICA (Vercel)                            │
+│  https://haizelab-presentacion.vercel.app (HTTPS / SSL Global)         │
+│  - Diapositivas interactivas en HTML5 / CSS3 / JS Vanilla              │
+│  - Widget de Chatbot flotante (Estilo PcComponentes)                   │
+│  - Diapositiva 10: Iframe interactivo de Grafana                       │
+│  - Diapositiva 11: Iframes interactivos de InfluxDB y Node-RED         │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+              Peticiones HTTPS     │ Tráfico seguro cifrado (TLS / QUIC)
+              (Túneles inversos)   │ [Resuelve bloqueo de Mixed Content]
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   RED PERIMETRAL CLOUDFLARE EDGE                       │
+│  *.trycloudflare.com (Certificados SSL oficiales automáticos)          │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │ Conexión saliente QUIC
+                                   │ (Sin abrir puertos en el router)
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                     STACK LOCAL (Docker Compose)                       │
+│  - Grafana 11.2       ──► localhost:3000                               │
+│  - InfluxDB 2.9       ──► localhost:8086                               │
+│  - Node-RED 5.0       ──► localhost:1880                               │
+│  - FastAPI Chatbot    ──► localhost:8000                               │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### ¿Por qué se utilizan Túneles de Cloudflare (`cloudflared`)?
+1. **Resolución del bloqueo por *Mixed Content*:** La presentación web está alojada en Vercel bajo `https://` con cifrado SSL. Si un navegador intenta incrustar mediante un `<iframe>` un recurso local HTTP (`http://localhost:3000` o `http://127.0.0.1:1880`), las directivas de seguridad de los navegadores modernos (W3C Mixed Content Specification) **bloquean la conexión inmediatamente** por considerarla insegura. Al usar Cloudflare, los servicios locales reciben una URL pública segura con `https://` y certificado válido, permitiendo su visualización transparente en los iframes.
+2. **Exposición remota sin vulnerar la red (Zero Open Ports):** Exponer servicios abriendo puertos en el router de casa o del centro (NAT / Port Forwarding) presenta riesgos severos: expone la IP pública real a escaneos automatizados, ataques de denegación de servicio (DDoS) o intentos de intrusión por fuerza bruta, además de fallar si la conexión utiliza CGNAT. Con `cloudflared`, es la propia máquina local la que inicia una conexión **saliente** cifrada hacia los servidores Anycast de Cloudflare, sin necesidad de abrir ningún puerto entrante en el router ni configurar DNS dinámico.
+
+### Cómo levantar los túneles paso a paso (Windows, Linux, macOS)
+El binario oficial de Cloudflare (`cloudflared`) es gratuito y no requiere tarjeta de crédito ni cuenta de pago:
+
+#### 1. Instalación de `cloudflared`
+* **Windows (PowerShell con Winget):**
+  ```powershell
+  winget install --id Cloudflare.cloudflared
+  ```
+* **Linux (Ubuntu / Debian):**
+  ```bash
+  curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+  sudo dpkg -i cloudflared.deb
+  ```
+* **macOS (Homebrew):**
+  ```bash
+  brew install cloudflared
+  ```
+
+#### 2. Comandos para exponer cada servicio
+En terminales separadas (o en segundo plano), ejecutar el comando según el servicio que se desee visualizar en la web:
+
+```bash
+# Túnel para Grafana (puerto 3000)
+cloudflared tunnel --url http://localhost:3000
+
+# Túnel para InfluxDB (puerto 8086)
+cloudflared tunnel --url http://localhost:8086
+
+# Túnel para Node-RED (puerto 1880)
+cloudflared tunnel --url http://localhost:1880
+
+# Túnel para el Chatbot FastAPI (puerto 8000)
+cloudflared tunnel --url http://localhost:8000
+```
+Cada comando imprimirá en consola una URL efímera segura del tipo:  
+`https://<palabras-aleatorias>.trycloudflare.com`
+
+#### 3. Vinculación con la Presentación Web en Vercel
+La presentación en Vercel está preparada para enlazar los túneles mediante parámetros en la URL o a través de la interfaz:
+* **Para Grafana en Diapositiva 10:**  
+  `https://haizelab-presentacion.vercel.app/?grafana=https://<tunel-grafana>.trycloudflare.com#10`
+* **Para InfluxDB y Node-RED en Diapositiva 11:**  
+  La diapositiva 11 dispone de pestañas interactivas con selector de modo:
+  * **Modo Live:** Carga el iframe interactivo en vivo a través del túnel seguro.
+  * **Modo Captura (Mockup):** Si el evaluador no tiene el stack local levantado o el túnel está inactivo, la interfaz muestra capturas de alta definición con el esquema y los flujos reales para que cualquier persona en el mundo pueda auditar la arquitectura sin requerir servicios corriendo en su máquina.
+  * **Botón Pantalla Completa:** Permite expandir el iframe ocupando el 100% del monitor (pulsar botón cerrar o tecla `Esc` para regresar).
+
+---
+
+## 5. Capa de Seguridad Perimetral, Autenticación y Credenciales
+
+Al exponer servicios locales a través de internet mediante túneles públicos, la seguridad se convierte en una prioridad innegociable. Se ha implementado un esquema defensivo en profundidad de modo que **ninguna persona no autorizada pueda alterar configuraciones, inyectar código o modificar datos**:
+
+### 1. Protección en Grafana (Public Dashboards Desacoplados + RBAC)
+* **Visualización anónima controlada:** Los cuadros de mando embebidos en Vercel utilizan exclusivamente la característica de **Public Dashboards** de Grafana (`/public-dashboards/<uuid>`). Este endpoint genera una vista restringida que **únicamente** renderiza las gráficas seleccionadas. Un visitante público no tiene acceso a la barra lateral, no puede editar paneles, no puede acceder a las fuentes de datos ni ejecutar consultas Flux arbitrarias.
+* **Consola administrativa blindada:** El acceso anónimo al panel de Grafana está completamente desactivado (`GF_AUTH_ANONYMOUS_ENABLED=false`). Cualquier intento de acceder a `http://<tunel>/login` o `/admin` exige autenticación con credenciales RBAC seguras (Viewer, Editor, Admin) definidas en `.env`.
+
+### 2. Protección en Node-RED (`adminAuth` con Hash Bcrypt)
+* **Bloqueo del editor de flujos:** En [`nodered/settings.js`](nodered/settings.js), se ha habilitado la directiva oficial de seguridad `adminAuth`.
+* **Credenciales cifradas:** La contraseña del usuario administrador está protegida mediante un hash criptográfico **bcrypt** (`$2b$08$...`).
+* **Seguridad ante accesos externos:** Si un evaluador o usuario ajeno accede a la URL del túnel de Node-RED, el navegador le solicitará inmediatamente usuario y contraseña. Nadie puede ver la topología de nodos, extraer tokens de InfluxDB ni alterar las rutinas de ingesta sin autorización explícita.
+
+### 3. Protección en InfluxDB 2.9 (Tokens de Mínimo Privilegio)
+* **Organización y Administrador:** Inicializados con contraseña robusta en `.env` mediante el script `init-influxdb.sh`.
+* **Segregación estricta de tokens API:** No se utiliza un token maestro único. Se han creado 4 tokens con permisos estrictamente acotados:
+  * `nodered-write`: Concesión exclusiva de escritura en los buckets de streaming (`meteo`, `trafico`, `aire_demo`). Sin permiso de lectura ni acceso al bucket histórico `aire`.
+  * `batch-write`: Concesión de escritura específica para scripts de ingesta por lotes (ETL).
+  * `grafana-read`: Permiso de solo lectura sobre buckets de métricas para visualización en cuadros de mando.
+  * `mcp-read`: Permiso de solo lectura acotado para el conector de modelos de IA.
+  * El token de administración (`INFLUXDB_ADMIN_TOKEN`) permanece restringido al entorno interno de Docker y nunca se expone en la web.
+
+### 4. Aislamiento de Red Docker
+* Todos los servicios dialogan entre sí a través de la red privada interna `haizelab_network`. Los contenedores de aprovisionamiento (`haizelab_influxdb_setup`) se apagan automáticamente (`exited 0`) tras completar la inicialización de seguridad para no consumir recursos ni ofrecer superficie de ataque.
+
+---
+
+## 6. Guía de Despliegue Universal (Paso a Paso para Cualquier Usuario)
+
+Cualquier evaluador, docente o desarrollador puede clonar y ejecutar este proyecto de forma limpia en su propio equipo (Windows, Linux o Mac) siguiendo estos sencillos pasos:
 
 ### Requisitos previos
-* Docker Engine 24+ y Docker Compose v2+.
-* Git.
-* Python 3.10+ (solo para ejecución del pipeline fuera de Docker).
+* **Git** instalado.
+* **Docker Engine 24+** y **Docker Compose v2+** (por ejemplo, Docker Desktop en Windows/Mac o docker-ce en Linux).
+* *(Opcional)* Python 3.10+ y Ollama si se desea probar el chatbot o ejecutar cuadernos analíticos localmente sin Docker.
 
-### Paso 1: Clonación del repositorio
+### Paso 1: Clonar el repositorio y situarse en la rama de trabajo
 ```bash
 git clone https://github.com/ai-somorrostro/haizelab.git
 cd haizelab
 git checkout develop
 ```
 
-### Paso 2: Configuración de variables de entorno
-Copiar la plantilla oficial segura:
+### Paso 2: Configurar las variables de entorno
+Copiar la plantilla de configuración segura:
 ```bash
+# En Windows (PowerShell) o Linux/macOS (Bash):
 cp .env.example .env
 ```
-*Los valores suministrados en `.env.example` permiten arrancar inmediatamente el entorno local con contraseñas y tokens pregenerados de desarrollo.*
+*La plantilla `.env.example` contiene valores seguros predeterminados para desarrollo local. No es necesario modificar ningún parámetro para una ejecución de prueba inmediata.*
 
-### Paso 3: Construcción y arranque del stack multicontenedor
+### Paso 3: Levantar la infraestructura completa con Docker Compose
 ```bash
 docker compose up -d --build
 ```
+*Este comando compilará y arrancará en segundo plano los servicios de InfluxDB, Node-RED, Grafana con sus dashboards preconfigurados y el conector MCP.*
 
-### Paso 4: Verificación de estado de los servicios
-Tras 25-40 segundos, verificar que todos los servicios estén operativos:
+### Paso 4: Comprobar que todos los servicios están listos
+Tras esperar unos 25-35 segundos para que los scripts de aprovisionamiento finalicen, ejecutar:
 ```bash
 docker compose ps
 ```
-Salida esperada:
-* `haizelab_influxdb`: `healthy` en puerto `127.0.0.1:8086`.
-* `haizelab_influxdb_setup`: estado `exited (0)` (inicialización completada con éxito).
-* `haizelab_nodered`: `healthy` en puerto `127.0.0.1:1880`.
-* `haizelab_grafana`: `healthy` en puerto `127.0.0.1:3000`.
-* `haizelab_influx_mcp`: `running` en puerto `127.0.0.1:5001`.
+**Salida esperada:**
+* `haizelab_influxdb`: Estado `Up (healthy)` en `127.0.0.1:8086`.
+* `haizelab_influxdb_setup`: Estado `Exited (0)` (inicialización completada con éxito).
+* `haizelab_nodered`: Estado `Up (healthy)` en `127.0.0.1:1880`.
+* `haizelab_grafana`: Estado `Up (healthy)` en `127.0.0.1:3000`.
+* `haizelab_influx_mcp`: Estado `Up` en `127.0.0.1:5001`.
+
+### Paso 5: Abrir y probar los servicios en el navegador
+* **Grafana:** Abrir `http://localhost:3000` (Usuarios de prueba: `directora`, `analista1`, `it_admin1` con contraseñas indicadas en la sección RBAC).
+* **Node-RED:** Abrir `http://localhost:1880` (Editor de flujos de streaming continuo).
+* **InfluxDB:** Abrir `http://localhost:8086` (Explorador de series temporales y lenguaje Flux).
+* **Presentación Web Oficial:** Acceder a [https://haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app) para consultar las diapositivas del proyecto y la defensa técnica.
 
 ---
 
-## 5. Control de Acceso por Roles (RBAC) en Grafana
+---
+
+## 7. Control de Acceso por Roles (RBAC) en Grafana
 
 Para dar estricto cumplimiento a los requerimientos de seguridad y privacidad corporativa de la dirección, el acceso anónimo general ha sido revocado (`GF_AUTH_ANONYMOUS_ENABLED=false`), implementando un script de auto-aprovisionamiento por API (`grafana/provisioning/access-control/setup-access.sh`) que configura los equipos y usuarios:
 
@@ -183,7 +308,7 @@ Para dar estricto cumplimiento a los requerimientos de seguridad y privacidad co
 
 ---
 
-## 6. Arquitectura de Series Temporales (InfluxDB 2.9)
+## 8. Arquitectura de Series Temporales (InfluxDB 2.9)
 
 ### 1. Buckets y Políticas de Retención
 El almacenamiento se estructura en cuatro buckets optimizados según la naturaleza y ciclo de vida del dato:
@@ -214,7 +339,7 @@ Para garantizar tiempos de respuesta en milisegundos y evitar la explosión de c
 
 ---
 
-## 7. Ingesta Continua (Node-RED) y Pipeline ETL (Pandas)
+## 9. Ingesta Continua (Node-RED) y Pipeline ETL (Pandas)
 
 ### Streaming en Node-RED (http://localhost:1880)
 1. **Flujo `meteo` (Cadencia: 15 minutos):** Consulta la API REST de Open-Meteo, extrae temperatura, viento (velocidad y dirección), precipitación y humedad, estructura el payload en Line Protocol y escribe en el bucket `meteo`.
@@ -230,7 +355,7 @@ El script reproducible [`ingesta/descargar_y_limpiar.py`](ingesta/descargar_y_li
 
 ---
 
-## 8. Modelos de Inteligencia Artificial (Módulo MIA)
+## 10. Modelos de Inteligencia Artificial (Módulo MIA)
 
 El diseño y justificación del modelo de IA se rige por las directivas del documento [`docs/propuesta-modelo-ia.md`](docs/propuesta-modelo-ia.md) y la memoria [`docs/MIA_Haizen_Lab.pdf`](docs/MIA_Haizen_Lab.pdf), estructurado conforme a los Resultados de Aprendizaje de la asignatura:
 
@@ -249,7 +374,7 @@ Para resolver la pregunta del Ayuntamiento, se seleccionó un modelo cuasiexperi
 
 ---
 
-## 9. Resultados Econométricos y Veredicto Institucional
+## 11. Resultados Econométricos y Veredicto Institucional
 
 A partir del análisis conjunto de 8 estaciones (2 interiores en Abando: Mazarredo y María Díaz de Haro; 5 de control metropolitano: Europa, Barakaldo, Basauri, Erandio, Castrejana; y 1 de fondo: Monte Arraiz), los resultados contrastados son:
 
@@ -272,7 +397,7 @@ A partir del análisis conjunto de 8 estaciones (2 interiores en Abando: Mazarre
 
 ---
 
-## 10. Pipeline de Ejecución Analítica del Módulo SBD
+## 12. Pipeline de Ejecución Analítica del Módulo SBD
 
 ### Opción A: Ejecución en Contenedores Docker (Recomendada)
 ```bash
@@ -300,13 +425,93 @@ python scripts/generar_informe_docx.py
 
 ---
 
-## 11. Autores, Roles Scrum y Entregables Oficiales
+## 13. Asistente Chatbot RAG Inteligente (HaizeLab Assistant)
+
+Para complementar la defensa del Reto 0 y permitir consultas técnicas interactivas durante la presentación, se ha desarrollado **HaizeLab Assistant**, un asistente conversacional embebido en la esquina inferior derecha de la presentación web ([haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app)).
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│             INTERFAZ DE USUARIO (Inspirada en PcComponentes)           │
+│  - Encabezado Índigo Corporativo (#1b054c) con estado en vivo          │
+│  - Tipografía equilibrada y legible (13.5px) con respuestas concisas   │
+│  - Burbujas de usuario en melocotón suave (#fde5d9)                    │
+│  - Respuestas del asistente en fondo blanco con enlaces clicables      │
+│  - Botón de reinicio rápido de conversación (#ea580c)                  │
+│  - Barra deslizante (slider) para ajustar el tamaño de la ventana      │
+│  - Input con foco azul (#0070f3) y aislamiento ergonómico de teclado   │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │ HTTP POST /chat (JSON)
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                BACKEND LIGERO EN FASTAPI (chatbot/main.py)              │
+│  - Microservicio Python asíncrono en puerto 8000 con CORS habilitado   │
+│  - Endpoints REST: /chat, /health, /info                               │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+         ┌─────────────────────────┴─────────────────────────┐
+         │                                                   │
+         ▼                                                   ▼
+┌──────────────────────────────────┐ ┌──────────────────────────────────┐
+│   BASE DE CONOCIMIENTO LOCAL     │ │    MOTOR GENERATIVO LOCAL        │
+│   (chatbot/knowledge_base.json)  │ │    (Ollama con Qwen 2.5:1.5b)    │
+│  - Cifras exactas del Reto 0     │ │  - Razonamiento conversacional   │
+│  - Extracción directa con Pandas │ │  - Respuestas rápidas y fluidas  │
+│  - Cero alucinaciones de IA      │ │  - Fallback determinista local   │
+└──────────────────────────────────┘ └──────────────────────────────────┘
+```
+
+### ¿Cómo se ha hecho el Chatbot de manera sencilla?
+La arquitectura se divide en 4 componentes fáciles de entender y mantener:
+
+1. **Frontend Integrado (UI Estilo PcComponentes):**
+   * El widget reside directamente en el código de la presentación (`haizelab-presentacion/index.html`).
+   * **Tipografía optimizada:** Se redujo el tamaño de fuente a `13.5px` con interlineado natural (`line-height: 1.55`), eliminando los textos gigantescos para que las respuestas sean limpias, proporcionadas y fáciles de leer.
+   * **Paleta visual moderna:** Cabecera morada índigo (`#1b054c`), burbujas del usuario en tono melocotón suave (`#fde5d9`), respuestas del asistente sobre blanco puro con enlaces directos en azul subrayado.
+   * **Controles ergonómicos:** Botón cuadrado de reinicio con icono de recarga naranja (`#ea580c`), control deslizante para ajustar el ancho y alto del chat según el tamaño del monitor (almacenado automáticamente en `localStorage`), y aislamiento estricto de eventos de teclado (`keydown.stopPropagation()`) para que escribir consultas no active atajos ni cambie de diapositiva.
+2. **Backend Ligero (FastAPI en Python):**
+   * Ubicado en [`chatbot/main.py`](chatbot/main.py). Es un microservicio de menos de 100 líneas de código que expone el endpoint `/chat`. Recibe la consulta del usuario, recupera el contexto relevante y devuelve la respuesta en formato JSON en cuestión de milisegundos.
+3. **Base de Conocimiento RAG (Cero Alucinaciones):**
+   * Para evitar que un modelo de lenguaje "invente" datos, el script [`chatbot/precomputar_conocimiento.py`](chatbot/precomputar_conocimiento.py) utiliza Pandas para leer directamente los datasets limpios y precalcular las métricas oficiales en [`chatbot/knowledge_base.json`](chatbot/knowledge_base.json).
+   * Contiene los valores exactos: reducción neta de **-1,63 µg/m³** (-6,4%), **41.700 horas** analizadas, variación del tráfico en San Mamés (**-3,16%** neto), estaciones meteorológicas y la autoría oficial del proyecto (**Alfred Gabriel, Iñigo Guzman y Kerman Irusta** con enlace al [repositorio en GitHub](https://github.com/ai-somorrostro/haizelab)).
+4. **Razonamiento Local con Ollama (100% Gratuito y Privado):**
+   * Si el equipo dispone de **Ollama** con el modelo ligero `qwen2.5:1.5b` (o similar), el backend le inyecta el contexto oficial y el modelo razona la respuesta en lenguaje natural de forma ultrarrápida.
+   * Si Ollama no está instalado o no se dispone de tarjeta gráfica, el backend activa automáticamente su **motor determinista de contingencia**: responde de inmediato con las métricas del JSON sin requerir GPUs ni conexión a internet.
+
+### Arranque en un Solo Comando
+Cualquiera puede iniciar el chatbot en su propia máquina de dos formas:
+
+#### Opción 1: Con Docker Compose (Recomendada)
+```bash
+# Levantar el microservicio del chatbot en el puerto 8000
+docker compose up -d chatbot
+
+# Comprobar salud del servicio
+curl http://127.0.0.1:8000/health
+```
+
+#### Opción 2: Con Python local
+```bash
+cd chatbot
+pip install -r requirements.txt
+python main.py
+```
+
+### Batería de Pruebas Automatizadas (18/18 Superadas)
+Para verificar la exactitud de las respuestas y el bloqueo de preguntas ajenas al proyecto, se incluye una suite de pruebas automatizadas:
+```bash
+python chatbot/test_preguntas.py
+```
+* **Resultados:** 18 de 18 pruebas superadas (100%), verificando cero discrepancias numéricas en las métricas de NO₂, tráfico y fechas de la ZBE.
+
+---
+
+## 14. Autores, Metodología Scrum y Entregables Oficiales
 
 Proyecto desarrollado por el equipo **Haizen Lab** para el Reto 0 ("HERE WE GO") del Centro de Formación Somorrostro:
 
 * **Alfred Gabriel** (Product Owner / PIA): Diseño y orquestación del stack Docker Compose, desarrollo del servicio Model Context Protocol (MCP), orquestación de red y gestión de calidad y ramas en Git.
-* **Iñigo Bilbao** (Scrum Master / MIA): Diseño econométrico y causal del modelo de Machine Learning (HistGradientBoosting / Diff-in-Diff), tests de robustez y control placebo, memoria técnica MIA y coordinación ágil.
-* **Kerman Irusta** (Lead Data Engineer / BDA): Flujos de streaming continuo en Node-RED, diseño del modelo de series temporales en InfluxDB 2.9 (buckets, retenciones y 4 tokens de seguridad), diseño de cuadros de mando y RBAC en Grafana 11.2.
+* **Iñigo Guzman** (Lead Data Engineer / BDA): Flujos de streaming continuo en Node-RED 5.0, diseño del modelo de series temporales en InfluxDB 2.9 (buckets, retenciones y 4 tokens de seguridad), diseño de cuadros de mando y RBAC en Grafana 11.2 con mapas geoespaciales.
+* **Kerman Irusta** (Scrum Master / MIA): Diseño econométrico y causal del modelo de Machine Learning (HistGradientBoosting / Diff-in-Diff), tests de robustez y control placebo, memoria técnica MIA y coordinación ágil.
 
 ### Entregables Oficiales Disponibles en el Repositorio
 * **Módulo SBD (Sistemas de Big Data)**:
@@ -325,59 +530,28 @@ Proyecto desarrollado por el equipo **Haizen Lab** para el Reto 0 ("HERE WE GO")
   * Servidor de Contexto MCP: [`mcp/server.py`](mcp/server.py)
   * Control de Configuración y Variables Seguras: [`.env.example`](.env.example) y [`.gitignore`](.gitignore)
   * Chatbot Asistente RAG Local: [`chatbot/`](chatbot/) (microservicio FastAPI, motor RAG, dataset precalculado y tests).
+* **Presentación Web Interactiva**:
+  * Código fuente completo de diapositivas y chatbot embebido: [`presentacion/`](presentacion/) (listo para editar y desplegar localmente o en Vercel).
+  * Despliegue en producción: [haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app).
 
 ---
 
-## 12. Asistente Chatbot RAG Local (HaizeLab Assistant)
+## 15. Flujo de Trabajo en Git (Feature Branching y Versionado)
 
-Para complementar la defensa del Reto 0 y permitir consultas técnicas interactivas durante la presentación, se ha desarrollado **HaizeLab Assistant**, un asistente conversacional embebido en la esquina inferior derecha de la presentación web ([haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app)).
+Para asegurar la calidad del código, la trazabilidad de los cambios y evitar conflictos entre los tres integrantes del equipo, el proyecto sigue una disciplina estricta de **Feature Branching**:
 
-### Características Principales y Filosofía Técnica
-* **100% Local y Gratuito**: Opera sin recurrir a APIs comerciales de pago en la nube (como OpenAI o Anthropic). Compatible con modelos locales ejecutados en Ollama (`qwen2.5:3b`, `llama3.2:3b`) y equipado con un motor RAG determinista de contingencia.
-* **Cero Alucinaciones y Cifras Exactas**: Para magnitudes cuantitativas críticas (reducción neta de -1,63 µg/m³ en NO₂, -14,1% bruto interior vs. -10,8% control, -10,1% en tráfico de San Mamés, 41.700 horas analizadas, etc.), los datos se derivan directamente con Pandas a partir de los datasets limpios y sintetizados en [`chatbot/knowledge_base.json`](chatbot/knowledge_base.json).
-* **Filtro de Seguridad y Dominio Estricto**: Rechaza consultas fuera del alcance del Reto 0 (recetas, política general, criptomonedas, otras ciudades) y neutraliza intentos de inyección de prompts (*jailbreaks* o peticiones de olvido de directivas).
-* **Aislamiento Ergonómico de Teclado**: El widget de chat bloquea la propagación de eventos `keydown`, de modo que escribir en el chat (usando flechas, barra espaciadora o Enter) no cambia de diapositiva en la presentación.
-* **Degradación Elegante en Producción**: Si el evaluador accede a la versión web desplegada en Vercel sin tener arrancado el microservicio local en su máquina, el widget lo detecta, cambia a estado `● Offline` y proporciona las respuestas clave precomputadas junto con la instrucción de arranque.
-
-### Estructura del Componente (`haizelab/chatbot/`)
 ```
-haizelab/chatbot/
-|-- main.py                    # Servidor REST FastAPI (endpoints /chat, /health, /info con CORS)
-|-- rag_engine.py              # Motor RAG local, scoring semántico, conector Ollama y fallback
-|-- precomputar_conocimiento.py # Pipeline reproducible de indexación sobre datasets limpios
-|-- knowledge_base.json        # Base de conocimiento estructurada y estadísticas exactas
-|-- test_preguntas.py          # Batería de 18 pruebas automatizadas (proyecto + trampas)
-|-- requirements.txt           # Dependencias ligeras (FastAPI, Uvicorn, Pydantic, HTTPX)
-`-- Dockerfile                 # Contenedor Python 3.11-slim para Docker Compose
+[main]          ───●──────────────────────────────────────────────●───► (Versión de Entrega y Producción)
+                   │                                              ▲
+                   │                                              │ merge
+[develop]       ───●───────────●──────────────────●───────────────●───► (Integración Continua)
+                               ▲                  ▲
+                      merge    │         merge    │
+[feature/...]   ───────────────●                  │
+                                                  │
+[docs/...]      ──────────────────────────────────●
 ```
 
-### Arranque en un Solo Comando
-
-#### Opción 1: Mediante Docker Compose (Recomendada)
-```bash
-# Levantar el microservicio del chatbot en segundo plano (puerto 8000)
-docker compose up -d chatbot
-
-# Comprobar estado y salud del servicio
-curl http://127.0.0.1:8000/health
-```
-
-#### Opción 2: Ejecución Local en Python
-```bash
-cd chatbot
-pip install -r requirements.txt
-python main.py
-```
-
-### Regeneración de la Base de Conocimiento
-Si se actualizan los datos de calidad del aire, tráfico o meteorología, el índice se recalcula de forma reproducible con:
-```bash
-python chatbot/precomputar_conocimiento.py
-```
-
-### Batería de Pruebas y Validación (18/18 Superadas)
-El asistente incluye una suite de pruebas automatizadas que evalúa tanto la exactitud de las cifras como el rechazo riguroso de preguntas improcedentes:
-```bash
-python chatbot/test_preguntas.py
-```
-* **Resultados**: 18/18 pruebas superadas con éxito (100%), verificando cero desviaciones en métricas econométricas y rechazo instantáneo de inyecciones de código y temáticas ajenas.
+* **Rama `main`:** Rama protegida que contiene únicamente versiones estables y entregas oficiales.
+* **Rama `develop`:** Rama principal de integración continua donde convergen las características validadas antes de la release final.
+* **Ramas de funcionalidad (`feature/...` y `docs/...`):** Cada tarea o requisito se desarrolla en una rama aislada creada a partir de `develop`. Una vez finalizada y verificada mediante pruebas locales, se integra en `develop` garantizando commits atómicos y mensajes semánticos convencionales (`feat:`, `fix:`, `docs:`, `perf:`).
