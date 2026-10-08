@@ -47,9 +47,9 @@ SYSTEM_PROMPT = """Eres HaizeLab Assistant, el asistente de IA oficial del proye
 
 INFORMACIÓN FUNDAMENTAL DEL PROYECTO:
 - Equipo y Desarrolladores:
-  • Iñigo Bilbao (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning con HistGradientBoosting, tests de placebo y la memoria técnica de IA.
+  • Iñigo Guzman (Lead Data Engineer / BDA): Responsable de la ingesta en streaming continuo con Node-RED 5.0, almacenamiento en InfluxDB 2.9 (buckets y políticas de seguridad con 4 tokens) y cuadros de mando en Grafana 11.2 con mapas geoespaciales.
+  • Kerman Irusta (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning con HistGradientBoosting, tests de placebo y la memoria técnica de IA.
   • Alfred Gabriel (Product Owner / PIA): Responsable del despliegue con Docker Compose, arquitectura del servidor MCP, orquestación de red y ciclo de ramas en Git.
-  • Kerman Irusta (Lead Data Engineer / BDA): Responsable de la ingesta en streaming continuo con Node-RED, almacenamiento en InfluxDB 2.9 (buckets y políticas de seguridad con 4 tokens) y cuadros de mando en Grafana 11.2 con mapas geoespaciales.
 - Centro Educativo: Centro de Formación Somorrostro (Muskiz, Bizkaia).
 - Repositorio oficial en GitHub: https://github.com/ai-somorrostro/haizelab
 - Despliegue web de la presentación: https://haizelab-presentacion.vercel.app/
@@ -62,7 +62,7 @@ INFORMACIÓN FUNDAMENTAL DEL PROYECTO:
 
 DIRECTIVAS DE RESPUESTA:
 1. RESPUESTAS RICAS Y BIEN EXPLICADAS: Responde de forma completa, indagatoria, estructurada y fundamentada. No des respuestas telegráficas ni evasivas. Explica las causas, el contexto y los detalles necesarios.
-2. PRECISIÓN EN EL EQUIPO: Cuando te pregunten quién ha hecho el proyecto, cómo se llaman los desarrolladores o por el repositorio de GitHub, detalla a Iñigo Bilbao, Alfred Gabriel y Kerman Irusta con sus respectivos roles y proporciona el enlace oficial a https://github.com/ai-somorrostro/haizelab.
+2. PRECISIÓN EN EL EQUIPO: Cuando te pregunten quién ha hecho el proyecto, cómo se llaman los desarrolladores o por el repositorio de GitHub, detalla a Iñigo Guzman, Alfred Gabriel y Kerman Irusta con sus respectivos roles y proporciona el enlace oficial a https://github.com/ai-somorrostro/haizelab.
 3. CONSULTAS GENERALES: Si la pregunta es sobre temas externos (ciencia, cultura, programación), respóndela con claridad y profundidad sin forzar menciones a la ZBE.
 4. ESTILO: Profesional, fluido, en español y con formato Markdown limpio."""
 
@@ -227,12 +227,12 @@ class RAGEngine:
                 f"EVIDENCIA Y CONTEXTO DEL REPOSITORIO:\n{contexto_texto}\n\n"
                 f"PREGUNTA DEL USUARIO:\n{pregunta}\n\n"
                 f"Instrucción: Razona de forma directa y concisa en español respondiendo exactamente a lo que se pregunta con base en el contexto. "
-                f"Si preguntan por los autores, creadores o quiénes han hecho el proyecto, nombra a Iñigo Bilbao, Alfred Gabriel y Kerman Irusta con sus roles y el repo https://github.com/ai-somorrostro/haizelab."
+                f"Si preguntan por los autores, creadores o quiénes han hecho el proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Irusta con sus roles y el repo https://github.com/ai-somorrostro/haizelab."
             )
         else:
             prompt_usuario = (
                 f"PREGUNTA DEL USUARIO:\n{pregunta}\n\n"
-                f"Instrucción: Si es sobre el equipo, autores o proyecto, nombra a Iñigo Bilbao, Alfred Gabriel y Kerman Irusta y el repo https://github.com/ai-somorrostro/haizelab. "
+                f"Instrucción: Si es sobre el equipo, autores o proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Irusta y el repo https://github.com/ai-somorrostro/haizelab. "
                 f"Si es sobre otro tema, responde con claridad, rigor y concisión."
             )
 
@@ -290,9 +290,9 @@ class RAGEngine:
         if trata_equipo:
             return (
                 "El proyecto HaizeLab ha sido desarrollado por tres alumnos del Centro de Formación Somorrostro (Especialización en IA y Big Data):\n\n"
-                "1. **Iñigo Bilbao** (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning (HistGradientBoosting), tests de placebo y la memoria técnica de IA.\n"
-                "2. **Alfred Gabriel** (Product Owner / PIA): Encargado de la infraestructura con Docker Compose, orquestación de servicios en red, servidor MCP y ciclo de ramas Git.\n"
-                "3. **Kerman Irusta** (Lead Data Engineer / BDA): Responsable de la ingesta en tiempo real con Node-RED 5.0, base de series temporales en InfluxDB 2.9 (4 tokens de seguridad) y cuadros de mando en Grafana 11.2 con mapas geoespaciales.\n\n"
+                "1. **Iñigo Guzman** (Lead Data Engineer / BDA): Responsable de la ingesta en tiempo real con Node-RED 5.0, base de series temporales en InfluxDB 2.9 (4 tokens de seguridad) y cuadros de mando en Grafana 11.2 con mapas geoespaciales.\n"
+                "2. **Kerman Irusta** (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning (HistGradientBoosting), tests de placebo y la memoria técnica de IA.\n"
+                "3. **Alfred Gabriel** (Product Owner / PIA): Encargado de la infraestructura con Docker Compose, orquestación de servicios en red, servidor MCP y ciclo de ramas Git.\n\n"
                 "Repositorio oficial del proyecto en GitHub: [https://github.com/ai-somorrostro/haizelab](https://github.com/ai-somorrostro/haizelab)."
             )
 
