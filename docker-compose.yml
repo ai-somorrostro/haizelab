@@ -251,6 +251,7 @@ services:
       - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
       - ./grafana/provisioning/access-control:/etc/grafana/provisioning/access-control:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/maps/zbe_bilbao.geojson:/usr/share/grafana/public/gazetteer/zbe_bilbao.geojson:ro
       - influxdb_tokens:/tokens:ro
     entrypoint: ["sh", "/entrypoint.sh"]
     healthcheck:
