@@ -4,169 +4,197 @@
 # Configura el control de acceso de Grafana vía API REST.
 #
 # Roles según requisito:
-#   Cúpula directiva (viewers):  ven todo, no editan
-#   Análisis (6 personas):       ven dashboards asignados, home dashboard por equipo
-#   IT (3 personas):             ven y editan todo (Editor + Admin)
+#   Directora (Viewer):          ve todo, no edita
+#   Analistas 1-6 (Viewer):      ven dashboards asignados, home dashboard haizelab-analisis
+#   IT Admin 1 (Admin):          administrador completo de la organización
+#   IT Admin 2-3 (Editor):       editores técnicos (creación y edición de paneles)
 #
-# Ejecución: se invoca desde grafana/entrypoint.sh tras arrancar Grafana.
-# Requiere que la API esté disponible en localhost:3000.
-#
-# Credenciales de admin: tomadas de las vars de entorno que ya tiene el contenedor.
+# Reescrito con curl e idempotente: crea o sincroniza usuarios, contraseñas, roles y equipos.
 
 set -eu
 
 GRAFANA_URL="http://localhost:3000"
-ADMIN_USER="${GF_SECURITY_ADMIN_USER:-admin}"
-ADMIN_PASS="${GF_SECURITY_ADMIN_PASSWORD:-haizelab2024seguro}"
+ADMIN_USER="${GF_SECURITY_ADMIN_USER:-${INFLUXDB_ADMIN_USER:-admin}}"
+ADMIN_PASS="${GF_SECURITY_ADMIN_PASSWORD:-${INFLUXDB_ADMIN_PASSWORD:-}}"
+PASS_BASE="${GRAFANA_DEFAULT_PASSWORD:-}"
+
+# Validación estricta de secretos en entorno (sin contraseñas por defecto en el script)
+if [ -z "$ADMIN_PASS" ]; then
+  echo "[acceso] ERROR: Contraseña de admin no definida en variables de entorno (GF_SECURITY_ADMIN_PASSWORD / INFLUXDB_ADMIN_PASSWORD)." >&2
+  exit 1
+fi
+
+if [ -z "$PASS_BASE" ]; then
+  echo "[acceso] ERROR: Contraseña base no definida en variables de entorno (GRAFANA_DEFAULT_PASSWORD)." >&2
+  exit 1
+fi
+
 AUTH="$ADMIN_USER:$ADMIN_PASS"
 
-# Esperar a que Grafana esté sano antes de llamar a la API
-echo "[acceso] Esperando a que Grafana esté disponible..."
-until wget -qO- "$GRAFANA_URL/api/health" 2>/dev/null | grep -q '"database":"ok"'; do
+# Esperar a que la API esté lista (con timeout)
+echo "[acceso] Verificando disponibilidad de la API de Grafana..."
+INTENTOS=0
+until curl -s "$GRAFANA_URL/api/health" 2>/dev/null | grep -Eq '"database":[[:space:]]*"ok"'; do
   sleep 2
+  INTENTOS=$((INTENTOS + 1))
+  if [ "$INTENTOS" -ge 20 ]; then
+    echo "[acceso] ERROR: Grafana no respondió a tiempo." >&2
+    exit 1
+  fi
 done
-echo "[acceso] Grafana disponible. Configurando control de acceso..."
+echo "[acceso] Grafana API lista. Iniciando aprovisionamiento RBAC..."
 
-# ──── Función auxiliar ────────────────────────────────────────────────────────
-api_post() {
-  local endpoint="$1"
-  local data="$2"
-  wget -qO- \
-    --header="Content-Type: application/json" \
-    --header="Authorization: Basic $(printf '%s' "$AUTH" | base64)" \
-    --post-data="$data" \
-    "$GRAFANA_URL$endpoint" 2>/dev/null || true
-}
-
-api_put() {
-  local endpoint="$1"
-  local data="$2"
-  wget -qO- \
-    --header="Content-Type: application/json" \
-    --header="Authorization: Basic $(printf '%s' "$AUTH" | base64)" \
-    --method=PUT \
-    --body-data="$data" \
-    "$GRAFANA_URL$endpoint" 2>/dev/null || true
-}
-
-api_get() {
-  local endpoint="$1"
-  wget -qO- \
-    --header="Authorization: Basic $(printf '%s' "$AUTH" | base64)" \
-    "$GRAFANA_URL$endpoint" 2>/dev/null || echo "{}"
-}
-
-# ──── 1. Crear Teams ──────────────────────────────────────────────────────────
-echo "[acceso] Creando teams..."
-
-# Team: Dirección (Viewers — ven todo, no editan)
-TEAM_DIR=$(api_post "/api/teams" '{"name":"Direccion","email":"direccion@haizelab.eus"}')
-ID_TEAM_DIR=$(echo "$TEAM_DIR" | grep -o '"teamId":[0-9]*' | grep -o '[0-9]*')
-echo "[acceso] Team Dirección: id=$ID_TEAM_DIR"
-
-# Team: Análisis (Viewers con home dashboard propio)
-TEAM_ANL=$(api_post "/api/teams" '{"name":"Analisis","email":"analisis@haizelab.eus"}')
-ID_TEAM_ANL=$(echo "$TEAM_ANL" | grep -o '"teamId":[0-9]*' | grep -o '[0-9]*')
-echo "[acceso] Team Análisis: id=$ID_TEAM_ANL"
-
-# Team: IT (Editors/Admins — ven y editan todo)
-TEAM_IT=$(api_post "/api/teams" '{"name":"IT","email":"it@haizelab.eus"}')
-ID_TEAM_IT=$(echo "$TEAM_IT" | grep -o '"teamId":[0-9]*' | grep -o '[0-9]*')
-echo "[acceso] Team IT: id=$ID_TEAM_IT"
-
-# ──── 2. Home dashboard por equipo ──────────────────────────────────────────
-# Según rúbrica: al loguearse deben acceder directamente al panel que corresponda.
-#   - Análisis: aterriza en el panel técnico "haizelab-analisis"
-#   - Dirección: aterriza en el monitor general "haizelab-overview"
-echo "[acceso] Configurando home dashboard del team Análisis..."
-if [ -n "$ID_TEAM_ANL" ]; then
-  DASH_INFO=$(api_get "/api/dashboards/uid/haizelab-analisis")
-  DASH_ID=$(echo "$DASH_INFO" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
-  if [ -n "$DASH_ID" ]; then
-    api_put "/api/teams/$ID_TEAM_ANL/preferences" \
-      "{\"homeDashboardId\":$DASH_ID,\"theme\":\"dark\",\"timezone\":\"browser\"}"
-    echo "[acceso] Home dashboard Análisis → id=$DASH_ID (haizelab-analisis)"
+# ──── Función HTTP con trazabilidad de código de respuesta ───────────────────
+api_req() {
+  local method="$1"
+  local endpoint="$2"
+  local data="${3:-}"
+  local resp
+  if [ -n "$data" ]; then
+    resp=$(curl -s -w "\n%{http_code}" -X "$method" \
+      -u "$AUTH" \
+      -H "Content-Type: application/json" \
+      -d "$data" \
+      "$GRAFANA_URL$endpoint")
   else
-    echo "[acceso] AVISO: Dashboard 'haizelab-analisis' no encontrado aún. Skipping."
+    resp=$(curl -s -w "\n%{http_code}" -X "$method" \
+      -u "$AUTH" \
+      -H "Content-Type: application/json" \
+      "$GRAFANA_URL$endpoint")
   fi
-fi
+  RESP_CODE=$(echo "$resp" | tail -n1)
+  RESP_BODY=$(echo "$resp" | sed '$d')
+}
 
-echo "[acceso] Configurando home dashboard del team Dirección..."
-if [ -n "$ID_TEAM_DIR" ]; then
-  DASH_DIR_INFO=$(api_get "/api/dashboards/uid/haizelab-overview")
-  DASH_DIR_ID=$(echo "$DASH_DIR_INFO" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
-  if [ -n "$DASH_DIR_ID" ]; then
-    api_put "/api/teams/$ID_TEAM_DIR/preferences" \
-      "{\"homeDashboardId\":$DASH_DIR_ID,\"theme\":\"dark\",\"timezone\":\"browser\"}"
-    echo "[acceso] Home dashboard Dirección → id=$DASH_DIR_ID (haizelab-overview)"
+# ──── 1. Gestión Idempotente de Teams ─────────────────────────────────────────
+echo "[acceso] Aprovisionando teams..."
+
+TEAM_ID=""
+obtener_o_crear_team() {
+  local name="$1"
+  local email="$2"
+  TEAM_ID=""
+
+  api_req GET "/api/teams/search?name=$name"
+  TEAM_ID=$(echo "$RESP_BODY" | grep -o '"id":[0-9]*' | head -n1 | cut -d: -f2 || true)
+
+  if [ -z "$TEAM_ID" ]; then
+    api_req POST "/api/teams" "{\"name\":\"$name\",\"email\":\"$email\"}"
+    echo "[acceso] [$RESP_CODE] POST /api/teams ($name)"
+    TEAM_ID=$(echo "$RESP_BODY" | grep -o '"teamId":[0-9]*' | head -n1 | cut -d: -f2 || true)
+    if [ -z "$TEAM_ID" ]; then
+      api_req GET "/api/teams/search?name=$name"
+      TEAM_ID=$(echo "$RESP_BODY" | grep -o '"id":[0-9]*' | head -n1 | cut -d: -f2 || true)
+    fi
+  else
+    echo "[acceso] [$RESP_CODE] Team '$name' existente reutilizado (id=$TEAM_ID)."
   fi
-fi
+}
 
-# ──── 3. Crear usuarios de ejemplo y asignarlos a teams ──────────────────────
-# En producción estos usuarios se crearían con LDAP/OAuth.
-# Aquí se crean via API como demostración con rol acorde.
+obtener_o_crear_team "Direccion" "direccion@haizelab.eus"
+ID_TEAM_DIR="$TEAM_ID"
 
-crear_usuario() {
+obtener_o_crear_team "Analisis" "analisis@haizelab.eus"
+ID_TEAM_ANL="$TEAM_ID"
+
+obtener_o_crear_team "IT" "it@haizelab.eus"
+ID_TEAM_IT="$TEAM_ID"
+
+# ──── 2. Home Dashboard por Team (homeDashboardUID) ─────────────────────────
+configurar_home_team() {
+  local team_id="$1"
+  local uid="$2"
+  local team_name="$3"
+  if [ -n "$team_id" ]; then
+    api_req PUT "/api/teams/$team_id/preferences" "{\"homeDashboardUID\":\"$uid\",\"theme\":\"dark\",\"timezone\":\"browser\"}"
+    echo "[acceso] [$RESP_CODE] PUT /api/teams/$team_id/preferences ($team_name -> $uid)"
+  else
+    echo "[acceso] AVISO: Team '$team_name' no tiene ID válido. Saltando preferencias."
+  fi
+}
+
+echo "[acceso] Configurando home dashboards para teams..."
+configurar_home_team "$ID_TEAM_ANL" "haizelab-analisis" "Analisis"
+configurar_home_team "$ID_TEAM_DIR" "haizelab-overview" "Direccion"
+
+# ──── 3. Gestión Idempotente de Usuarios y Asignación de Roles ───────────────
+echo "[acceso] Aprovisionando usuarios, roles y sincronizando credenciales..."
+
+USER_ID=""
+gestionar_usuario() {
   local nombre="$1"
   local email="$2"
   local login="$3"
-  local role="$4"   # Viewer | Editor | Admin
+  local rol="$4"
   local pass="$5"
-  api_post "/api/admin/users" \
-    "{\"name\":\"$nombre\",\"email\":\"$email\",\"login\":\"$login\",\"password\":\"$pass\",\"OrgId\":1,\"role\":\"$role\"}" \
-    > /dev/null
-  echo "[acceso] Usuario '$login' ($role) creado."
-}
+  USER_ID=""
 
-# Prefijo de contraseña parametrizable vía entorno
-PASS_BASE="${GRAFANA_DEFAULT_PASSWORD:-haize2024}"
+  # 1. Verificar si existe
+  api_req GET "/api/users/lookup?loginOrEmail=$login"
+  if [ "$RESP_CODE" = "200" ]; then
+    USER_ID=$(echo "$RESP_BODY" | grep -o '"id":[0-9]*' | head -n1 | cut -d: -f2 || true)
+    echo "[acceso] [$RESP_CODE] Usuario '$login' existente detectado (id=$USER_ID)."
+  else
+    # 2. Crear si no existe
+    api_req POST "/api/admin/users" "{\"name\":\"$nombre\",\"email\":\"$email\",\"login\":\"$login\",\"password\":\"$pass\",\"OrgId\":1}"
+    echo "[acceso] [$RESP_CODE] POST /api/admin/users ($login)"
+    USER_ID=$(echo "$RESP_BODY" | grep -o '"id":[0-9]*' | head -n1 | cut -d: -f2 || true)
+    if [ -z "$USER_ID" ]; then
+      api_req GET "/api/users/lookup?loginOrEmail=$login"
+      USER_ID=$(echo "$RESP_BODY" | grep -o '"id":[0-9]*' | head -n1 | cut -d: -f2 || true)
+    fi
+  fi
 
-# Dirección: 1 usuario ejemplo (Viewer)
-crear_usuario "Directora ZBE"         "directora@haizelab.eus"     "directora"  "Viewer"  "${PASS_BASE}dir"
+  if [ -n "$USER_ID" ]; then
+    # 3. Sincronizar contraseña
+    api_req PUT "/api/admin/users/$USER_ID/password" "{\"password\":\"$pass\"}"
+    echo "[acceso] [$RESP_CODE] PUT /api/admin/users/$USER_ID/password ($login)"
 
-# Análisis: 6 usuarios (Viewer con home dashboard)
-for i in 1 2 3 4 5 6; do
-  crear_usuario "Analista $i" "analista$i@haizelab.eus" "analista$i" "Viewer" "${PASS_BASE}a$i"
-done
-
-# IT: 3 usuarios (Editor/Admin)
-crear_usuario "IT Admin 1"  "it1@haizelab.eus"  "it_admin1"  "Admin"   "${PASS_BASE}it1"
-crear_usuario "IT Admin 2"  "it2@haizelab.eus"  "it_admin2"  "Editor"  "${PASS_BASE}it2"
-crear_usuario "IT Admin 3"  "it3@haizelab.eus"  "it_admin3"  "Editor"  "${PASS_BASE}it3"
-
-# ──── 4. Añadir usuarios a sus teams ─────────────────────────────────────────
-añadir_a_team() {
-  local team_id="$1"
-  local login="$2"
-  local user_info
-  user_info=$(api_get "/api/users/lookup?loginOrEmail=$login")
-  local user_id
-  user_id=$(echo "$user_info" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
-  if [ -n "$user_id" ] && [ -n "$team_id" ]; then
-    api_post "/api/teams/$team_id/members" "{\"userId\":$user_id}" > /dev/null
-    echo "[acceso] $login añadido al team $team_id"
+    # 4. Asignar rol real en la Organización 1 (Viewer, Editor o Admin)
+    api_req PATCH "/api/orgs/1/users/$USER_ID" "{\"role\":\"$rol\"}"
+    echo "[acceso] [$RESP_CODE] PATCH /api/orgs/1/users/$USER_ID ($login -> rol $rol)"
+  else
+    echo "[acceso] ERROR: No se pudo obtener ID para '$login'." >&2
   fi
 }
 
-# Dirección
-[ -n "$ID_TEAM_DIR" ] && añadir_a_team "$ID_TEAM_DIR" "directora"
+# Función para asociar a equipo
+asignar_a_team() {
+  local team_id="$1"
+  local user_id="$2"
+  local login="$3"
+  if [ -n "$team_id" ] && [ -n "$user_id" ]; then
+    api_req POST "/api/teams/$team_id/members" "{\"userId\":$user_id}"
+    if [ "$RESP_CODE" = "200" ]; then
+      echo "[acceso] [$RESP_CODE] Usuario '$login' vinculado al team $team_id."
+    elif [ "$RESP_CODE" = "400" ] || [ "$RESP_CODE" = "409" ]; then
+      echo "[acceso] [$RESP_CODE] Usuario '$login' ya pertenecía al team $team_id (idempotente)."
+    else
+      echo "[acceso] [$RESP_CODE] POST /api/teams/$team_id/members ($login)"
+    fi
+  fi
+}
 
-# Análisis
+# Dirección: 1 usuario (Viewer)
+gestionar_usuario "Directora ZBE" "directora@haizelab.eus" "directora" "Viewer" "${PASS_BASE}dir"
+[ -n "$ID_TEAM_DIR" ] && asignar_a_team "$ID_TEAM_DIR" "$USER_ID" "directora"
+
+# Análisis: 6 analistas (Viewer con home dashboard específico)
 for i in 1 2 3 4 5 6; do
-  [ -n "$ID_TEAM_ANL" ] && añadir_a_team "$ID_TEAM_ANL" "analista$i"
+  gestionar_usuario "Analista $i" "analista$i@haizelab.eus" "analista$i" "Viewer" "${PASS_BASE}a$i"
+  [ -n "$ID_TEAM_ANL" ] && asignar_a_team "$ID_TEAM_ANL" "$USER_ID" "analista$i"
 done
 
-# IT
-[ -n "$ID_TEAM_IT" ] && añadir_a_team "$ID_TEAM_IT" "it_admin1"
-[ -n "$ID_TEAM_IT" ] && añadir_a_team "$ID_TEAM_IT" "it_admin2"
-[ -n "$ID_TEAM_IT" ] && añadir_a_team "$ID_TEAM_IT" "it_admin3"
+# IT: 3 administradores técnicos (it_admin1 Admin, it_admin2 y it_admin3 Editor)
+gestionar_usuario "IT Admin 1" "it1@haizelab.eus" "it_admin1" "Admin"  "${PASS_BASE}it1"
+[ -n "$ID_TEAM_IT" ] && asignar_a_team "$ID_TEAM_IT" "$USER_ID" "it_admin1"
 
-# ──── 5. Deshabilitar registro y acceso anónimo (producción) ─────────────────
-# Nota: GF_USERS_ALLOW_SIGN_UP ya está en false en docker-compose.yml.
-# GF_AUTH_ANONYMOUS_ENABLED=true está en dev; en prod se desactiva.
+gestionar_usuario "IT Admin 2" "it2@haizelab.eus" "it_admin2" "Editor" "${PASS_BASE}it2"
+[ -n "$ID_TEAM_IT" ] && asignar_a_team "$ID_TEAM_IT" "$USER_ID" "it_admin2"
 
-echo "[acceso] Control de acceso configurado."
-echo "[acceso] Resumen:"
-echo "  - Team Dirección (Viewer):   1 usuario — ve todo, no edita"
-echo "  - Team Análisis  (Viewer):   6 usuarios — home dashboard propio"
-echo "  - Team IT        (Admin/Ed): 3 usuarios — acceso completo"
+gestionar_usuario "IT Admin 3" "it3@haizelab.eus" "it_admin3" "Editor" "${PASS_BASE}it3"
+[ -n "$ID_TEAM_IT" ] && asignar_a_team "$ID_TEAM_IT" "$USER_ID" "it_admin3"
+
+echo "[acceso] ====================================================="
+echo "[acceso] Control de acceso RBAC provisionado correctamente."
+echo "[acceso] ====================================================="
