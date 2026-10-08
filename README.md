@@ -2,7 +2,7 @@
 
 > **Evaluación de impacto de la Zona de Bajas Emisiones (ZBE) en la calidad del aire de Bilbao (2022-2026).**  
 > Reto 0 ("HERE WE GO") — Centro de Formación Somorrostro | Especialización en Inteligencia Artificial y Big Data.  
-> **Equipo Haizen Lab:** Alfred Gabriel (PO / PIA), Iñigo Bilbao (SM / MIA), Kerman Irusta (Lead Data Engineer / BDA).
+> **Equipo Haizen Lab:** Alfred Gabriel (PO / PIA), Iñigo Guzman (Lead Data Engineer / BDA), Kerman Irusta (SM / MIA).
 
 ---
 
@@ -472,7 +472,7 @@ La arquitectura se divide en 4 componentes fáciles de entender y mantener:
    * Ubicado en [`chatbot/main.py`](chatbot/main.py). Es un microservicio de menos de 100 líneas de código que expone el endpoint `/chat`. Recibe la consulta del usuario, recupera el contexto relevante y devuelve la respuesta en formato JSON en cuestión de milisegundos.
 3. **Base de Conocimiento RAG (Cero Alucinaciones):**
    * Para evitar que un modelo de lenguaje "invente" datos, el script [`chatbot/precomputar_conocimiento.py`](chatbot/precomputar_conocimiento.py) utiliza Pandas para leer directamente los datasets limpios y precalcular las métricas oficiales en [`chatbot/knowledge_base.json`](chatbot/knowledge_base.json).
-   * Contiene los valores exactos: reducción neta de **-1,63 µg/m³** (-6,4%), **41.700 horas** analizadas, variación del tráfico en San Mamés (**-3,16%** neto), estaciones meteorológicas y la autoría oficial del proyecto (**Alfred Gabriel, Iñigo Bilbao y Kerman Irusta** con enlace al [repositorio en GitHub](https://github.com/ai-somorrostro/haizelab)).
+   * Contiene los valores exactos: reducción neta de **-1,63 µg/m³** (-6,4%), **41.700 horas** analizadas, variación del tráfico en San Mamés (**-3,16%** neto), estaciones meteorológicas y la autoría oficial del proyecto (**Alfred Gabriel, Iñigo Guzman y Kerman Irusta** con enlace al [repositorio en GitHub](https://github.com/ai-somorrostro/haizelab)).
 4. **Razonamiento Local con Ollama (100% Gratuito y Privado):**
    * Si el equipo dispone de **Ollama** con el modelo ligero `qwen2.5:1.5b` (o similar), el backend le inyecta el contexto oficial y el modelo razona la respuesta en lenguaje natural de forma ultrarrápida.
    * Si Ollama no está instalado o no se dispone de tarjeta gráfica, el backend activa automáticamente su **motor determinista de contingencia**: responde de inmediato con las métricas del JSON sin requerir GPUs ni conexión a internet.
@@ -510,8 +510,8 @@ python chatbot/test_preguntas.py
 Proyecto desarrollado por el equipo **Haizen Lab** para el Reto 0 ("HERE WE GO") del Centro de Formación Somorrostro:
 
 * **Alfred Gabriel** (Product Owner / PIA): Diseño y orquestación del stack Docker Compose, desarrollo del servicio Model Context Protocol (MCP), orquestación de red y gestión de calidad y ramas en Git.
-* **Iñigo Bilbao** (Scrum Master / MIA): Diseño econométrico y causal del modelo de Machine Learning (HistGradientBoosting / Diff-in-Diff), tests de robustez y control placebo, memoria técnica MIA y coordinación ágil.
-* **Kerman Irusta** (Lead Data Engineer / BDA): Flujos de streaming continuo en Node-RED, diseño del modelo de series temporales en InfluxDB 2.9 (buckets, retenciones y 4 tokens de seguridad), diseño de cuadros de mando y RBAC en Grafana 11.2.
+* **Iñigo Guzman** (Lead Data Engineer / BDA): Flujos de streaming continuo en Node-RED 5.0, diseño del modelo de series temporales en InfluxDB 2.9 (buckets, retenciones y 4 tokens de seguridad), diseño de cuadros de mando y RBAC en Grafana 11.2 con mapas geoespaciales.
+* **Kerman Irusta** (Scrum Master / MIA): Diseño econométrico y causal del modelo de Machine Learning (HistGradientBoosting / Diff-in-Diff), tests de robustez y control placebo, memoria técnica MIA y coordinación ágil.
 
 ### Entregables Oficiales Disponibles en el Repositorio
 * **Módulo SBD (Sistemas de Big Data)**:
@@ -530,6 +530,9 @@ Proyecto desarrollado por el equipo **Haizen Lab** para el Reto 0 ("HERE WE GO")
   * Servidor de Contexto MCP: [`mcp/server.py`](mcp/server.py)
   * Control de Configuración y Variables Seguras: [`.env.example`](.env.example) y [`.gitignore`](.gitignore)
   * Chatbot Asistente RAG Local: [`chatbot/`](chatbot/) (microservicio FastAPI, motor RAG, dataset precalculado y tests).
+* **Presentación Web Interactiva**:
+  * Código fuente completo de diapositivas y chatbot embebido: [`presentacion/`](presentacion/) (listo para editar y desplegar localmente o en Vercel).
+  * Despliegue en producción: [haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app).
 
 ---
 
