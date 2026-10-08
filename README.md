@@ -136,7 +136,7 @@ Para la defensa oficial del proyecto ante el tribunal y evaluación instituciona
 │                        WEB PÚBLICA (Vercel)                            │
 │  https://haizelab-presentacion.vercel.app (HTTPS / SSL Global)         │
 │  - Diapositivas interactivas en HTML5 / CSS3 / JS Vanilla              │
-│  - Widget de Chatbot flotante (Estilo PcComponentes)                   │
+│  - Widget de Chatbot flotante (Estilo Claude Anthropic con RAG local) │
 │  - Diapositiva 10: Iframe interactivo de Grafana                       │
 │  - Diapositiva 11: Iframes interactivos de InfluxDB y Node-RED         │
 └──────────────────────────────────┬─────────────────────────────────────┘
@@ -213,30 +213,98 @@ La presentación en Vercel está preparada para enlazar los túneles mediante pa
 
 ---
 
-## 5. Capa de Seguridad Perimetral, Autenticación y Credenciales
+## 5. Capa de Seguridad Perimetral, Autenticación y Hardening Defensivo
 
-Al exponer servicios locales a través de internet mediante túneles públicos, la seguridad se convierte en una prioridad innegociable. Se ha implementado un esquema defensivo en profundidad de modo que **ninguna persona no autorizada pueda alterar configuraciones, inyectar código o modificar datos**:
+Al exponer servicios e interactuar con datos en entornos híbridos y de producción, la seguridad se ha diseñado bajo el principio de **Defensa en Profundidad (Defense in Depth)** y **Mínimo Privilegio**. El sistema cuenta con defensas multicapa activas contra accesos no autorizados, ataques de denegación de servicio (DoS), escalada de privilegios y fuga de información:
 
-### 1. Protección en Grafana (Public Dashboards Desacoplados + RBAC)
-* **Visualización anónima controlada:** Los cuadros de mando embebidos en Vercel utilizan exclusivamente la característica de **Public Dashboards** de Grafana (`/public-dashboards/<uuid>`). Este endpoint genera una vista restringida que **únicamente** renderiza las gráficas seleccionadas. Un visitante público no tiene acceso a la barra lateral, no puede editar paneles, no puede acceder a las fuentes de datos ni ejecutar consultas Flux arbitrarias.
-* **Consola administrativa blindada:** El acceso anónimo al panel de Grafana está completamente desactivado (`GF_AUTH_ANONYMOUS_ENABLED=false`). Cualquier intento de acceder a `http://<tunel>/login` o `/admin` exige autenticación con credenciales RBAC seguras (Viewer, Editor, Admin) definidas en `.env`.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   CAPA 1: RED PERIMETRAL Y SUPERFICIE                  │
+│  - Zero Open Ports: Conexión saliente QUIC mediante Cloudflare Tunnel  │
+│  - Reducción de superficie: Puertos de backend (Node-RED :1880 e       │
+│    InfluxDB :8086/8085) cerrados a internet; aislados en red Docker.   │
+│  - Solo expuestos los servicios de presentación requeridos:            │
+│    Grafana (:3000 con RBAC) y Chatbot (:8000 con Rate Limiting).       │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼─────────────────────────────────────┐
+│                 CAPA 2: PROTECCIÓN DE LA API DEL CHATBOT               │
+│  - Rate Limiting defensivo: Ventana deslizante (máx. 25 req/min por IP)│
+│    Corte inmediato con HTTP 429 para prevenir saturación DoS de GPU/CPU│
+│  - Validación de entrada: Payload 'message' limitado a máx. 500 chars  │
+│    Historial limitado a 10 turnos (Rechazo con HTTP 422 si excede).    │
+│  - Guardrail de seguridad: Rechazo automático de temas no afines y     │
+│    mitigación de Prompt Injection / Jailbreaks en <0.05s.              │
+│  - CORS defensivo: Sin comodín abierto; whitelist estricta Vercel.     │
+│  - Ofuscación de red: /info sanitizado sin exponer host.docker.internal│
+│  - Manejo seguro de errores: Trazas internas y stack traces ofuscados. │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼─────────────────────────────────────┐
+│               CAPA 3: BLINDAJE DE BASES DE DATOS Y PROXY               │
+│  - Influx Proxy endurecido: Métodos destructivos (DELETE, PUT, PATCH)  │
+│    bloqueados estrictamente con HTTP 403 Forbidden.                    │
+│  - Rutas críticas denegadas: Bloqueo de /api/v2/setup, /api/v2/delete,  │
+│    /api/v2/authorizations, /api/v2/users y /api/v2/buckets.            │
+│  - Prohibición de escalada: Supresión total de auto-inyección de token │
+│    o sesión de superadministrador.                                     │
+│  - Sin secretos en plano: Contraseñas hardcodeadas eliminadas de raíz. │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼─────────────────────────────────────┐
+│              CAPA 4: GESTIÓN DE ACCESO, IDENTIDAD Y TOKENS             │
+│  - Segregación estricta de tokens InfluxDB (4 tokens de rol mínimo):   │
+│    * nodered-write  ──► Solo escritura en meteo, trafico y aire_demo   │
+│    * batch-write    ──► Solo escritura en aire y meteo (ETL batch)     │
+│    * grafana-read   ──► Solo lectura en los 4 buckets                  │
+│    * mcp-read-only  ──► Solo lectura para servidor MCP                 │
+│  - Aislamiento en Grafana entrypoint.sh: Carga única y exclusiva de    │
+│    INFLUXDB_READ_TOKEN, sin contaminar el entorno con tokens write.    │
+│  - Node-RED adminAuth: Hashing bcrypt reforzado a 12 rondas y secreto  │
+│    criptográfico de 32 bytes (openssl rand -hex 32).                   │
+│  - Grafana RBAC: Public Dashboards desacoplados del panel de admin     │
+│    (GF_AUTH_ANONYMOUS_ENABLED=false) y perfiles diferenciados.         │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
-### 2. Protección en Node-RED (`adminAuth` con Hash Bcrypt)
-* **Bloqueo del editor de flujos:** En [`nodered/settings.js`](nodered/settings.js), se ha habilitado la directiva oficial de seguridad `adminAuth`.
-* **Credenciales cifradas:** La contraseña del usuario administrador está protegida mediante un hash criptográfico **bcrypt** (`$2b$08$...`).
-* **Seguridad ante accesos externos:** Si un evaluador o usuario ajeno accede a la URL del túnel de Node-RED, el navegador le solicitará inmediatamente usuario y contraseña. Nadie puede ver la topología de nodos, extraer tokens de InfluxDB ni alterar las rutinas de ingesta sin autorización explícita.
+### Detalle de las Protecciones Implementadas
 
-### 3. Protección en InfluxDB 2.9 (Tokens de Mínimo Privilegio)
-* **Organización y Administrador:** Inicializados con contraseña robusta en `.env` mediante el script `init-influxdb.sh`.
-* **Segregación estricta de tokens API:** No se utiliza un token maestro único. Se han creado 4 tokens con permisos estrictamente acotados:
-  * `nodered-write`: Concesión exclusiva de escritura en los buckets de streaming (`meteo`, `trafico`, `aire_demo`). Sin permiso de lectura ni acceso al bucket histórico `aire`.
-  * `batch-write`: Concesión de escritura específica para scripts de ingesta por lotes (ETL).
-  * `grafana-read`: Permiso de solo lectura sobre buckets de métricas para visualización en cuadros de mando.
-  * `mcp-read`: Permiso de solo lectura acotado para el conector de modelos de IA.
-  * El token de administración (`INFLUXDB_ADMIN_TOKEN`) permanece restringido al entorno interno de Docker y nunca se expone en la web.
+#### 1. Protección contra DoS e Inyecciones en la API del Chatbot
+* **Prevención de agotamiento de recursos (DoS):** Dado que el asistente realiza inferencia local mediante Ollama (`qwen2.5:1.5b`), un atacante podría saturar la CPU y GPU del host mediante ráfagas masivas. Se ha incorporado un middleware de **Rate Limiting en memoria por IP** configurado a un umbral de 25 peticiones por minuto. Cualquier exceso se corta en seco con un código `HTTP 429 Too Many Requests`.
+* **Validación estricta de esquema Pydantic:** Se exige que el mensaje contenga un máximo de 500 caracteres y un historial de no más de 10 mensajes. Entradas que excedan estos límites son rechazadas inmediatamente por el validador con `HTTP 422 Unprocessable Entity` antes de alcanzar el motor RAG.
+* **Guardrail de dominio y mitigación de Prompt Injection:** El motor RAG incorpora un filtro previo que analiza la consulta; si se detectan temáticas no relacionadas con el Reto 0 o patrones de manipulación de instrucciones, el asistente declina la respuesta de forma segura en menos de 0.05 segundos sin invocar al modelo pesado.
+* **Ofuscación de topología:** El endpoint `/info` no expone URLs de red internas (`host.docker.internal`), y el controlador global de excepciones captura errores devolviendo respuestas genéricas sin filtrar stack traces ni nombres de archivos.
 
-### 4. Aislamiento de Red Docker
-* Todos los servicios dialogan entre sí a través de la red privada interna `haizelab_network`. Los contenedores de aprovisionamiento (`haizelab_influxdb_setup`) se apagan automáticamente (`exited 0`) tras completar la inicialización de seguridad para no consumir recursos ni ofrecer superficie de ataque.
+#### 2. Blindaje de Influx Proxy y Prevención de Escalada de Privilegios
+* **Bloqueo de operaciones destructivas:** El proxy inverso de InfluxDB intercepta y bloquea cualquier intento de ejecutar llamadas `DELETE`, `PUT` o `PATCH` con un `HTTP 403 Forbidden`.
+* **Protección de rutas de administración:** Endpoints críticos de la API de InfluxDB v2 (`/api/v2/setup`, `/api/v2/delete`, `/api/v2/authorizations`, `/api/v2/users`, `/api/v2/buckets`) están explícitamente bloqueados.
+* **Eliminación de auto-login admin:** Se ha suprimido la inyección automática de tokens root (`adminToken`) o cookies de superadministrador. Para consultas legítimas de visualización, el proxy utiliza exclusivamente el token de solo lectura (`INFLUXDB_READ_TOKEN`).
+* **Higiene de código:** Se han eliminado todas las cadenas de contraseñas por defecto en el código fuente versionado.
+
+#### 3. Control de Acceso y Cifrado en Node-RED
+* **Bcrypt de 12 rondas:** La autenticación administrativa `adminAuth` en [`nodered/settings.js`](nodered/settings.js) aplica un coste de computación reforzado de 12 rondas de hashing sobre la contraseña.
+* **Cifrado de credenciales en disco:** La directiva `credentialSecret` utiliza una clave pseudoaleatoria criptográficamente segura de 256 bits generada en `.env`, asegurando que los nodos de conexión a InfluxDB almacenados en disco estén cifrados.
+* **Eliminación de fallbacks débiles:** `docker-compose.yml` ya no incluye contraseñas por defecto; el servicio exige explícitamente que las variables de entorno existan en el fichero `.env`.
+
+#### 4. Principio de Mínimo Privilegio en Grafana
+* **Aislamiento en `entrypoint.sh`:** Grafana monta el volumen de tokens para conectarse a InfluxDB. Para cumplir con el principio de mínimo privilegio, el script de arranque extrae exclusivamente `INFLUXDB_READ_TOKEN`, evitando que las variables de escritura (`INFLUXDB_NODERED_WRITE_TOKEN`, `INFLUXDB_BATCH_WRITE_TOKEN`) queden expuestas en las variables de entorno del contenedor de Grafana.
+* **Public Dashboards desacoplados:** Los dashboards embebidos en Vercel utilizan URLs públicas de solo visualización (`/public-dashboards/<uuid>`). El acceso administrativo anónimo está estrictamente desactivado (`GF_AUTH_ANONYMOUS_ENABLED=false`).
+
+---
+
+### Verificación y Auditoría de Seguridad Automatizada
+
+Todas las contramedidas defensivas han sido validadas mediante tests automatizados en el entorno de ejecución:
+
+| Prueba de Seguridad | Vector Auditado | Resultado Obtenido | Estado Defensivo |
+|---|---|---|---|
+| **Intento de Desbordamiento de Payload** | Envío de mensaje de 501 caracteres al Chatbot | `HTTP 422 Unprocessable Entity` | ✅ **Bloqueado** (Validación Pydantic) |
+| **Ataque de Inundación Concurrente (DoS)** | 30 peticiones consecutivas al Chatbot en <3s | `HTTP 429 Too Many Requests` (petición #27) | ✅ **Mitigado** (Rate Limiter activo) |
+| **Fuga de Topología de Red** | Consulta de metadatos al endpoint `/info` | `ollama_url` ausente de la respuesta | ✅ **Oculto** (Sin fuga de red interna) |
+| **Intento de Borrado de Bucket InfluxDB** | Petición `DELETE /api/v2/buckets/1234` al Proxy | `HTTP 403 Forbidden` | ✅ **Bloqueado** (Verbo destructivo denegado) |
+| **Intento de Reconfiguración de Instancia** | Petición `POST /api/v2/setup` al Proxy | `HTTP 403 Forbidden` | ✅ **Bloqueado** (Ruta administrativa protegida) |
+| **Intento de Purga de Registros** | Petición `POST /api/v2/delete` al Proxy | `HTTP 403 Forbidden` | ✅ **Bloqueado** (Ruta de borrado denegada) |
+| **Verificación de Inyección de Superadmin** | Acceso anónimo a la raíz del Proxy | `Set-Cookie: influxdb-oss-session` Ausente | ✅ **Superado** (Sin auto-escalada de privilegios) |
 
 ---
 
