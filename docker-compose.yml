@@ -201,6 +201,8 @@ services:
       INFLUXDB_ORG:                 ${INFLUXDB_ORG}
       AIRE_DEMO_CSV:                /data/no2_demo_reducido.csv
       NODE_RED_CREDENTIAL_SECRET:   ${NODE_RED_CREDENTIAL_SECRET:-haizelab_nodered_secret_2024}
+      NODE_RED_ADMIN_USER:          ${NODE_RED_ADMIN_USER:-admin}
+      NODE_RED_ADMIN_PASSWORD:      ${NODE_RED_ADMIN_PASSWORD:-haizelab2024seguro}
       # INFLUXDB_NODERED_WRITE_TOKEN se carga desde /tokens/tokens.env via entrypoint.sh
     volumes:
       - nodered_data:/data
