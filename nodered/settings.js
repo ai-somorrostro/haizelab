@@ -4,13 +4,32 @@
 // Este fichero se monta en /data/settings.js dentro del contenedor.
 //
 // Puntos clave:
+//   - adminAuth: autenticacion obligatoria con control de acceso por roles
 //   - credentialSecret: clave para cifrar credenciales (viene de variable de entorno)
 //   - functionGlobalContext: permite acceder a variables de entorno desde nodos function
 //   - flowFile: fichero de flujos (montado como volumen read-only)
 
+const bcrypt = require('bcryptjs');
+
+const adminUser = process.env.NODE_RED_ADMIN_USER || 'admin';
+const adminPassRaw = process.env.NODE_RED_ADMIN_PASSWORD || 'haizelab2024seguro';
+const adminPasswordHash = adminPassRaw.startsWith('$2')
+    ? adminPassRaw
+    : bcrypt.hashSync(adminPassRaw, 8);
+
 module.exports = {
     // Puerto de escucha (dentro del contenedor)
     uiPort: process.env.PORT || 1880,
+
+    // Autenticacion del editor y APIs administrativas (Seguridad ante exposicion web)
+    adminAuth: {
+        type: "credentials",
+        users: [{
+            username: adminUser,
+            password: adminPasswordHash,
+            permissions: "*"
+        }]
+    },
 
     // Directorio de datos de Node-RED
     userDir: '/data',
