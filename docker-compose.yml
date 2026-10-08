@@ -150,6 +150,31 @@ services:
     restart: "no"
 
   # ────────────────────────────────────────────────────────────────────────────
+  # InfluxDB Iframe Proxy — Soporte para Third-Party Cookies y Sesión en Iframes
+  # Permite embeber InfluxDB v2 en dashboards web cross-domain (SameSite=None,
+  # Secure, Partitioned) y provee autenticación transparente para navegadores
+  # con bloqueo estricto de cookies de terceros.
+  # ────────────────────────────────────────────────────────────────────────────
+  influx-proxy:
+    build:
+      context: ./influx_proxy
+    image: haizelab_influx_proxy:latest
+    container_name: haizelab_influx_proxy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8085:8085"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      INFLUX_HOST:              influxdb
+      INFLUX_PORT:              8086
+      PROXY_PORT:               8085
+      INFLUXDB_ADMIN_USER:      ${INFLUXDB_ADMIN_USER}
+      INFLUXDB_ADMIN_PASSWORD:  ${INFLUXDB_ADMIN_PASSWORD}
+      INFLUXDB_ADMIN_TOKEN:     ${INFLUXDB_ADMIN_TOKEN}
+
+  # ────────────────────────────────────────────────────────────────────────────
   # Node-RED 5.0.7
   # Imagen personalizada (nodered/Dockerfile) con node-red-contrib-influxdb 0.7.0
   # Flujos: meteo (15 min), trafico (5 min), aire_demo (5 s)
