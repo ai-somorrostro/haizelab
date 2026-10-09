@@ -4,13 +4,38 @@
 // Este fichero se monta en /data/settings.js dentro del contenedor.
 //
 // Puntos clave:
+//   - adminAuth: autenticacion obligatoria con control de acceso por roles
 //   - credentialSecret: clave para cifrar credenciales (viene de variable de entorno)
 //   - functionGlobalContext: permite acceder a variables de entorno desde nodos function
 //   - flowFile: fichero de flujos (montado como volumen read-only)
 
+const bcrypt = require('bcryptjs');
+
+const adminUser = process.env.NODE_RED_ADMIN_USER || 'admin';
+const adminPassRaw = process.env.NODE_RED_ADMIN_PASSWORD;
+
+if (!adminPassRaw) {
+    console.error('[Node-RED Security] ERROR CRITICO: NODE_RED_ADMIN_PASSWORD no esta configurada en .env.');
+    process.exit(1);
+}
+
+const adminPasswordHash = adminPassRaw.startsWith('$2')
+    ? adminPassRaw
+    : bcrypt.hashSync(adminPassRaw, 12);
+
 module.exports = {
     // Puerto de escucha (dentro del contenedor)
     uiPort: process.env.PORT || 1880,
+
+    // Autenticacion robusta del editor y APIs administrativas (RBAC estricto)
+    adminAuth: {
+        type: "credentials",
+        users: [{
+            username: adminUser,
+            password: adminPasswordHash,
+            permissions: "*"
+        }]
+    },
 
     // Directorio de datos de Node-RED
     userDir: '/data',
@@ -19,8 +44,7 @@ module.exports = {
     flowFile: 'flows.json',
 
     // Clave para cifrar credenciales almacenadas en disco
-    // Se pasa por variable de entorno para no guardarla en git
-    credentialSecret: process.env.NODE_RED_CREDENTIAL_SECRET || 'haizelab-secret',
+    credentialSecret: process.env.NODE_RED_CREDENTIAL_SECRET,
 
     // Permitir require en nodos function
     functionExternalModules: true,

@@ -109,6 +109,7 @@ services:
       DOCKER_INFLUXDB_INIT_ORG:         ${INFLUXDB_ORG}
       DOCKER_INFLUXDB_INIT_BUCKET:      ${INFLUXDB_BUCKET_PRINCIPAL}
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
+      INFLUXD_SESSION_LENGTH:           43200
     volumes:
       - influxdb_data:/var/lib/influxdb2
       - influxdb_config:/etc/influxdb2
@@ -149,6 +150,29 @@ services:
     restart: "no"
 
   # ────────────────────────────────────────────────────────────────────────────
+  # InfluxDB Iframe Proxy — Soporte para Third-Party Cookies y Sesión en Iframes
+  # Permite embeber InfluxDB v2 en dashboards web cross-domain (SameSite=None,
+  # Secure, Partitioned) y provee autenticación transparente para navegadores
+  # con bloqueo estricto de cookies de terceros.
+  # ────────────────────────────────────────────────────────────────────────────
+  influx-proxy:
+    build:
+      context: ./influx_proxy
+    image: haizelab_influx_proxy:latest
+    container_name: haizelab_influx_proxy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8085:8085"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      INFLUX_HOST:              influxdb
+      INFLUX_PORT:              8086
+      PROXY_PORT:               8085
+      INFLUXDB_READ_TOKEN:      ${INFLUXDB_READ_TOKEN:-}
+
+  # ────────────────────────────────────────────────────────────────────────────
   # Node-RED 5.0.7
   # Imagen personalizada (nodered/Dockerfile) con node-red-contrib-influxdb 0.7.0
   # Flujos: meteo (15 min), trafico (5 min), aire_demo (5 s)
@@ -173,7 +197,9 @@ services:
       INFLUXDB_URL:                 http://influxdb:8086
       INFLUXDB_ORG:                 ${INFLUXDB_ORG}
       AIRE_DEMO_CSV:                /data/no2_demo_reducido.csv
-      NODE_RED_CREDENTIAL_SECRET:   ${NODE_RED_CREDENTIAL_SECRET:-haizelab_nodered_secret_2024}
+      NODE_RED_CREDENTIAL_SECRET:   ${NODE_RED_CREDENTIAL_SECRET}
+      NODE_RED_ADMIN_USER:          ${NODE_RED_ADMIN_USER:-admin}
+      NODE_RED_ADMIN_PASSWORD:      ${NODE_RED_ADMIN_PASSWORD}
       # INFLUXDB_NODERED_WRITE_TOKEN se carga desde /tokens/tokens.env via entrypoint.sh
     volumes:
       - nodered_data:/data
@@ -215,7 +241,7 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/haizelab-overview.json
       - INFLUXDB_ORG=${INFLUXDB_ORG:-haizenlab}
-      - GRAFANA_DEFAULT_PASSWORD=${GRAFANA_DEFAULT_PASSWORD:-haize2024}
+      - GRAFANA_DEFAULT_PASSWORD=${GRAFANA_DEFAULT_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/entrypoint.sh:/entrypoint.sh:ro
@@ -223,6 +249,7 @@ services:
       - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
       - ./grafana/provisioning/access-control:/etc/grafana/provisioning/access-control:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/maps/zbe_bilbao.geojson:/usr/share/grafana/public/gazetteer/zbe_bilbao.geojson:ro
       - influxdb_tokens:/tokens:ro
     entrypoint: ["sh", "/entrypoint.sh"]
     healthcheck:
@@ -267,6 +294,34 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # chatbot — Asistente RAG local para HaizeLab y presentación web
+  # Expone API FastAPI en http://127.0.0.1:8000 (endpoints /chat, /health, /info)
+  # Funciona en modo RAG determinista offline o conectado a Ollama (OLLAMA_URL)
+  # ────────────────────────────────────────────────────────────────────────────
+  chatbot:
+    build:
+      context: ./chatbot
+      dockerfile: Dockerfile
+    image: haizelab_chatbot:latest
+    container_name: haizelab_chatbot
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      PORT: 8000
+      HOST: 0.0.0.0
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 # ────────────────────────────────────────────────────────────────────────────
 # Volumenes con nombre

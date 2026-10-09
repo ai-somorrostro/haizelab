@@ -1,0 +1,44 @@
+{
+  "type": "FeatureCollection",
+  "name": "ZBE_Bilbao_Abando",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Zona de Bajas Emisiones (ZBE) Bilbao",
+        "distrito": "Distrito 6 · Abando",
+        "descripcion": "Área de restricción de tráfico y bajas emisiones según Ordenanza Municipal de Bilbao",
+        "superficie_aprox": "2.1 km²"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-2.9442, 43.2665],
+            [-2.9410, 43.2678],
+            [-2.9360, 43.2688],
+            [-2.9320, 43.2680],
+            [-2.9285, 43.2645],
+            [-2.9250, 43.2620],
+            [-2.9242, 43.2605],
+            [-2.9265, 43.2600],
+            [-2.9280, 43.2585],
+            [-2.9335, 43.2575],
+            [-2.9370, 43.2575],
+            [-2.9410, 43.2580],
+            [-2.9465, 43.2595],
+            [-2.9475, 43.2630],
+            [-2.9463, 43.2645],
+            [-2.9442, 43.2665]
+          ]
+        ]
+      }
+    }
+  ]
+}

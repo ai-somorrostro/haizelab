@@ -85,15 +85,144 @@
       }
     },
     {
+      "id": 50,
+      "title": "Mapa de Bilbao — ZBE de Abando y Concentración NO₂ en Vivo",
+      "description": "Polígono rojo delimitador: Zona de Bajas Emisiones (Abando). Marcadores: Estaciones de monitorización con valor en tiempo real (Verde < 25 µg/m³, Amarillo 25-40 µg/m³, Rojo > 40 µg/m³).",
+      "type": "geomap",
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 8,
+        "y": 1
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "InfluxDB-HaizeLab"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "InfluxDB-HaizeLab"
+          },
+          "query": "from(bucket: \"aire_demo\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> last()\n  |> map(fn: (r) => ({\n      r with\n      latitude: if r.estacion == \"Mazarredo\" then 43.2662\n                else if r.estacion == \"Europa\" then 43.2568\n                else if r.estacion == \"Arraiz\" then 43.2458\n                else 43.2612,\n      longitude: if r.estacion == \"Mazarredo\" then -2.9298\n                 else if r.estacion == \"Europa\" then -2.9515\n                 else if r.estacion == \"Arraiz\" then -2.9665\n                 else -2.9431,\n      tipo_estacion: if r.estacion == \"Mazarredo\" or r.estacion == \"María Díaz de Haro\" then \"Interior ZBE\"\n                     else if r.estacion == \"Europa\" then \"Control Exterior\"\n                     else \"Fondo Rural\",\n      etiqueta: r.estacion + \" (\" + string(v: int(v: r._value)) + \" µg/m³)\"\n  }))\n  |> keep(columns: [\"_time\", \"_value\", \"estacion\", \"zona\", \"tipo_estacion\", \"etiqueta\", \"latitude\", \"longitude\"])",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "view": {
+          "id": "coords",
+          "lat": 43.2615,
+          "lon": -2.939,
+          "zoom": 13.7,
+          "allLayers": false
+        },
+        "basemap": {
+          "type": "xyz",
+          "name": "OpenStreetMap (Bilbao)",
+          "config": {
+            "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            "attribution": "© OpenStreetMap contributors"
+          }
+        },
+        "layers": [
+          {
+            "type": "geojson",
+            "name": "Perímetro ZBE (Abando)",
+            "config": {
+              "src": "/public/gazetteer/zbe_bilbao.geojson",
+              "style": {
+                "color": {
+                  "fixed": "#E02F44"
+                },
+                "opacity": 0.22
+              }
+            }
+          },
+          {
+            "type": "markers",
+            "name": "Estaciones NO₂ (Bilbao)",
+            "config": {
+              "showLegend": true,
+              "style": {
+                "size": {
+                  "fixed": 16,
+                  "min": 12,
+                  "max": 30,
+                  "field": "_value"
+                },
+                "color": {
+                  "field": "_value",
+                  "fixed": "dark-green"
+                },
+                "symbol": {
+                  "fixed": "circle"
+                },
+                "text": {
+                  "field": "etiqueta",
+                  "fixed": ""
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetY": -18
+                }
+              }
+            }
+          }
+        ],
+        "controls": {
+          "showZoom": true,
+          "showScale": true,
+          "showMeasure": false,
+          "mouseWheelZoom": true,
+          "showAttribution": false,
+          "showTooltip": true
+        },
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µg/m³",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 25
+              },
+              {
+                "color": "red",
+                "value": 40
+              }
+            ]
+          },
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "id": 2,
       "title": "Evolución Temporal de NO₂ (Dentro vs Fuera de la ZBE)",
       "description": "Comparativa en tiempo real de estaciones dentro de la ZBE (Mazarredo y Mª Díaz de Haro), fuera (Europa) y fondo natural (Arraiz).",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
-        "w": 16,
-        "x": 8,
-        "y": 1
+        "w": 24,
+        "x": 0,
+        "y": 9
       },
       "datasource": {
         "type": "influxdb",
@@ -209,7 +338,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 17
       },
       "id": 150,
       "title": "Estadísticas NO₂ — Medias, Medias Móviles y Percentiles",
@@ -224,7 +353,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 10
+        "y": 18
       },
       "datasource": {
         "type": "influxdb",
@@ -374,7 +503,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 10
+        "y": 18
       },
       "datasource": {
         "type": "influxdb",
@@ -450,7 +579,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 26
       },
       "id": 200,
       "title": "Meteorología en Tiempo Real (Bilbao — Open-Meteo)",
@@ -464,7 +593,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 19
+        "y": 27
       },
       "datasource": {
         "type": "influxdb",
@@ -557,7 +686,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 19
+        "y": 27
       },
       "datasource": {
         "type": "influxdb",
@@ -652,7 +781,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 34
       },
       "id": 300,
       "title": "Estado del Tráfico Urbano (Bilbao Open Data — 81 Tramos)",
@@ -667,7 +796,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 27
+        "y": 35
       },
       "datasource": {
         "type": "influxdb",
@@ -728,7 +857,7 @@
         "h": 7,
         "w": 12,
         "x": 6,
-        "y": 27
+        "y": 35
       },
       "datasource": {
         "type": "influxdb",
@@ -837,7 +966,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 27
+        "y": 35
       },
       "datasource": {
         "type": "influxdb",
