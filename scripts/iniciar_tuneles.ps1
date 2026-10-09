@@ -55,15 +55,7 @@ foreach ($svc in $services) {
     if (Test-Path $logFile) { Remove-Item $logFile -Force }
 
     Write-Host "Iniciando tunel para $($svc.Label) (puerto $($svc.Port))..." -ForegroundColor Yellow
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = $cfExe
-    $psi.Arguments = "tunnel --url http://localhost:$($svc.Port)"
-    $psi.RedirectStandardError = $true
-    $psi.RedirectStandardOutput = $true
-    $psi.UseShellExecute = $false
-    $psi.CreateNoWindow = $true
-
-    $proc = [System.Diagnostics.Process]::Start($psi)
+    $proc = Start-Process -FilePath $cfExe -ArgumentList "tunnel --url http://localhost:$($svc.Port)" -RedirectStandardError $logFile -WindowStyle Hidden -PassThru
     $processes += $proc
 
     # Esperar URL en logs (hasta 15 seg)
@@ -71,15 +63,12 @@ foreach ($svc in $services) {
     $startWait = Get-Date
     while (-not $url -and ((Get-Date) - $startWait).TotalSeconds -lt 15) {
         Start-Sleep -Milliseconds 500
-        $errLine = $proc.StandardError.ReadLine()
-        while ($errLine) {
-            Add-Content -Path $logFile -Value $errLine
-            if ($errLine -match "https://[a-zA-Z0-9-]+\.trycloudflare\.com") {
+        if (Test-Path $logFile) {
+            $content = Get-Content $logFile -Raw -ErrorAction SilentlyContinue
+            if ($content -match "https://[a-zA-Z0-9-]+\.trycloudflare\.com") {
                 $url = $matches[0]
                 break
             }
-            if ($proc.StandardError.EndOfStream) { break }
-            $errLine = $proc.StandardError.ReadLine()
         }
     }
 
@@ -95,12 +84,14 @@ foreach ($svc in $services) {
 $grafanaJsonPath = Join-Path $PSScriptRoot "..\presentacion\grafana.json"
 if (Test-Path $grafanaJsonPath) {
     try {
-        $jsonContent = Get-Content $grafanaJsonPath -Raw | ConvertFrom-Json
+        $raw = [System.IO.File]::ReadAllText($grafanaJsonPath)
+        $jsonContent = $raw | ConvertFrom-Json
         foreach ($key in $urls.Keys) {
             $jsonContent.$key = $urls[$key]
         }
-        $jsonContent | ConvertTo-Json -Depth 5 | Set-Content $grafanaJsonPath -Encoding utf8
-        Write-Host "`n[OK] presentacion/grafana.json actualizado con las nuevas URLs." -ForegroundColor Green
+        $jsonOut = $jsonContent | ConvertTo-Json -Depth 5
+        [System.IO.File]::WriteAllText($grafanaJsonPath, $jsonOut, [System.Text.UTF8Encoding]::new($false))
+        Write-Host "`n[OK] presentacion/grafana.json actualizado con las nuevas URLs (UTF-8 sin BOM)." -ForegroundColor Green
     } catch {
         Write-Warning "No se pudo actualizar presentacion/grafana.json: $_"
     }
