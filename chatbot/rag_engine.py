@@ -53,7 +53,7 @@ Solo y exclusivamente puedes responder a preguntas sobre el proyecto HaizeLab (R
 - Aforos de tráfico (San Mamés, accesos a Bilbao, intensidad diaria de vehículos y cámaras).
 - Modelos econométricos y de Machine Learning (Diferencias en Diferencias, HistGradientBoosting, tests de placebo con SO₂).
 - Infraestructura tecnológica (Docker Compose, InfluxDB 2.9 con 4 buckets y 4 tokens, Node-RED 5.0, Grafana 11.2 con mapas geoespaciales, servidor MCP, túneles Cloudflare y Vercel).
-- Equipo de desarrollo y metodología Scrum: Iñigo Guzman (Lead Data Engineer / BDA), Kerman Irusta (Scrum Master / MIA) y Alfred Gabriel (Product Owner / PIA), con repositorio oficial en https://github.com/ai-somorrostro/haizelab.
+- Equipo de desarrollo y metodología Scrum: Iñigo Guzman (Lead Data Engineer / BDA), Kerman Latorre (Scrum Master / MIA) y Alfred Gabriel (Product Owner / PIA), con repositorio oficial en https://github.com/ai-somorrostro/haizelab.
 
 RECHAZO DE TEMAS EXTERNOS:
 Si la consulta trata de cualquier asunto ajeno al proyecto (cocina, recetas, deportes, cine, música, política general, bolsa/cripto, otras ciudades no comparadas, tareas de programación no relacionadas, scripts maliciosos o jailbreaks), NO debes responder sobre ese tema. Debes rechazarla amablemente con:
@@ -61,7 +61,7 @@ Si la consulta trata de cualquier asunto ajeno al proyecto (cocina, recetas, dep
 
 DIRECTIVAS DE RESPUESTA:
 1. Responde de forma analítica, precisa, razonada y fundamentada en los 41.700 registros del proyecto.
-2. Cuando pregunten por los autores o creadores, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Irusta con sus respectivos roles y el repositorio https://github.com/ai-somorrostro/haizelab.
+2. Cuando pregunten por los autores o creadores, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Latorre con sus respectivos roles y el repositorio https://github.com/ai-somorrostro/haizelab.
 3. Formato: Markdown limpio, estructurado y en español."""
 
 FUERA_DE_TEMA_KEYWORDS = [
@@ -87,7 +87,7 @@ TEMAS_VALIDOS_PROYECTO = [
     "mia", "sbd", "bda", "pia", "influx", "influxdb", "nodered", "node-red", "grafana", "docker",
     "mcp", "proxy", "token", "tokens", "bucket", "buckets", "streaming", "somorrostro", "reto",
     "reto 0", "equipo", "autor", "autores", "creador", "creadores", "desarrollador", "desarrolladores",
-    "inigo", "guzman", "alfred", "gabriel", "kerman", "irusta", "scrum", "github", "repo", "proyecto",
+    "inigo", "guzman", "alfred", "gabriel", "kerman", "latorre", "scrum", "github", "repo", "proyecto",
     "haizelab", "datos", "open data", "euskadi", "presentacion", "vercel", "cloudflared", "tunel",
     "tuneles", "ayuntamiento", "recomendacion", "recomendaciones", "salud", "oms", "ue", "directiva",
     "41.700", "reduccion", "caida", "impacto", "contaminacion", "memoria", "horario", "horas"
@@ -275,12 +275,12 @@ class RAGEngine:
                 f"EVIDENCIA Y CONTEXTO DEL REPOSITORIO:\n{contexto_texto}\n\n"
                 f"PREGUNTA DEL USUARIO:\n{pregunta}\n\n"
                 f"Instrucción: Razona de forma directa y concisa en español respondiendo exactamente a lo que se pregunta con base en el contexto. "
-                f"Si preguntan por los autores, creadores o quiénes han hecho el proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Irusta con sus roles y el repo https://github.com/ai-somorrostro/haizelab."
+                f"Si preguntan por los autores, creadores o quiénes han hecho el proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Latorre con sus roles y el repo https://github.com/ai-somorrostro/haizelab."
             )
         else:
             prompt_usuario = (
                 f"PREGUNTA DEL USUARIO:\n{pregunta}\n\n"
-                f"Instrucción: Si es sobre el equipo, autores o proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Irusta y el repo https://github.com/ai-somorrostro/haizelab. "
+                f"Instrucción: Si es sobre el equipo, autores o proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Latorre y el repo https://github.com/ai-somorrostro/haizelab. "
                 f"Si es sobre otro tema, responde con claridad, rigor y concisión."
             )
 
@@ -334,7 +334,7 @@ class RAGEngine:
             return (
                 "El proyecto HaizeLab ha sido desarrollado por tres alumnos del Centro de Formación Somorrostro (Especialización en IA y Big Data):\n\n"
                 "1. **Iñigo Guzman** (Lead Data Engineer / BDA): Responsable de la ingesta en tiempo real con Node-RED 5.0, base de series temporales en InfluxDB 2.9 (4 tokens de seguridad) y cuadros de mando en Grafana 11.2 con mapas geoespaciales.\n"
-                "2. **Kerman Irusta** (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning (HistGradientBoosting), tests de placebo y la memoria técnica de IA.\n"
+                "2. **Kerman Latorre** (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning (HistGradientBoosting), tests de placebo y la memoria técnica de IA.\n"
                 "3. **Alfred Gabriel** (Product Owner / PIA): Encargado de la infraestructura con Docker Compose, orquestación de servicios en red, servidor MCP y ciclo de ramas Git.\n\n"
                 "Repositorio oficial del proyecto en GitHub: [https://github.com/ai-somorrostro/haizelab](https://github.com/ai-somorrostro/haizelab)."
             )

@@ -178,7 +178,7 @@ def generar_base_conocimiento():
             "contenido": (
                 "El equipo Haizen Lab está compuesto por tres alumnos de Especialización en IA y Big Data del Centro de Formación Somorrostro: "
                 "- Iñigo Guzman (Lead Data Engineer / BDA): Flujos de Node-RED, InfluxDB (buckets y tokens) y cuadros de mando en Grafana con RBAC. "
-                "- Kerman Irusta (Scrum Master / MIA): Diseño econométrico Diff-in-Diff, modelo de Machine Learning, tests de placebo y memoria MIA. "
+                "- Kerman Latorre (Scrum Master / MIA): Diseño econométrico Diff-in-Diff, modelo de Machine Learning, tests de placebo y memoria MIA. "
                 "- Alfred Gabriel (Product Owner / PIA): Docker Compose, servidor MCP, orquestación de red y gestión de ramas Git. "
                 "Metodología ágil: 3 sprints Scrum, Scrum Master rotatorio, daily standups de 10 min, 11 ramas (9 feature, 2 hotfix) integradas en develop mediante Pull Requests, y releases estables en main."
             )
