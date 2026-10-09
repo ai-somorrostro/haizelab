@@ -23,7 +23,6 @@ SALIDA:
 """
 
 from pathlib import Path
-import sys
 import pandas as pd
 import pymupdf
 

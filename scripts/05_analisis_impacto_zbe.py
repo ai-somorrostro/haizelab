@@ -57,7 +57,7 @@ def main():
     print("\n--- 1. ANÁLISIS DE DIFERENCIAS EN DIFERENCIAS (DIFF-IN-DIFF) ---")
     df["mes"] = df["ts"].dt.to_period("M").dt.to_timestamp()
     mensual = df.groupby("mes")[["no2_dentro", "no2_fuera"]].mean()
-    mensual["brecha_dentro_fuera"] = mensual["no2_dentro"] - mensual["fuera"] if "fuera" in mensual.columns else mensual["no2_dentro"] - mensual["no2_fuera"]
+    mensual["brecha_dentro_fuera"] = mensual["no2_dentro"] - mensual["no2_fuera"]
 
     fase1_mes = FECHA_FASE1.to_period("M").to_timestamp()
     pre_brecha = mensual[mensual.index < fase1_mes]["brecha_dentro_fuera"]
