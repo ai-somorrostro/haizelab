@@ -13,6 +13,7 @@ Proyecto del Reto 0 "HERE WE GO" del Centro de Formación Somorrostro, curso de 
 - [Pipeline analítico](#pipeline-analítico)
 - [Grafana: usuarios, roles y alertas](#grafana-usuarios-roles-y-alertas)
 - [Servidor MCP](#servidor-mcp)
+- [Asistente inteligente (Chatbot RAG)](#asistente-inteligente-chatbot-rag)
 - [Presentación web y túneles](#presentación-web-y-túneles)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Documentación](#documentación)
@@ -250,6 +251,20 @@ El servicio `influx-mcp` expone InfluxDB a clientes compatibles con Model Contex
 
 La configuración de los clientes OpenCode y Antigravity ya está en `opencode.json` y `.agents/mcp_config.json`. La instalación, la verificación y la resolución de problemas están en [mcp/README.md](mcp/README.md).
 
+## Asistente inteligente (Chatbot RAG)
+
+El servicio `chatbot` (`http://localhost:8000`) proporciona una API FastAPI con un motor RAG (*Retrieval-Augmented Generation*) diseñado para responder consultas técnicas sobre el estudio de la ZBE de Bilbao, métricas DiD, arquitectura y datos.
+
+El motor opera con una arquitectura adaptativa y segura de tres niveles:
+
+| Nivel | Motor | Cuándo se activa | Características |
+|---|---|---|---|
+| **1. Motor Analítico Local (Offline)** | `haizelab-analytical-engine` | Por defecto (sin API keys ni Ollama) | 100 % autónomo, determinista, instantáneo (<5 ms), cero coste y sin dependencias externas. |
+| **2. SLM Local (Ollama)** | `qwen2.5:1.5b` vía Ollama local (`11434`) | Si Ollama está corriendo en la máquina host | Razonamiento generativo en local sin enviar datos fuera de tu equipo. |
+| **3. LLM Cloud (Groq / Gemini)** | Groq Llama-3.3-70b o Google Gemini Flash | Si defines `GROQ_API_KEY` o `GEMINI_API_KEY` en `.env` | Respuestas de lenguaje natural fluido y razonamiento avanzado de alta velocidad. |
+
+La guía completa de configuración, instalación de Ollama y validación de las 18 pruebas automatizadas está en [chatbot/README.md](chatbot/README.md).
+
 ## Presentación web y túneles
 
 La presentación es una página estática interactiva en `presentacion/`. Cuenta con dos modalidades de visualización:
@@ -304,6 +319,7 @@ Este script abre un túnel de Cloudflare por servicio, sincroniza las URLs públ
 | [Infraestructura explicada](docs/infraestructura-explicada.md) | Big Data Aplicado | InfluxDB, Node-RED, Grafana y gestión de tokens |
 | [Organigrama de datos](docs/organigrama-datos.md) | Big Data Aplicado | Buckets, measurements, tags y fields |
 | [Servidor MCP](mcp/README.md) | Programación de IA | Instalación, clientes y verificación |
+| [Asistente inteligente](chatbot/README.md) | Programación de IA / Modelos de IA | Arquitectura RAG, niveles de razonamiento y seguridad |
 
 ## Flujo de trabajo
 
