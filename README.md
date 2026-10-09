@@ -114,6 +114,7 @@ cp .env.example .env
 | `NODE_RED_CREDENTIAL_SECRET` | Clave con la que Node-RED cifra sus credenciales |
 | `NODE_RED_ADMIN_PASSWORD` | Contraseña del editor de Node-RED |
 | `GRAFANA_DEFAULT_PASSWORD` | Base de las contraseñas de los usuarios de Grafana |
+| `GEMINI_API_KEY` *(Opcional)* | Clave gratuita de Google Gemini para activar el razonamiento con IA del chatbot |
 
 Para generar un valor aleatorio:
 
@@ -254,16 +255,29 @@ La configuración de los clientes OpenCode y Antigravity ya está en `opencode.j
 
 ## Asistente inteligente (Chatbot)
 
-El servicio `chatbot` (`http://localhost:8000`) proporciona una API en FastAPI diseñada para responder consultas técnicas sobre el estudio de la ZBE de Bilbao, métricas DiD, arquitectura y datos.
+El servicio `chatbot` (`http://localhost:8000`) proporciona una API en FastAPI diseñada para responder consultas técnicas sobre el estudio de la ZBE de Bilbao, métricas DiD, tráfico, clima y arquitectura.
 
-El asistente opera con dos modalidades de respuesta:
+### Modalidades de funcionamiento:
 
-| Modalidad | Motor | Cuándo se activa | Características |
-|---|---|---|---|
-| **1. Base de Conocimiento Local** | `knowledge_base.json` | Por defecto en Docker | Determinista, instantáneo, cero coste y sin dependencias externas. |
-| **2. SLM Local (Ollama)** | `qwen2.5:1.5b` vía Ollama (`11434`) | Si Ollama está corriendo en la máquina host | Generación de lenguaje natural fluida con contexto inyectado desde los datos oficiales. |
+1. **Modo Offline (Por defecto):**
+   * No requiere ninguna clave ni configuración adicional.
+   * Responde de forma instantánea y determinista utilizando los datos oficiales de `knowledge_base.json`.
+   * Garantiza que el asistente siempre funcione en cualquier equipo sin internet.
 
-La documentación interactiva de la API está disponible en `http://localhost:8000/docs`, y los tests se validan con `python chatbot/test_preguntas.py`.
+2. **Modo Razonamiento con IA en vivo (Opcional):**
+   * Si quieres que el asistente genere lenguaje natural dinámico, razone hipótesis (*«¿Por qué el SO₂ no bajó?»*) y argumente los porqués:
+     1. Obtén una clave API gratuita en [Google AI Studio](https://aistudio.google.com/) *(se genera en 10 segundos con tu cuenta de Gmail, gratis y sin tarjeta)*.
+     2. Añádela a tu archivo `.env`:
+        ```env
+        GEMINI_API_KEY=AIzaSy_tu_clave_aqui
+        ```
+     3. Reinicia el contenedor del chatbot:
+        ```bash
+        docker compose up -d chatbot
+        ```
+     * *(Alternativa local)*: Si prefieres no usar la nube, abre **Ollama** en tu ordenador (`ollama run qwen2.5:1.5b`); el contenedor lo detecta automáticamente sin necesidad de claves.
+
+La documentación interactiva de la API está en `http://localhost:8000/docs`, y las pruebas se validan con `python chatbot/test_preguntas.py`.
 
 ## Presentación web
 
