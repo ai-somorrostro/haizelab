@@ -31,23 +31,38 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS defensivo: orígenes permitidos explícitos
+# CORS: orígenes web autorizados y soporte para apertura directa de archivo local (file:// con Origin null)
 ORIGENES_PERMITIDOS = [
     "https://haizelab-presentacion.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
     "http://localhost:8000",
-    "http://127.0.0.1:8000"
+    "http://127.0.0.1:8000",
+    "null"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ORIGENES_PERMITIDOS,
-    allow_origin_regex=r"^https://.*(vercel\.app|trycloudflare\.com)$",
+    allow_origins=["*"],
+    allow_origin_regex=r".*",
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Accept"],
+    allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def force_cors_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        from fastapi.responses import Response
+        response = Response(status_code=204)
+    else:
+        response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
 engine = RAGEngine()
 
