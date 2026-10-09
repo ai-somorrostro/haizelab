@@ -252,19 +252,27 @@ La configuración de los clientes OpenCode y Antigravity ya está en `opencode.j
 
 ## Presentación web y túneles
 
-La presentación es una página estática en `presentacion/`, publicada en [haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app). Para abrirla en local:
+La presentación es una página estática interactiva en `presentacion/`. Cuenta con dos modalidades de visualización:
 
-```bash
-python -m http.server 5500 --directory presentacion
-```
+### 1. Uso en local (autosuficiente, sin túneles)
+Si ejecutas la plataforma en tu propio equipo con Docker, **no necesitas instalar `cloudflared` ni abrir túneles**. La presentación detecta el entorno local y se conecta directamente a tus servicios en `localhost` (Grafana en `:3000`, InfluxDB Proxy en `:8085`, Node-RED en `:1880` y Chatbot en `:8000`).
 
-Después se abre `http://localhost:5500` en el navegador.
+Puedes abrirla de dos formas:
+* Con doble clic directo en `presentacion/index.html` en tu navegador.
+* O levantando un servidor web local:
+  ```bash
+  python -m http.server 5500 --directory presentacion
+  ```
+  y abriendo `http://localhost:5500`.
 
-Para que la versión publicada muestre Grafana, Node-RED, InfluxDB y el chatbot que corren en el equipo local, el script de túneles abre un túnel de Cloudflare por servicio y escribe las direcciones en `presentacion/grafana.json`. Requiere Windows con PowerShell y `cloudflared` instalado, y la plataforma en marcha. Desde la raíz del repositorio:
+### 2. Acceso remoto desde Vercel (opcional)
+La presentación también está publicada globalmente en [haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app). Para conectar esa versión en la nube (HTTPS) con los contenedores que corren en tu ordenador sin bloqueos de navegador (*Mixed Content*), ejecuta el script de túneles:
 
 ```powershell
 .\scripts\iniciar_tuneles.ps1
 ```
+
+Este script abre un túnel de Cloudflare por servicio, sincroniza las URLs públicas seguras en `presentacion/grafana.json` y permite la interacción en vivo desde cualquier parte del mundo.
 
 ## Estructura del repositorio
 
@@ -310,4 +318,4 @@ Para que la versión publicada muestre Grafana, Node-RED, InfluxDB y el chatbot 
 |---|---|
 | Alfred Gabriel | Product Owner, Programación de IA |
 | Iñigo Guzman | Lead Data Engineer, Big Data Aplicado |
-| Kerman Irusta | Scrum Master, Modelos de IA |
+| Kerman Latorre | Scrum Master, Modelos de IA |
