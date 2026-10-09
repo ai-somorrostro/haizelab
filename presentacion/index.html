@@ -1893,8 +1893,8 @@ const Transiciones = (function () {
     const esLocal = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
     let cfg = {
-      influx: 'https://disabled-amy-shell-numerous.trycloudflare.com',
-      nodered: 'https://modification-spend-conversion-handmade.trycloudflare.com'
+      influx: 'http://localhost:8086',
+      nodered: 'http://localhost:1880'
     };
 
     function resolverUrl(tipo, fallbackLocal) {
@@ -1905,7 +1905,7 @@ const Transiciones = (function () {
     }
 
     function inicializarFrames() {
-      const uInflux = resolverUrl('influx', 'http://localhost:8085');
+      const uInflux = resolverUrl('influx', 'http://localhost:8086');
       const uNodered = resolverUrl('nodered', 'http://localhost:1880');
       if (influxFrame && (!influxFrame.src || !influxFrame.src.includes(uInflux))) {
         influxFrame.src = uInflux;
@@ -2004,20 +2004,18 @@ const Transiciones = (function () {
 
     const initialWelcomeHtml = msgs.innerHTML;
 
-    // Configuración de URL base del endpoint backend (Local-First con fallback a túnel)
+    // Configuración de URL base del endpoint backend (Local directo)
     const params = new URLSearchParams(location.search);
     const esLocal = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const CLOUDFLARE_CHATBOT_TUNNEL = 'https://const-tasks-llc-cooling.trycloudflare.com';
-    let apiBase = (params.get('chatbot') || (esLocal ? 'http://localhost:8000' : CLOUDFLARE_CHATBOT_TUNNEL)).replace(/\/$/, '');
+    let apiBase = (params.get('chatbot') || 'http://localhost:8000').replace(/\/$/, '');
     let conectado = false;
     let historial = [];
 
-    // Cargar túnel dinámico desde grafana.json si existe
-    let tunnelChatbot = CLOUDFLARE_CHATBOT_TUNNEL;
+    // Cargar URL dinámica desde grafana.json si existe
     fetch('grafana.json', { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
-        if (d && d.chatbot) tunnelChatbot = d.chatbot;
+        if (d && d.chatbot) apiBase = d.chatbot.replace(/\/$/, '');
       })
       .catch(() => {});
 

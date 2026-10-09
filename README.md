@@ -13,8 +13,8 @@ Proyecto del Reto 0 "HERE WE GO" del Centro de Formación Somorrostro, curso de 
 - [Pipeline analítico](#pipeline-analítico)
 - [Grafana: usuarios, roles y alertas](#grafana-usuarios-roles-y-alertas)
 - [Servidor MCP](#servidor-mcp)
-- [Asistente inteligente (Chatbot RAG)](#asistente-inteligente-chatbot-rag)
-- [Presentación web y túneles](#presentación-web-y-túneles)
+- [Asistente inteligente (Chatbot)](#asistente-inteligente-chatbot)
+- [Presentación web](#presentación-web)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Documentación](#documentación)
 - [Flujo de trabajo](#flujo-de-trabajo)
@@ -66,9 +66,9 @@ Todo se levanta con Docker Compose. Los puertos se publican solo en `127.0.0.1`.
 | `influxdb_setup` | `influxdb:2.9.1` | | Contenedor efímero que crea los buckets y los tokens en el primer arranque |
 | `nodered` | `nodered/node-red:5.0.7` con `node-red-contrib-influxdb` 0.7.0 | 1880 | Ingesta continua de meteorología, tráfico y demo de NO₂ |
 | `grafana` | `grafana/grafana:11.2.0` | 3000 | Dashboards, alertas y control de acceso |
-| `influx-mcp` | `python:3.12-slim` con `influxdb-mcp` | 5001 | Servidor MCP de solo lectura |
-| `influx-proxy` | Alpine con Node.js | 8085 | Proxy inverso para embeber InfluxDB en la presentación web |
-| `chatbot` | `python:3.11-slim` con FastAPI | 8000 | Asistente con RAG sobre una base de conocimiento local |
+| `influx-mcp` | `python:3.12-slim` con `influxdb-mcp` | 5001 | Servidor MCP de solo lectura (requisito PIA) |
+| `chatbot` | `python:3.11-slim` con FastAPI | 8000 | Asistente inteligente explicable con base de conocimiento local |
+| `presentacion` | `nginx:alpine` | 8080 | Diapositivas interactivas con dashboards embebidos |
 
 ### Buckets
 
@@ -114,6 +114,7 @@ cp .env.example .env
 | `NODE_RED_CREDENTIAL_SECRET` | Clave con la que Node-RED cifra sus credenciales |
 | `NODE_RED_ADMIN_PASSWORD` | Contraseña del editor de Node-RED |
 | `GRAFANA_DEFAULT_PASSWORD` | Base de las contraseñas de los usuarios de Grafana |
+| `GEMINI_API_KEY` *(Opcional)* | Clave gratuita de Google Gemini para activar el razonamiento con IA del chatbot |
 
 Para generar un valor aleatorio:
 
@@ -144,11 +145,12 @@ docker compose ps -a
 
 | Servicio | Dirección |
 |---|---|
+| Presentación interactiva | http://localhost:8080 |
 | Grafana | http://localhost:3000 |
 | Node-RED | http://localhost:1880 |
 | InfluxDB | http://localhost:8086 |
 | Servidor MCP | http://127.0.0.1:5001/mcp/ |
-| Chatbot | http://localhost:8000/health |
+| Chatbot (API / Docs) | http://localhost:8000/docs |
 
 Para detener la plataforma conservando los datos:
 
@@ -251,64 +253,62 @@ El servicio `influx-mcp` expone InfluxDB a clientes compatibles con Model Contex
 
 La configuración de los clientes OpenCode y Antigravity ya está en `opencode.json` y `.agents/mcp_config.json`. La instalación, la verificación y la resolución de problemas están en [mcp/README.md](mcp/README.md).
 
-## Asistente inteligente (Chatbot RAG)
+## Asistente inteligente (Chatbot)
 
-El servicio `chatbot` (`http://localhost:8000`) proporciona una API FastAPI con un motor RAG (*Retrieval-Augmented Generation*) diseñado para responder consultas técnicas sobre el estudio de la ZBE de Bilbao, métricas DiD, arquitectura y datos.
+El servicio `chatbot` (`http://localhost:8000`) proporciona una API en FastAPI diseñada para responder consultas técnicas sobre el estudio de la ZBE de Bilbao, métricas DiD, tráfico, clima y arquitectura.
 
-El motor opera con una arquitectura adaptativa y segura de tres niveles:
+### Modalidades de funcionamiento:
 
-| Nivel | Motor | Cuándo se activa | Características |
-|---|---|---|---|
-| **1. Motor Analítico Local (Offline)** | `haizelab-analytical-engine` | Por defecto (sin API keys ni Ollama) | 100 % autónomo, determinista, instantáneo (<5 ms), cero coste y sin dependencias externas. |
-| **2. SLM Local (Ollama)** | `qwen2.5:1.5b` vía Ollama local (`11434`) | Si Ollama está corriendo en la máquina host | Razonamiento generativo en local sin enviar datos fuera de tu equipo. |
-| **3. LLM Cloud (Groq / Gemini)** | Groq Llama-3.3-70b o Google Gemini Flash | Si defines `GROQ_API_KEY` o `GEMINI_API_KEY` en `.env` | Respuestas de lenguaje natural fluido y razonamiento avanzado de alta velocidad. |
+1. **Modo Offline (Por defecto):**
+   * No requiere ninguna clave ni configuración adicional.
+   * Responde de forma instantánea y determinista utilizando los datos oficiales de `knowledge_base.json`.
+   * Garantiza que el asistente siempre funcione en cualquier equipo sin internet.
 
-La guía completa de configuración, instalación de Ollama y validación de las 18 pruebas automatizadas está en [chatbot/README.md](chatbot/README.md).
+2. **Modo Razonamiento con IA en vivo (Opcional):**
+   * Si quieres que el asistente genere lenguaje natural dinámico, razone hipótesis (*«¿Por qué el SO₂ no bajó?»*) y argumente los porqués:
+     1. Obtén una clave API gratuita en [Google AI Studio](https://aistudio.google.com/) *(se genera en 10 segundos con tu cuenta de Gmail, gratis y sin tarjeta)*.
+     2. Añádela a tu archivo `.env`:
+        ```env
+        GEMINI_API_KEY=AIzaSy_tu_clave_aqui
+        ```
+     3. Reinicia el contenedor del chatbot:
+        ```bash
+        docker compose up -d chatbot
+        ```
+     * *(Alternativa local)*: Si prefieres no usar la nube, abre **Ollama** en tu ordenador (`ollama run qwen2.5:1.5b`); el contenedor lo detecta automáticamente sin necesidad de claves.
 
-## Presentación web y túneles
+La documentación interactiva de la API está en `http://localhost:8000/docs`, y las pruebas se validan con `python chatbot/test_preguntas.py`.
 
-La presentación es una página estática interactiva en `presentacion/`. Cuenta con dos modalidades de visualización:
+## Presentación web
 
-### 1. Uso en local (autosuficiente, sin túneles)
-Si ejecutas la plataforma en tu propio equipo con Docker, **no necesitas instalar `cloudflared` ni abrir túneles**. La presentación detecta el entorno local y se conecta directamente a tus servicios en `localhost` (Grafana en `:3000`, InfluxDB Proxy en `:8085`, Node-RED en `:1880` y Chatbot en `:8000`).
+La presentación es una aplicación web interactiva que se levanta automáticamente con Docker Compose en el puerto 8080.
 
-Puedes abrirla de dos formas:
-* Con doble clic directo en `presentacion/index.html` en tu navegador.
-* O levantando un servidor web local:
-  ```bash
-  python -m http.server 5500 --directory presentacion
-  ```
-  y abriendo `http://localhost:5500`.
+Al acceder a **`http://localhost:8080`**, se cargan las diapositivas con:
+* Integración en directo del dashboard de **Grafana** (`:3000`).
+* Monitorización de **Node-RED** (`:1880`) e **InfluxDB** (`:8086`).
+* Widget interactivo del **Chatbot Assistant** (`:8000`).
 
-### 2. Acceso remoto desde Vercel (opcional)
-La presentación también está publicada globalmente en [haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app). Para conectar esa versión en la nube (HTTPS) con los contenedores que corren en tu ordenador sin bloqueos de navegador (*Mixed Content*), ejecuta el script de túneles:
-
-```powershell
-.\scripts\iniciar_tuneles.ps1
-```
-
-Este script abre un túnel de Cloudflare por servicio, sincroniza las URLs públicas seguras en `presentacion/grafana.json` y permite la interacción en vivo desde cualquier parte del mundo.
+Todo funciona en red local (`localhost`), de forma 100% autónoma y sin dependencias de túneles externos ni servicios de terceros.
 
 ## Estructura del repositorio
 
 | Ruta | Contenido |
 |---|---|
-| `docker-compose.yml` | Definición de todos los servicios |
-| `.env.example` | Plantilla de variables de entorno |
-| `influxdb/` | Script de inicialización de buckets y tokens |
-| `nodered/` | Imagen, configuración y flujos (`flows.json`) |
-| `grafana/` | Dashboards, alertas, control de acceso y mapa de la ZBE |
-| `mcp/` | Imagen y documentación del servidor MCP |
-| `influx_proxy/` | Proxy inverso de InfluxDB |
-| `chatbot/` | API FastAPI, motor RAG y pruebas |
-| `ingesta/` | Descarga, limpieza y carga del histórico en InfluxDB |
-| `notebooks/` | Notebook del análisis |
-| `scripts/` | Scripts numerados del análisis y script de túneles |
-| `data/` | Datos limpios del recorrido del notebook |
-| `datos/` | Datos procesados del recorrido de scripts |
-| `salida/` | Figuras generadas por los scripts |
-| `presentacion/` | Presentación web |
-| `docs/` | Informes, memorias e imágenes |
+| `docker-compose.yml` | Orquestación de los 7 servicios de la plataforma |
+| `.env.example` | Plantilla de credenciales y variables de entorno |
+| `influxdb/` | Script de inicialización de buckets y tokens de mínimo privilegio |
+| `nodered/` | Dockerfile y flujos de ingesta continua (`flows.json`) |
+| `grafana/` | Dashboards, alertas, mapa de la ZBE y aprovisionamiento de roles |
+| `mcp/` | Servidor MCP para consultas a InfluxDB (requisito PIA) |
+| `chatbot/` | Microservicio FastAPI y base de conocimiento local |
+| `presentacion/` | Web de diapositivas interactivas servida por Nginx (:8080) |
+| `notebooks/` | Notebook oficial del análisis exploratorio y causal (SBD) |
+| `ingesta/` | Scripts de ingesta y carga histórica por lotes a InfluxDB |
+| `scripts/` | Pipeline modular de extracción y análisis |
+| `data/` | Datasets limpios del análisis |
+| `datos/` | Datos procesados del pipeline |
+| `salida/` | Figuras generadas por el análisis |
+| `docs/` | Entregables oficiales de SBD, MIA y BDA |
 
 ## Documentación
 
@@ -318,8 +318,8 @@ Este script abre un túnel de Cloudflare por servicio, sincroniza las URLs públ
 | [Propuesta de modelo de IA](docs/propuesta-modelo-ia.md) | Modelos de IA | Alternativas consideradas, modelo elegido, impacto y riesgos |
 | [Infraestructura explicada](docs/infraestructura-explicada.md) | Big Data Aplicado | InfluxDB, Node-RED, Grafana y gestión de tokens |
 | [Organigrama de datos](docs/organigrama-datos.md) | Big Data Aplicado | Buckets, measurements, tags y fields |
-| [Servidor MCP](mcp/README.md) | Programación de IA | Instalación, clientes y verificación |
-| [Asistente inteligente](chatbot/README.md) | Programación de IA / Modelos de IA | Arquitectura RAG, niveles de razonamiento y seguridad |
+| [Servidor MCP](mcp/README.md) | Programación de IA | Instalación, clientes y verificación del protocolo MCP |
+| [Asistente inteligente](chatbot/README.md) | Programación de IA / Modelos de IA | API FastAPI, base de conocimiento local y modo offline |
 
 ## Flujo de trabajo
 
