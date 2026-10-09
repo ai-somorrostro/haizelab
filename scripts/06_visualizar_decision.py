@@ -72,8 +72,6 @@ def plot_dashboard_decision(df_uni: pd.DataFrame, df_traf: pd.DataFrame):
 
     ax1.plot(m_no2.index, m_no2["no2_dentro"], color=C_DENTRO, lw=2.5, marker="o", ms=4, label="Dentro ZBE (Mazarredo / Díaz Haro)")
     ax1.fill_between(m_no2.index, m_no2["no2_dentro"], alpha=0.10, color=C_DENTRO)
-    ax1.plot(m_no2.index, m_no2["no2_dentro"], color=C_DENTRO, lw=2.5, marker="o", ms=4, label="Dentro ZBE (Mazarredo / Díaz Haro)")
-    ax1.fill_between(m_no2.index, m_no2["no2_dentro"], alpha=0.10, color=C_DENTRO)
     ax1.plot(m_no2.index, m_no2["no2_fuera"], color=C_FUERA, lw=2.0, marker="s", ms=3.5, label="Control Urbano Exterior (5 est. Gran Bilbao)")
     if "no2_fondo" in m_no2.columns:
         ax1.plot(m_no2.index, m_no2["no2_fondo"], color=C_FONDO, lw=1.6, ls="--", label="Fondo regional (Monte Arraiz)")
