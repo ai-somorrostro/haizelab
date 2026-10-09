@@ -1,166 +1,198 @@
+#!/usr/bin/env python3
 """
 haizelab/chatbot/main.py
 ========================
-Servidor API REST seguro para HaizeLab Assistant (Reto 0).
-Seguridad defensiva implementada:
-  - Rate limiting en memoria por IP (máx. 25 req/min) para prevenir DoS.
-  - Validación de longitud estricta en entradas (max_length=500).
-  - CORS blindado con orígenes autorizados.
-  - Ocultación de topología de red interna (sin exponer host.docker.internal).
-  - Manejo genérico de excepciones sin fuga de stack trace.
+Servidor API REST para HaizeLab Assistant (Reto 0).
+Tecnología: FastAPI + Pydantic + HTTPX.
+
+Funcionamiento:
+1. Carga la base de conocimiento local (knowledge_base.json) con los resultados del proyecto.
+2. Si un modelo LLM local (Ollama) está disponible, le inyecta el contexto y genera la respuesta.
+3. Si Ollama no está disponible, responde de forma determinista desde la base de conocimiento local.
 """
 
+from pathlib import Path
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+import json
 import os
-import time
-import logging
-from collections import defaultdict
-import uvicorn
 import httpx
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-from rag_engine import RAGEngine, OLLAMA_URL, OLLAMA_MODEL
+# ── Configuración ──────────────────────────────────────────────────────────────
+DIR_CHATBOT = Path(__file__).resolve().parent
+FICHERO_KB = DIR_CHATBOT / "knowledge_base.json"
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434").rstrip("/")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:1.5b")
 
 app = FastAPI(
     title="HaizeLab Assistant API",
-    description="Chatbot local RAG para el Reto 0: ¿Ha funcionado la ZBE de Bilbao?",
-    version="1.0.0"
+    description="Asistente explicable para la evaluación de la ZBE de Bilbao (Reto 0)",
+    version="2.0.0"
 )
 
-# CORS: orígenes web autorizados y soporte para apertura directa de archivo local (file:// con Origin null)
-ORIGENES_PERMITIDOS = [
-    "https://haizelab-presentacion.vercel.app",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "null"
-]
-
+# Permitir conexiones desde cualquier origen local (Presentación, Grafana, etc.)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_origin_regex=r".*",
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.middleware("http")
-async def force_cors_middleware(request: Request, call_next):
-    if request.method == "OPTIONS":
-        from fastapi.responses import Response
-        response = Response(status_code=204)
-    else:
-        response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
+# ── Carga de Conocimiento del Proyecto ─────────────────────────────────────────
+try:
+    with open(FICHERO_KB, "r", encoding="utf-8") as f:
+        KB_DATA = json.load(f)
+except Exception:
+    KB_DATA = {}
 
-engine = RAGEngine()
+ESTADISTICAS = KB_DATA.get("estadisticas", {})
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Rate Limiting defensivo en memoria por IP (prevención de Denial of Service)
-# ──────────────────────────────────────────────────────────────────────────────
-HISTORIAL_PETICIONES: Dict[str, List[float]] = defaultdict(list)
-LIMITE_PETICIONES_MINUTO = 25
-VENTANA_SEGUNDOS = 60.0
+# Contexto resumido para inyectar al modelo de lenguaje
+CONTEXTO_PROYECTO = f"""
+Proyecto HaizeLab - Reto 0 (CF Somorrostro):
+- Evaluación de la Zona de Bajas Emisiones (ZBE) de Bilbao sobre el NO2 (2022-2026).
+- Muestra: 41.700 horas de datos en 8 estaciones oficiales.
+- Modelo Cuasiexperimental: Diferencias en Diferencias (Diff-in-Diff).
+- Resultado Neto Atribuible a la ZBE: -1,63 µg/m³ (-6,4%) en NO2.
+- Dentro de la ZBE (Mazarredo y Mª Díaz de Haro): bajó -14,1% (de 25,50 a 21,90 µg/m³).
+- Estaciones de Control fuera (Gran Bilbao): bajó -10,8% (de 18,25 a 16,29 µg/m³).
+- En episodios de calma atmosférica (<2 m/s): el NO2 bajó un -13,4% dentro de la ZBE.
+- Test de placebo con SO2: variación neta de +0,33 µg/m³ (confirma que la bajada de NO2 es por tráfico y no genérica).
+- Tráfico en acceso San Mamés: -10,1% en 2024 respecto a 2023.
+- Infraestructura: Docker Compose, InfluxDB 2 (4 buckets: aire, meteo, trafico, aire_demo), Node-RED (ingesta en tiempo real), Grafana (dashboards y control de acceso), Servidor MCP (puerto 5001).
+- Equipo y Roles: Alfred Gabriel (Product Owner), Iñigo Guzman (Lead Data Engineer) y Kerman Latorre (Scrum Master).
+"""
 
-def verificar_rate_limit(ip_cliente: str):
-    ahora = time.time()
-    marcas = HISTORIAL_PETICIONES[ip_cliente]
-    # Filtrar marcas anteriores a la ventana
-    HISTORIAL_PETICIONES[ip_cliente] = [t for t in marcas if ahora - t < VENTANA_SEGUNDOS]
-    if len(HISTORIAL_PETICIONES[ip_cliente]) >= LIMITE_PETICIONES_MINUTO:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Límite de consultas excedido. Por favor, espera un momento antes de volver a preguntar."
-        )
-    HISTORIAL_PETICIONES[ip_cliente].append(ahora)
+# Respuestas precomputadas para cuando no haya LLM disponible (modo local garantizado)
+RESPUESTAS_LOCALES = {
+    "resultado_zbe": (
+        "La evaluación con el modelo Diferencias en Diferencias (Diff-in-Diff) demuestra que la ZBE "
+        "redujo el NO₂ de forma neta atribuible en **-1,63 µg/m³ (-6,4%)**.\n\n"
+        "Dentro de la ZBE la concentración bajó de 25,50 a 21,90 µg/m³ (-14,1%), mientras que en las estaciones "
+        "de control exteriores bajó de 18,25 a 16,29 µg/m³ (-10,8%). La diferencia entre ambas variaciones "
+        "aisla el efecto real de la ordenanza frente a la meteorología."
+    ),
+    "datos": (
+        "El proyecto integra **41.700 horas de registros** continuos entre 2022 y 2026 de 8 estaciones oficiales:\n"
+        "- Dentro de la ZBE: Mazarredo y María Díaz de Haro.\n"
+        "- Control urbano metropolitano: Europa, Barakaldo, Basauri, Erandio y Castrejana.\n"
+        "- Fondo regional: Monte Arraiz.\n"
+        "Las fuentes son Open Data Euskadi (calidad del aire) y Open-Meteo (clima)."
+    ),
+    "trafico": (
+        "El aforo vehicular del acceso principal por San Mamés descendió de 50.127 vehículos/día en 2023 "
+        "a 45.052 en 2024 (**-10,1%**), repuntando levemente a 48.543 en 2025. El descenso del NO₂ en el centro "
+        "guarda correlación directa con esta reducción de intensidad de tráfico."
+    ),
+    "infraestructura": (
+        "La infraestructura se despliega con Docker Compose e integra:\n"
+        "1. **InfluxDB 2.9:** Almacenamiento en series temporales con 4 buckets (aire, meteo, trafico, aire_demo) y tokens con permisos mínimos.\n"
+        "2. **Node-RED 5.0:** Ingesta continua en tiempo real de meteorología cada 15 min y tráfico cada 5 min.\n"
+        "3. **Grafana 11.2:** Cuadros de mando analíticos con control de acceso por roles (Directiva, Análisis e IT).\n"
+        "4. **Servidor MCP:** Servicio de solo lectura para conectar herramientas de IA a InfluxDB."
+    ),
+    "equipo": (
+        "El equipo de HaizeLab (Reto 0) está formado por tres especialistas:\n"
+        "- **Alfred Gabriel:** Product Owner (infraestructura Docker, despliegue y MCP).\n"
+        "- **Iñigo Guzman:** Lead Data Engineer (Node-RED, InfluxDB y cuadros de mando en Grafana).\n"
+        "- **Kerman Latorre:** Scrum Master (análisis econométrico Diff-in-Diff y modelado en Python)."
+    ),
+    "general": (
+        "Soy HaizeLab Assistant. Puedo responder a tus preguntas sobre los resultados de la ZBE de Bilbao, "
+        "las 8 estaciones analizadas, el impacto en el tráfico, la meteorología o la arquitectura tecnológica del proyecto."
+    )
+}
 
-
-class ChatMessage(BaseModel):
-    role: str = Field(..., description="Rol del emisor: 'user' o 'assistant'")
-    content: str = Field(..., max_length=1500, description="Contenido del mensaje")
-
-
+# ── Modelos de Datos (Pydantic) ────────────────────────────────────────────────
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=500, description="Pregunta formulada por el usuario (máx. 500 caracteres)")
-    history: Optional[List[ChatMessage]] = Field(default=None, max_items=10, description="Historial de conversación limitado a 10 turnos")
-
+    message: Optional[str] = None
+    mensaje: Optional[str] = None
+    history: Optional[List[Dict[str, Any]]] = None
 
 class ChatResponse(BaseModel):
     respuesta: str
     fuentes: List[str]
     modelo: str
-    proyecto: str = "Haizen Lab · ¿Ha funcionado la ZBE de Bilbao? (Reto 0)"
 
-
-@app.get("/health")
-async def health_check():
-    """Liveness probe para monitorización."""
-    return {
-        "status": "ok",
-        "service": "haizelab-chatbot",
-        "docs_indexados": len(engine.docs)
-    }
-
-
-@app.get("/info")
-async def info_check():
-    """Devuelve metadatos del servicio y métricas sin exponer direcciones internas."""
-    ollama_disponible = False
+# ── Lógica de Inferencia ───────────────────────────────────────────────────────
+async def consultar_ollama(pregunta: str) -> Optional[str]:
+    """Intenta consultar a Ollama local inyectando el contexto del proyecto."""
+    prompt = (
+        f"Eres HaizeLab Assistant, un asistente técnico para el proyecto de evaluación de la ZBE de Bilbao.\n"
+        f"Responde en español de forma precisa y concisa usando esta información oficial:\n"
+        f"{CONTEXTO_PROYECTO}\n\n"
+        f"Pregunta del usuario: {pregunta}\n"
+        f"Respuesta:"
+    )
     try:
-        async with httpx.AsyncClient(timeout=1.5) as client:
-            res = await client.get(f"{OLLAMA_URL}/api/tags")
-            ollama_disponible = (res.status_code == 200)
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{OLLAMA_URL}/api/generate",
+                json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}
+            )
+            if resp.status_code == 200:
+                texto = resp.json().get("response", "").strip()
+                if texto:
+                    return texto
     except Exception:
-        ollama_disponible = False
+        pass
+    return None
 
-    return {
-        "proyecto": "Haizen Lab - Reto 0",
-        "centro": "Centro de Formación Somorrostro",
-        "ollama_modelo": OLLAMA_MODEL,
-        "ollama_disponible": ollama_disponible,
-        "modo_activo": f"ollama/{OLLAMA_MODEL}" if ollama_disponible else "deterministic-rag-local",
-        "documentos_indexados": len(engine.docs),
-        "estadisticas_principales": engine.stats
-    }
+def responder_localmente(pregunta: str) -> str:
+    """Fallback determinista que selecciona la mejor respuesta según palabras clave."""
+    p = pregunta.lower()
+    if any(k in p for k in ["estacion", "estaciones", "mazarredo", "maria diaz", "maría díaz"]):
+        return RESPUESTAS_LOCALES["datos"]
+    elif any(k in p for k in ["docker", "influx", "grafana", "node-red", "nodered", "mcp", "arquitectura", "infraestructura", "base de datos", "monitorizaci"]):
+        return RESPUESTAS_LOCALES["infraestructura"]
+    elif any(k in p for k in ["trafico", "tráfico", "coche", "san mames", "san mamés", "aforo", "vehiculo"]):
+        return RESPUESTAS_LOCALES["trafico"]
+    elif any(k in p for k in ["equipo", "autor", "quien", "quién", "iñigo", "kerman", "alfred", "somorrostro"]):
+        return RESPUESTAS_LOCALES["equipo"]
+    elif any(k in p for k in ["fuente", "dataset", "hora", "registro", "datos"]):
+        return RESPUESTAS_LOCALES["datos"]
+    elif any(k in p for k in ["zbe", "no2", "calidad", "resultado", "funcionado", "reduccion", "reducción", "caida", "caída", "efecto", "did", "diff"]):
+        return RESPUESTAS_LOCALES["resultado_zbe"]
+    return RESPUESTAS_LOCALES["general"]
 
+# ── Endpoints HTTP ─────────────────────────────────────────────────────────────
+@app.get("/health")
+def health():
+    """Comprobación de estado del servicio."""
+    return {"status": "ok", "servicio": "haizelab-chatbot"}
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(payload: ChatRequest, request: Request):
-    """Endpoint principal de conversación con RAG local protegido contra abusos."""
-    ip_cliente = request.client.host if request.client else "unknown"
-    verificar_rate_limit(ip_cliente)
-
-    try:
-        historial_dicts = [h.dict() for h in payload.history] if payload.history else None
-        resultado = await engine.responder(payload.message, historial=historial_dicts)
+async def chat(peticion: ChatRequest):
+    """Endpoint principal de conversación."""
+    texto_usuario = (peticion.message or peticion.mensaje or "").strip()
+    if not texto_usuario:
         return ChatResponse(
-            respuesta=resultado["respuesta"],
-            fuentes=resultado["fuentes"],
-            modelo=resultado["modelo"]
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Error procesando consulta: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Se produjo un error interno procesando la consulta. Por favor, inténtalo de nuevo."
+            respuesta="Por favor, escribe una pregunta sobre el proyecto HaizeLab.",
+            fuentes=["Validación"],
+            modelo="Local"
         )
 
+    # 1. Intentar responder con Ollama local
+    respuesta_llm = await consultar_ollama(texto_usuario)
+    if respuesta_llm:
+        return ChatResponse(
+            respuesta=respuesta_llm,
+            fuentes=["Ollama Local", "knowledge_base.json"],
+            modelo=f"Ollama ({OLLAMA_MODEL})"
+        )
+
+    # 2. Si Ollama no está activo, usar la base de conocimiento local
+    respuesta_fija = responder_localmente(texto_usuario)
+    return ChatResponse(
+        respuesta=respuesta_fija,
+        fuentes=["knowledge_base.json", "Informe ZBE Bilbao"],
+        modelo="HaizeLab Knowledge Engine"
+    )
 
 if __name__ == "__main__":
-    puerto = int(os.environ.get("PORT", 8000))
-    host = os.environ.get("HOST", "0.0.0.0")
-    print(f"[*] Iniciando HaizeLab Chatbot Seguro en http://{host}:{puerto}")
-    uvicorn.run("main:app", host=host, port=puerto, reload=False)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
