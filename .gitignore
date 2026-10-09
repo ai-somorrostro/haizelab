@@ -29,3 +29,7 @@ nodered/credentials.json
 # --- Archivos temporales de Office / Word ---
 ~$*.docx
 ~$*.xlsx
+
+# --- PDFs explicativos locales who/how (no pushear a GitHub) ---
+docs/HaizeLab_Project_Explained_Who_and_How.pdf
+docs/HaizeLab_Proyecto_Explicado_Quienes_y_Como.pdf
