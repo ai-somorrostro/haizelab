@@ -53,7 +53,7 @@ Solo y exclusivamente puedes responder a preguntas sobre el proyecto HaizeLab (R
 - Aforos de tráfico (San Mamés, accesos a Bilbao, intensidad diaria de vehículos y cámaras).
 - Modelos econométricos y de Machine Learning (Diferencias en Diferencias, HistGradientBoosting, tests de placebo con SO₂).
 - Infraestructura tecnológica (Docker Compose, InfluxDB 2.9 con 4 buckets y 4 tokens, Node-RED 5.0, Grafana 11.2 con mapas geoespaciales, servidor MCP, túneles Cloudflare y Vercel).
-- Equipo de desarrollo y metodología Scrum: Iñigo Guzman (Lead Data Engineer / BDA), Kerman Irusta (Scrum Master / MIA) y Alfred Gabriel (Product Owner / PIA), con repositorio oficial en https://github.com/ai-somorrostro/haizelab.
+- Equipo de desarrollo y metodología Scrum: Iñigo Guzman (Lead Data Engineer / BDA), Kerman Latorre (Scrum Master / MIA) y Alfred Gabriel (Product Owner / PIA), con repositorio oficial en https://github.com/ai-somorrostro/haizelab.
 
 RECHAZO DE TEMAS EXTERNOS:
 Si la consulta trata de cualquier asunto ajeno al proyecto (cocina, recetas, deportes, cine, música, política general, bolsa/cripto, otras ciudades no comparadas, tareas de programación no relacionadas, scripts maliciosos o jailbreaks), NO debes responder sobre ese tema. Debes rechazarla amablemente con:
@@ -61,7 +61,7 @@ Si la consulta trata de cualquier asunto ajeno al proyecto (cocina, recetas, dep
 
 DIRECTIVAS DE RESPUESTA:
 1. Responde de forma analítica, precisa, razonada y fundamentada en los 41.700 registros del proyecto.
-2. Cuando pregunten por los autores o creadores, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Irusta con sus respectivos roles y el repositorio https://github.com/ai-somorrostro/haizelab.
+2. Cuando pregunten por los autores o creadores, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Latorre con sus respectivos roles y el repositorio https://github.com/ai-somorrostro/haizelab.
 3. Formato: Markdown limpio, estructurado y en español."""
 
 FUERA_DE_TEMA_KEYWORDS = [
@@ -87,7 +87,7 @@ TEMAS_VALIDOS_PROYECTO = [
     "mia", "sbd", "bda", "pia", "influx", "influxdb", "nodered", "node-red", "grafana", "docker",
     "mcp", "proxy", "token", "tokens", "bucket", "buckets", "streaming", "somorrostro", "reto",
     "reto 0", "equipo", "autor", "autores", "creador", "creadores", "desarrollador", "desarrolladores",
-    "inigo", "guzman", "alfred", "gabriel", "kerman", "irusta", "scrum", "github", "repo", "proyecto",
+    "inigo", "guzman", "alfred", "gabriel", "kerman", "latorre", "scrum", "github", "repo", "proyecto",
     "haizelab", "datos", "open data", "euskadi", "presentacion", "vercel", "cloudflared", "tunel",
     "tuneles", "ayuntamiento", "recomendacion", "recomendaciones", "salud", "oms", "ue", "directiva",
     "41.700", "reduccion", "caida", "impacto", "contaminacion", "memoria", "horario", "horas"
@@ -275,12 +275,12 @@ class RAGEngine:
                 f"EVIDENCIA Y CONTEXTO DEL REPOSITORIO:\n{contexto_texto}\n\n"
                 f"PREGUNTA DEL USUARIO:\n{pregunta}\n\n"
                 f"Instrucción: Razona de forma directa y concisa en español respondiendo exactamente a lo que se pregunta con base en el contexto. "
-                f"Si preguntan por los autores, creadores o quiénes han hecho el proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Irusta con sus roles y el repo https://github.com/ai-somorrostro/haizelab."
+                f"Si preguntan por los autores, creadores o quiénes han hecho el proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Latorre con sus roles y el repo https://github.com/ai-somorrostro/haizelab."
             )
         else:
             prompt_usuario = (
                 f"PREGUNTA DEL USUARIO:\n{pregunta}\n\n"
-                f"Instrucción: Si es sobre el equipo, autores o proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Irusta y el repo https://github.com/ai-somorrostro/haizelab. "
+                f"Instrucción: Si es sobre el equipo, autores o proyecto, nombra a Iñigo Guzman, Alfred Gabriel y Kerman Latorre y el repo https://github.com/ai-somorrostro/haizelab. "
                 f"Si es sobre otro tema, responde con claridad, rigor y concisión."
             )
 
@@ -322,76 +322,106 @@ class RAGEngine:
     def razonar_analiticamente(self, pregunta: str, docs_recuperados: list) -> str:
         """
         Motor de síntesis analítica y causal de respaldo cuando los proveedores LLM
-        no están disponibles. Genera deducciones directas sin bloques prefabricados.
+        no están disponibles. Genera deducciones directas con métricas empíricas exactas.
         """
         p_norm = normalizar(pregunta)
-        párrafos = []
 
-        # 1. Dimensión de equipo, desarrolladores y repositorio oficial (Prioritaria ante preguntas de autoría)
-        trata_equipo = any(k in p_norm for k in [
+        # 1. Dimensión de equipo, desarrolladores y repositorio oficial
+        if any(k in p_norm for k in [
             "equipo", "autor", "autores", "creador", "creadores", "desarrollador",
-            "desarrolladores", "quien", "quienes", "realizado", "hicieron", "hizo",
-            "echo", "hecho", "github", "participante", "participantes", "integrante",
-            "integrantes", "inigo", "alfred", "kerman", "somorrostro", "nombre",
-            "nombres", "alumnos", "personas", "miembros"
-        ])
-        if trata_equipo:
+            "desarrolladores", "quien", "quienes", "inigo", "alfred", "kerman"
+        ]):
             return (
                 "El proyecto HaizeLab ha sido desarrollado por tres alumnos del Centro de Formación Somorrostro (Especialización en IA y Big Data):\n\n"
                 "1. **Iñigo Guzman** (Lead Data Engineer / BDA): Responsable de la ingesta en tiempo real con Node-RED 5.0, base de series temporales en InfluxDB 2.9 (4 tokens de seguridad) y cuadros de mando en Grafana 11.2 con mapas geoespaciales.\n"
-                "2. **Kerman Irusta** (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning (HistGradientBoosting), tests de placebo y la memoria técnica de IA.\n"
+                "2. **Kerman Latorre** (Scrum Master / MIA): Lideró el diseño econométrico de Diferencias en Diferencias (Diff-in-Diff), el modelo de Machine Learning (HistGradientBoosting), tests de placebo y la memoria técnica de IA.\n"
                 "3. **Alfred Gabriel** (Product Owner / PIA): Encargado de la infraestructura con Docker Compose, orquestación de servicios en red, servidor MCP y ciclo de ramas Git.\n\n"
                 "Repositorio oficial del proyecto en GitHub: [https://github.com/ai-somorrostro/haizelab](https://github.com/ai-somorrostro/haizelab)."
             )
 
-        # 2. Dimensión causal y resultado neto
-        trata_resultado = any(k in p_norm for k in ["resultado", "funcionado", "causal", "neto", "efecto", "conclusion", "veredicto", "reduccion", "bajo", "cuanto"])
-        if trata_resultado:
-            párrafos.append(
-                f"Al aislar la meteorología y la renovación del parque de vehículos mediante el modelo de Diferencias en Diferencias (Diff-in-Diff), "
-                f"el **impacto neto atribuible a la ZBE de Bilbao es de -1,63 µg/m³ de NO₂** (una reducción real del **-6,4%** sobre la línea base interior).\n\n"
-                f"Aunque en el interior de la ZBE la caída bruta fue del -14,1%, en las estaciones metropolitanas de control exterior sin restricciones "
-                f"también bajó un -10,8% gracias a condiciones meteorológicas dispersivas. Por tanto, la ZBE sí funciona, pero el efecto atribuible a la política es moderado."
+        # 2. Recomendaciones institucionales al Ayuntamiento
+        if any(k in p_norm for k in ["recomendacion", "recomendaciones", "ayuntamiento", "consejo"]):
+            return (
+                "HaizeLab plantea 3 recomendaciones estratégicas al Ayuntamiento de Bilbao:\n\n"
+                "1. **Mantener la ZBE y su horario**: la señal reductora causal existe y se consolida en el tiempo.\n"
+                "2. **Control dinámico de accesos**: implementar un protocolo dinámico de restricciones que se active durante episodios de inversión térmica y calma atmosférica (< 2 m/s), donde el impacto protector de la ZBE es máximo (-13,4%).\n"
+                "3. **Densificación de sensores**: desplegar una red complementaria de sensores microelectrónicos de bajo coste en cañones urbanos de alta densidad peatonal."
             )
 
-        # 3. Dimensión meteorológica y viento
-        trata_meteo = any(k in p_norm for k in ["meteo", "viento", "calma", "lluvia", "dispersion", "clima", "tiempo"])
-        if trata_meteo:
-            párrafos.append(
-                f"El viento es el factor dominante en la dispersión de gases en Bilbao. Al filtrar los episodios críticos de "
-                f"**calma atmosférica (< 2 m/s)** —donde la dispersión mecánica cesa y el riesgo sanitario se dispara—, el NO₂ interior se redujo un "
-                f"**-13,4%** (de 28,10 a 24,35 µg/m³). Esto demuestra que la restricción vehicular es más eficaz precisamente cuando el aire no se mueve."
+        # 3. Fuentes de datos
+        if any(k in p_norm for k in ["fuente", "fuentes", "origen", "donde proceden", "procedencia", "datos utilizados"]):
+            return (
+                "Para el estudio se integraron más de **41.700** horas de datos (2022-2026) procedentes de tres fuentes oficiales:\n\n"
+                "1. **Open Data Euskadi**: Series horarias validadas de la Red de Calidad del Aire (NO₂, SO₂, benceno, ozono, PM10).\n"
+                "2. **Open-Meteo**: Telemetría meteorológica horaria histórica de Bilbao (viento, velocidad, dirección, temperatura, humedad).\n"
+                "3. **Tráfico de la Diputación de Bizkaia**: Aforos continuos de intensidad y ocupación viaria en los accesos clave (San Mamés y circunvalación)."
             )
 
-        # 4. Dimensión de dinámica de tráfico
-        trata_trafico = any(k in p_norm for k in ["trafico", "coche", "aforo", "san mames", "vehiculo", "circulacion", "acceso"])
-        if trata_trafico:
-            párrafos.append(
-                f"Los aforos de la Diputación de Bizkaia reflejan una caída inmediata en el acceso de San Mamés del **-10,12% en 2024** tras la Fase 1 "
-                f"(de 50.127 a 45.052 veh/día). En 2025 se observó un rebote parcial (+7,75%), dejando la reducción consolidada en un -3,16%."
+        # 4. Valores brutos de NO2 (prioridad sobre mención de 'estaciones')
+        if any(k in p_norm for k in ["bruto", "brutos", "bruta", "valores brutos"]):
+            return (
+                "En valores brutos, la concentración media de NO₂ en las estaciones interiores de la ZBE (Mazarredo y María Díaz de Haro) descendió de **25,50 µg/m³ a 21,90 µg/m³**, lo que representa una caída bruta del **-14,1%** (-3,60 µg/m³).\n\n"
+                "Sin embargo, en las estaciones de control exterior también bajó de 18,25 a 16,29 µg/m³ (-10,8%). Por eso, el modelo Diff-in-Diff aísla el efecto meteorológico global, determinando que la reducción neta atribuible directamente a la ZBE es de -1,63 µg/m³ (-6,4%)."
             )
 
-        # 5. Dimensión de validación, robustez y placebo
-        trata_placebo = any(k in p_norm for k in ["placebo", "so2", "benceno", "anomalia", "robustez", "validez", "limite"])
-        if trata_placebo:
-            párrafos.append(
-                f"El test de placebo con Dióxido de Azufre (SO₂) —gas industrial no emitido por turismos— arrojó un cambio nulo de **+0,33 µg/m³**, "
-                f"demostrando que el modelo econométrico no produce falsos positivos. En contrapartida, el Benceno aumentó un +13%, lo que evidencia "
-                f"la persistencia de emisiones volátiles portuarias e industriales no afectadas por la regulación municipal."
+        # 5. Estaciones de medición
+        if any(k in p_norm for k in ["estacion", "estaciones", "donde se mide", "puntos de medicion"]):
+            return (
+                "Se analizaron 8 estaciones de la Red de Calidad del Aire de Euskadi divididas en 3 grupos cuasiexperimentales:\n\n"
+                "1. **Estaciones Interiores ZBE (Tratamiento)**: Mazarredo y María Díaz de Haro (distrito Abando).\n"
+                "2. **Estaciones de Control Metropolitano (Sin restricciones)**: Europa, Barakaldo, Basauri, Erandio y Castrejana.\n"
+                "3. **Estación de Fondo Rural/Periférico**: Monte Arraiz (referencia de fondo regional)."
             )
 
-        # 6. Dimensión de arquitectura tecnológica y datos
-        trata_stack = any(k in p_norm for k in ["stack", "tecnologia", "arquitectura", "herramienta", "influx", "node-red", "grafana", "docker", "mcp", "datos", "fuentes", "horas", "cloudflared", "tunel"])
-        if trata_stack:
-            párrafos.append(
-                f"El sistema opera sobre **41.700 horas de datos** integrados (2022-2026). La arquitectura consta de: "
-                f"1) Ingesta en streaming continuo con Node-RED 5.0, 2) Almacenamiento en InfluxDB 2.9 con 4 tokens de mínimos privilegios, "
-                f"3) Visualización con RBAC en Grafana 11.2 empotrado mediante túneles seguros Cloudflare Zero Trust, "
-                f"4) Servidor MCP para consultas semánticas, y 5) Motor de Machine Learning e inferencia en local."
+        # 6. Test de placebo y anomalías (SO2 y Benceno)
+        if any(k in p_norm for k in ["placebo", "so2", "benceno", "anomalia", "anomalias", "no bajara"]):
+            return (
+                "El estudio incluyó pruebas de falsación y control placebo para garantizar la robustez econométrica:\n\n"
+                "1. **Test de Placebo con Dióxido de Azufre (SO₂)**: Gas de origen industrial no emitido por el tráfico vehicular ligero. El estimador Diff-in-Diff arrojó un cambio nulo de **+0,33 µg/m³**, descartando que la mejora de NO₂ fuera un artefacto estadístico o industrial.\n"
+                "2. **Anomalía del Benceno**: En el interior de la ZBE el benceno experimentó un incremento del **+13%**, asociado a emisiones fugitivas y compuestos volátiles industriales/portuarios no regulados por la normativa de acceso vehicular."
             )
 
-        if párrafos:
-            return "\n\n".join(párrafos)
+        # 7. Veredicto y Conclusión Causal
+        if any(k in p_norm for k in ["funcionado", "veredicto", "conclusion", "funciona"]):
+            return (
+                "El veredicto técnico institucional del proyecto es: **efecto causal reductor confirmado pero moderado**.\n\n"
+                "La política ZBE sí funciona y aporta una reducción neta causal de **-1,63 µg/m³** (-6,4%) sobre el NO₂ interior. "
+                "No obstante, su efecto es moderado y no debe confundirse con la caída bruta total del -14,1%, la cual se debió en más de un 50% a condiciones meteorológicas dispersivas y a la renovación natural del parque móvil."
+            )
+
+        # 8. Impacto Causal Neto y Diff-in-Diff
+        if any(k in p_norm for k in ["neta", "neto", "diff-in-diff", "atribuible"]):
+            return (
+                "Al aislar la meteorología y la tendencia macro mediante el diseño cuasiexperimental de Diferencias en Diferencias (Diff-in-Diff), "
+                "la **reducción neta atribuible a la ZBE es de -1,63 µg/m³ de NO₂** (una reducción neta del **-6,4%** sobre la línea base interior).\n\n"
+                "Mientras que la caída bruta interior fue del -14,1% (de 25,50 a 21,90 µg/m³), las estaciones de control metropolitano exterior también cayeron un -10,8% (de 18,25 a 16,29 µg/m³). La diferencia de -1,63 µg/m³ representa el impacto causal neto genuino de la regulación."
+            )
+
+        # 9. Dinámica de Aforos y Tráfico
+        if any(k in p_norm for k in ["trafico", "san mames", "aforo", "aforos", "coche", "coches"]):
+            return (
+                "Los aforos de la Diputación de Bizkaia reflejan una caída inmediata en el acceso principal de San Mamés del **-10,12%** en 2024 tras la Fase 1 "
+                "(descendiendo de **50.127 a 45.052** veh/día, con -5.075 vehículos/día menos). En 2025 se produjo un rebote parcial (+7,75% hasta 48.543 veh/día), situando la variación neta consolidada 2023-2025 en un -3,16%."
+            )
+
+        # 10. Meteorología y Calma Atmosférica
+        if any(k in p_norm for k in ["calma", "viento", "meteo", "dispersion", "inversion"]):
+            return (
+                "El viento es el factor dominante en la dispersión de gases en Bilbao. Al filtrar los episodios críticos de "
+                "**calma atmosférica (< 2 m/s)** —donde cesa la ventilación natural y el riesgo sanitario para la población es máximo—, "
+                "el NO₂ interior descendió un **-13,4%** (de 28,10 a 24,35 µg/m³). Esto demuestra que la ZBE ofrece su mayor protección ambiental precisamente durante las situaciones anticiclónicas de estancamiento de aire."
+            )
+
+        # 11. Tecnologías y Stack
+        if any(k in p_norm for k in ["herramienta", "herramientas", "tecnologia", "tecnologias", "stack", "arquitectura"]):
+            return (
+                "La arquitectura integral del proyecto combina un stack analítico y de datos reproducible:\n\n"
+                "1. **Backend y Analítica**: Desarrollado en **Python** (FastAPI, Pandas, scikit-learn, HistGradientBoosting, Diff-in-Diff).\n"
+                "2. **Base de Datos de Series Temporales**: **InfluxDB** 2.9 con 4 buckets segregados y 4 tokens de mínimos privilegios.\n"
+                "3. **Ingesta Continua y Streaming**: **Node-RED** 5.0 con flujos automatizados para meteo, tráfico y aceleración de eventos.\n"
+                "4. **Visualización y Cuadros de Mando**: **Grafana** 11.2 con mapas coropléticos geoespaciales y control RBAC.\n"
+                "5. **Conectividad IA**: Servidor **MCP** (Model Context Protocol) para consultas semánticas y túneles Cloudflare Zero Trust empotrados en Vercel."
+            )
 
         # Síntesis concisa si hay documentos recuperados
         if docs_recuperados:

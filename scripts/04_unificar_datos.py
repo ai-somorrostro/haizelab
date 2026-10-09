@@ -21,7 +21,6 @@ SALIDA:
 """
 
 from pathlib import Path
-import sys
 import numpy as np
 import pandas as pd
 
@@ -107,10 +106,8 @@ def main():
     # NO2 dentro en calma (< 2 m/s)
     calma_pre = df_unificado[(df_unificado.periodo == "previo") & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
     calma_f1 = df_unificado[(df_unificado.periodo == "fase1") & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
-    calma_f2 = df_unificado[(df_unificado.periodo == "fase2") & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
     calma_post = df_unificado[(df_unificado.periodo.isin(["fase1", "fase2"])) & (df_unificado.regimen_viento == "Calma (<2 m/s)")]["no2_dentro"].mean()
     var_no2_calma_f1 = ((calma_f1 - calma_pre) / calma_pre) * 100
-    var_no2_calma_f2 = ((calma_f2 - calma_pre) / calma_pre) * 100
     var_no2_calma_post = ((calma_post - calma_pre) / calma_pre) * 100
 
     # Tráfico San Mamés
