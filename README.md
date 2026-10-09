@@ -82,7 +82,7 @@ El detalle de tags y fields está en el [organigrama de datos](docs/organigrama-
 
 ### Tokens
 
-`influxdb_setup` genera un token por servicio con el permiso mínimo y los deja en el volumen `influxdb_tokens`, que cada contenedor monta en solo lectura. Ninguno se guarda en el repositorio.
+El script [`influxdb/init-influxdb.sh`](influxdb/init-influxdb.sh), ejecutado por el contenedor `influxdb_setup`, genera automáticamente los cuatro tokens con el principio de mínimo privilegio y los deposita en el volumen compartido `influxdb_tokens`. **No es necesario crear ningún token a mano en la interfaz de InfluxDB**, ya que los servicios los consumen directamente del volumen en solo lectura. Ningún token se guarda en el repositorio.
 
 | Token | Permiso | Lo usa |
 |---|---|---|
@@ -126,6 +126,13 @@ openssl rand -hex 32
 docker compose up -d --build
 ```
 
+Durante el primer arranque, el contenedor efímero `haizelab_influxdb_setup` ejecuta automáticamente [`influxdb/init-influxdb.sh`](influxdb/init-influxdb.sh), creando los buckets adicionales (`meteo`, `trafico`, `aire_demo`) y aprovisionando los cuatro tokens con sus permisos mínimos.
+
+> **Nota:** Si en algún momento necesitas verificar o regenerar los buckets y tokens manualmente (por ejemplo, tras modificar retenciones en `.env` sin reiniciar los volúmenes), puedes invocar el script directamente con:
+> ```bash
+> docker compose run --rm influxdb_setup
+> ```
+
 **4. Comprobar el estado.**
 
 ```bash
@@ -158,11 +165,13 @@ docker compose down -v
 
 Tras el primer arranque, `aire_demo`, `meteo` y `trafico` empiezan a recibir datos por Node-RED. El bucket `aire`, con el histórico oficial de NO₂, se rellena una vez con el script de carga.
 
-**1. Obtener el token de escritura por lotes.** El comando muestra una línea que hay que copiar tal cual al final de `.env`. Si no se añade, el script recurre al token de administración.
+**1. Consultar el token de escritura por lotes (opcional).** `init-influxdb.sh` ya generó el token `batch-write` en el volumen de Docker. Si ejecutas la carga desde el host (fuera de Docker) y quieres usar este token restringido en vez del de administración, puedes leerlo con:
 
 ```bash
 docker run --rm -v haizelab_influxdb_tokens:/tokens:ro alpine grep '^INFLUXDB_BATCH_WRITE_TOKEN=' /tokens/tokens.env
 ```
+
+Copia la línea obtenida al final de tu `.env`. Si no se añade, el script recurre de forma transparente al token de administración (`INFLUXDB_ADMIN_TOKEN`).
 
 El prefijo `haizelab_` del volumen es el nombre de la carpeta del proyecto. Si la carpeta se llama de otra forma, hay que cambiarlo.
 
@@ -243,19 +252,27 @@ La configuración de los clientes OpenCode y Antigravity ya está en `opencode.j
 
 ## Presentación web y túneles
 
-La presentación es una página estática en `presentacion/`, publicada en [haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app). Para abrirla en local:
+La presentación es una página estática interactiva en `presentacion/`. Cuenta con dos modalidades de visualización:
 
-```bash
-python -m http.server 5500 --directory presentacion
-```
+### 1. Uso en local (autosuficiente, sin túneles)
+Si ejecutas la plataforma en tu propio equipo con Docker, **no necesitas instalar `cloudflared` ni abrir túneles**. La presentación detecta el entorno local y se conecta directamente a tus servicios en `localhost` (Grafana en `:3000`, InfluxDB Proxy en `:8085`, Node-RED en `:1880` y Chatbot en `:8000`).
 
-Después se abre `http://localhost:5500` en el navegador.
+Puedes abrirla de dos formas:
+* Con doble clic directo en `presentacion/index.html` en tu navegador.
+* O levantando un servidor web local:
+  ```bash
+  python -m http.server 5500 --directory presentacion
+  ```
+  y abriendo `http://localhost:5500`.
 
-Para que la versión publicada muestre Grafana, Node-RED, InfluxDB y el chatbot que corren en el equipo local, el script de túneles abre un túnel de Cloudflare por servicio y escribe las direcciones en `presentacion/grafana.json`. Requiere Windows con PowerShell y `cloudflared` instalado, y la plataforma en marcha. Desde la raíz del repositorio:
+### 2. Acceso remoto desde Vercel (opcional)
+La presentación también está publicada globalmente en [haizelab-presentacion.vercel.app](https://haizelab-presentacion.vercel.app). Para conectar esa versión en la nube (HTTPS) con los contenedores que corren en tu ordenador sin bloqueos de navegador (*Mixed Content*), ejecuta el script de túneles:
 
 ```powershell
 .\scripts\iniciar_tuneles.ps1
 ```
+
+Este script abre un túnel de Cloudflare por servicio, sincroniza las URLs públicas seguras en `presentacion/grafana.json` y permite la interacción en vivo desde cualquier parte del mundo.
 
 ## Estructura del repositorio
 
@@ -301,4 +318,4 @@ Para que la versión publicada muestre Grafana, Node-RED, InfluxDB y el chatbot 
 |---|---|
 | Alfred Gabriel | Product Owner, Programación de IA |
 | Iñigo Guzman | Lead Data Engineer, Big Data Aplicado |
-| Kerman Irusta | Scrum Master, Modelos de IA |
+| Kerman Latorre | Scrum Master, Modelos de IA |
