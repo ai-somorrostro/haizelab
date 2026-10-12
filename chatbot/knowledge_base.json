@@ -12,7 +12,7 @@
     "caida_control_ug": -1.96,
     "impacto_neto_diff_in_diff_ug": -1.63,
     "impacto_neto_pct": -6.4,
-    "margen_error_ic95": 1.2,
+    "margen_error_ic95": 0.24,
     "no2_calma_pre_ug": 28.1,
     "no2_calma_post_ug": 24.35,
     "caida_calma_pct": -13.4,
@@ -24,7 +24,7 @@
     "caida_trafico_san_mames_2024_pct": -10.12,
     "variacion_trafico_san_mames_2025_vs_2023_pct": -3.16,
     "rebote_trafico_san_mames_2025_vs_2024_pct": 7.75,
-    "trafico_total_accesos_var_pct": 1.83,
+    "trafico_total_accesos_var_pct": -0.68,
     "horas_analizadas": 41700,
     "periodo_analisis": "Enero 2022 a Octubre 2026",
     "camaras_zbe": 27,
@@ -52,8 +52,8 @@
       "indicador": "Impacto Neto ZBE (Diff-in-Diff Atribuible)",
       "unidad": "ug/m3",
       "valor_previo": 0.0,
-      "valor_post": -1.81,
-      "variacion_pct": -7.07
+      "valor_post": -1.63,
+      "variacion_pct": -6.4
     },
     {
       "indicador": "NO2 Dentro en Calma (Fase 1 vs Pre)",
@@ -93,9 +93,9 @@
     {
       "indicador": "Trafico Total Accesos Bilbao (2023->2024)",
       "unidad": "veh/dia",
-      "valor_previo": 141005.0,
-      "valor_post": 143587.0,
-      "variacion_pct": 1.83
+      "valor_previo": 291609.0,
+      "valor_post": 289627.0,
+      "variacion_pct": -0.68
     }
   ],
   "documentos": [
@@ -130,7 +130,7 @@
         "ug/m3",
         "no2"
       ],
-      "contenido": "El veredicto institucional es: 'Efecto reductor confirmado pero moderado'. En bruto, el NO₂ en el interior de la ZBE cayó de 25,50 a 21,90 µg/m³ (-14,1%). Sin embargo, en las estaciones de control exterior del Gran Bilbao (sin restricción) el NO₂ también cayó un -10,8% (de 18,25 a 16,29 µg/m³). Aplicando el estimador causal de Diferencias en Diferencias (Diff-in-Diff), el impacto neto atribuible exclusivamente a la ZBE es de -1,63 µg/m³ de NO₂ (aproximadamente un -6,4% respecto a la línea base), con un intervalo de confianza del 95% de ±1,2 µg/m³. Atribuir todo el -14,1% a la ZBE sería un error metodológico, ya que gran parte de la mejora se debe a la meteorología favorable y a la renovación paulatina del parque automovilístico."
+      "contenido": "El veredicto institucional es: 'Efecto reductor confirmado pero moderado'. En bruto, el NO₂ en el interior de la ZBE cayó de 25,50 a 21,90 µg/m³ (-14,1%). Sin embargo, en las estaciones de control exterior del Gran Bilbao (sin restricción) el NO₂ también cayó un -10,8% (de 18,25 a 16,29 µg/m³). Aplicando el estimador causal de Diferencias en Diferencias (Diff-in-Diff), el impacto neto atribuible exclusivamente a la ZBE es de -1,63 µg/m³ de NO₂ (aproximadamente un -6,4% respecto a la línea base), con un intervalo de confianza del 95% de ±0,24 µg/m³. Atribuir todo el -14,1% a la ZBE sería un error metodológico, ya que gran parte de la mejora se debe a la meteorología favorable y a la renovación paulatina del parque automovilístico."
     },
     {
       "id": "estaciones_grupos",
@@ -215,7 +215,7 @@
         "buckets",
         "tokens"
       ],
-      "contenido": "La infraestructura opera mediante un stack reproducible en Docker Compose con 5 servicios integrados: - InfluxDB 2.9: Base de datos de series temporales con 4 buckets segregados por política de retención:   'aire' (infinito, histórico), 'meteo' (infinito), 'trafico' (30 días, 81 tramos cada 5m), 'aire_demo' (7 días, streaming acelerado a 5s). - Seguridad InfluxDB: 4 tokens de mínimo privilegio (nodered-write, batch-write, read-all y mcp-read-only). Ningún token subido a Git. - Node-RED 5.0: Orquestador de streaming con 3 flujos automatizados (meteo cada 15 min, tráfico cada 5 min y reproducción acelerada de NO₂ cada 5s). Protegido con adminAuth (bcryptjs). - Grafana 11.2: Cuadros de mando analíticos y ejecutivos con RBAC por roles (Viewer para directores/analistas, Editor/Admin para IT), alertas y mapa interactivo Geomap de Bilbao con el polígono ZBE. - Servidor MCP (Model Context Protocol): Servicio en puerto :5001 para consulta de series temporales por agentes de IA en solo lectura. - Proxy Gateway: Influx-Proxy en puerto :8085 con soporte para Third-Party Cookies (SameSite=None, Secure, Partitioned) para permitir integración en iframes sin bloqueo."
+      "contenido": "La infraestructura opera mediante un stack reproducible en Docker Compose con servicios integrados: - InfluxDB 2.9: Base de datos de series temporales con 4 buckets segregados por política de retención: 'aire' (infinito, histórico), 'meteo' (infinito), 'trafico' (30 días, 81 tramos cada 5m), 'aire_demo' (7 días, streaming acelerado a 5s). - Seguridad InfluxDB: 4 tokens de mínimo privilegio (nodered-write, batch-write, read-all y mcp-read-only). Ningún token subido a Git. - Node-RED 5.0: Orquestador de streaming con 3 flujos automatizados (meteo cada 15 min, tráfico cada 5 min y reproducción acelerada de NO₂ cada 5s). Protegido con adminAuth (bcryptjs). - Grafana 11.2: Cuadros de mando analíticos y ejecutivos con RBAC por roles (Viewer para directores/analistas, Editor/Admin para IT), alertas y mapa interactivo Geomap de Bilbao con el polígono ZBE. - Servidor MCP (Model Context Protocol): Servicio en puerto :5001 para consulta de series temporales por agentes de IA en solo lectura."
     },
     {
       "id": "modelos_ia_mia",
@@ -250,7 +250,7 @@
         "commits",
         "entregables"
       ],
-      "contenido": "El equipo Haizen Lab está compuesto por tres alumnos de Especialización en IA y Big Data del Centro de Formación Somorrostro: - Iñigo Guzman (Lead Data Engineer / BDA): Flujos de Node-RED, InfluxDB (buckets y tokens) y cuadros de mando en Grafana con RBAC. - Kerman Latorre (Scrum Master / MIA): Diseño econométrico Diff-in-Diff, modelo de Machine Learning, tests de placebo y memoria MIA. - Alfred Gabriel (Product Owner / PIA): Docker Compose, servidor MCP, orquestación de red y gestión de ramas Git. Metodología ágil: 3 sprints Scrum, Scrum Master rotatorio, daily standups de 10 min, 11 ramas (9 feature, 2 hotfix) integradas en develop mediante Pull Requests, y releases estables en main."
+      "contenido": "El equipo HaizeLab está compuesto por tres especialistas del Centro de Formación Somorrostro bajo una matriz de responsabilidades clara: - Alfred Gabriel (Product Owner / Sistemas de Big Data & Modelado): Pipeline reproducible de datos (332.776 registros), econometría Diff-in-Diff, validación multivariable e informe ejecutivo para el cliente. - Iñigo Guzmán (Lead Data Engineer / Big Data Aplicado): Infraestructura Docker Compose, InfluxDB (4 buckets y tokens de mínimo privilegio), streaming con Node-RED 5.0, cuadros de mando y control de acceso RBAC en Grafana 11.2. - Kerman Latorre (Scrum Master / Modelos de IA & Protocolos): Servidor MCP (:5001) para consultas de IA a InfluxDB, integración de herramientas IA, metodología ágil Scrum y memoria técnica MIA."
     },
     {
       "id": "recomendaciones_ayuntamiento",

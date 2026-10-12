@@ -14,35 +14,25 @@ El asistente está diseñado con un patrón RAG elemental y explicable:
 
 ---
 
-## 🚀 Cómo Activar el Razonamiento con IA
+## 🚀 Modos de Funcionamiento
 
-El chatbot puede funcionar de dos formas:
+El chatbot opera bajo dos modalidades complementarias:
 
-### 1. Modo Razonamiento en la Nube con Google Gemini (Recomendado)
-Es la opción más rápida y potente. No requiere instalar nada ni consume memoria de tu ordenador:
+### 1. Modo Autónomo y Explicable (Por Defecto · Sin Configuración)
+Funciona de inmediato sin necesidad de conexión a internet ni claves de API externas. Utiliza la base de conocimiento estructurada (`knowledge_base.json`) para responder con los datos y métricas oficiales del proyecto con tiempo de respuesta instantáneo y reproducibilidad garantizada.
 
-1. Entra en [Google AI Studio](https://aistudio.google.com/) y genera una clave API gratuita (con tu cuenta de Google, sin tarjeta).
-2. En la raíz del proyecto, añade tu clave en el archivo `.env`:
+### 2. Modo Razonamiento con Google Gemini (Opcional · En la Nube)
+Si se desea razonamiento dinámico profundo y argumentación avanzada:
+1. Obtén una clave gratuita en [Google AI Studio](https://aistudio.google.com/) (con cuenta de Google, sin coste).
+2. Añade tu clave en el archivo `.env`:
    ```env
    GEMINI_API_KEY=AIzaSy_tu_clave_aqui
    ```
-3. Reinicia el contenedor:
+3. Reinicia el servicio:
    ```bash
    docker compose up -d chatbot
    ```
-4. El asistente utilizará **Gemini 2.0 Flash** para razonar en directo con alta velocidad.
-
-### 2. Modo Razonamiento Local con Ollama (100% en tu máquina)
-Si prefieres no usar internet ni claves:
-
-1. Abre Ollama en tu ordenador y ejecuta el modelo ligero recomendado:
-   ```bash
-   ollama run qwen2.5:1.5b
-   ```
-2. El contenedor detecta Ollama automáticamente a través de `http://host.docker.internal:11434`.
-
-### 3. Modo Offline (Sin configuración)
-Si no defines `GEMINI_API_KEY` ni abres Ollama, el chatbot funciona de forma autónoma respondiendo directamente con la información oficial de `knowledge_base.json`.
+4. El asistente utilizará **Google Gemini 2.0 Flash** para razonar en directo.
 
 ---
 
@@ -55,12 +45,3 @@ Si no defines `GEMINI_API_KEY` ni abres Ollama, el chatbot funciona de forma aut
   curl http://localhost:8000/health
   ```
 
----
-
-## 🧪 Pruebas Automatizadas
-
-Para validar que el chatbot responde correctamente a las preguntas clave del proyecto:
-
-```bash
-python chatbot/test_preguntas.py
-```

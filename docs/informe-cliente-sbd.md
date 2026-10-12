@@ -4,14 +4,14 @@
 > **Curso de Especialización en Inteligencia Artificial y Big Data**  
 > **Módulo:** Sistemas de Big Data (5074) · CF Somorrostro  
 > **Reto 0:** «HERE WE GO»  
-> **Equipo:** Haizen Lab (Iñigo, Kerman y Alfred)  
+> **Equipo:** HaizeLab (Alfred Gabriel, Iñigo Guzmán y Kerman Latorre)  
 > **Documento entregable oficial:** [Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx](Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx) | [Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf](Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf)
 
 ---
 
 ## Objetivo del documento
 
-Se presenta el informe de consultoría ejecutiva para el Ayuntamiento de Bilbao elaborado por **Haizen Lab** en el módulo de Sistemas de Big Data (SBD). El documento evalúa el impacto empírico de la Zona de Bajas Emisiones (ZBE) en el distrito de Abando sobre las concentraciones horarias de $\text{NO}_2$, aislando el efecto de la ordenanza respecto a la meteorología y las tendencias del tráfico mediante un diseño cuasiexperimental de Diferencias en Diferencias (*Diff-in-Diff*) y contraste con aforos vehiculares.
+Se presenta el informe de consultoría ejecutiva para el Ayuntamiento de Bilbao elaborado por **HaizeLab** en el módulo de Sistemas de Big Data (SBD). El documento evalúa el impacto empírico de la Zona de Bajas Emisiones (ZBE) en el distrito de Abando sobre las concentraciones horarias de $\text{NO}_2$, aislando el efecto de la ordenanza respecto a la meteorología y las tendencias del tráfico mediante un diseño cuasiexperimental de Diferencias en Diferencias (*Diff-in-Diff*) y contraste con aforos vehiculares.
 
 ---
 
@@ -34,8 +34,9 @@ $$\text{efecto neto ZBE} = \left[\text{NO}_{2,\text{post}}(\text{dentro}) - \tex
 | **P1 (Prioridad Máxima)** | ¿Ha disminuido el $\text{NO}_2$ dentro de la ZBE más que fuera tras el 15/06/2024? | Modelo cuasiexperimental Diff-in-Diff frente a estaciones exteriores. |
 | **P2 (Prioridad Alta)** | ¿El descenso se concentra en el horario regulado (L-V 7:00-20:00)? | Estratificación horaria activa frente a horario nocturno y fines de semana. |
 | **P3 (Prioridad Alta)** | ¿Se sostiene la reducción en calma atmosférica ($< 2\text{ m/s}$)? | Control estratificado por régimen de viento en Monte Banderas. |
-| **P4 (Prioridad Media)** | ¿Existe correlación causal con el tráfico en los accesos? | Contraste cruzado con aforos de San Mamés y red de circunvalación. |
-| **P5 (Prioridad Media)** | ¿Aportó la Fase 2 una reducción marginal respecto a la Fase 1? | Contraste de hipótesis de medias entre periodos regulatorios independientes. |
+| **P4 (Prioridad Alta)** | ¿Supera la estimación un control placebo con contaminantes no vehiculares ($\text{SO}_2$)? | Análisis de falsación con $\text{SO}_2$ industrial para descartar sesgos exógenos. |
+| **P5 (Prioridad Media)** | ¿Existe correlación causal con el tráfico en los accesos? | Contraste cruzado con aforos de San Mamés y red de circunvalación. |
+| **P6 (Prioridad Media)** | ¿Aportó la Fase 2 una reducción marginal respecto a la Fase 1? | Contraste de hipótesis de medias entre periodos regulatorios independientes. |
 
 ---
 
@@ -58,7 +59,7 @@ Para construir el dataset integrado maestro se adquirieron y procesaron cuatro f
 | **Coma decimal europea** | Conversión sistemática de strings numéricos con coma a tipo `float64` estándar. |
 | **Hora 24:00 del Gobierno Vasco** | Conversión algorítmica sumando 1 día calendario a las 00:00 h correspondientes. |
 | **Desfase GMT vs. hora peninsular** | Transformación estricta a zona `Europe/Madrid` con horario de verano/invierno para casar con el horario ZBE. |
-| **Valores negativos anómalos** | Filtrado de lecturas $< 0\ \mu\text{g/m}^3$ ($0,04\%$ por descalibración) e imputación por persistencia temporal. |
+| **Valores negativos anómalos** | Conversión de lecturas $< 0\ \mu\text{g/m}^3$ ($0,04\%$ por descalibración instrumental) a `NaN` sin alterar la serie temporal. |
 
 ---
 
@@ -156,15 +157,15 @@ Por tanto, el **impacto causal neto atribuible a la ZBE mediante Diferencias en 
 
 | Miembro del equipo | Rol en el proyecto | Tareas principales asumidas |
 |---|---|---|
-| **Alfred Gabriel** | Ingeniería de datos y modelado SBD | Pipeline de descarga (`descargar_y_limpiar.py`), estimación Diff-in-Diff y cuaderno Jupyter `zbe_bilbao.ipynb`. |
-| **Íñigo** | Calidad de datos y comunicación ejecutiva | Control de calidad, diseño de figuras (g1 a g10), análisis de aforos y redacción del informe de 4 páginas. |
-| **Kerman** | Infraestructura BDA y DevOps | Despliegue Docker Compose, buckets y tokens en InfluxDB, flujos Node-RED, servicio MCP y paneles Grafana. |
+| **Alfred Gabriel** | Product Owner / Sistemas de Big Data & Modelado | Pipeline de descarga y limpieza (`descargar_y_limpiar.py`), econometría Diff-in-Diff, cuaderno Jupyter `zbe_bilbao.ipynb` e informe ejecutivo para el cliente. |
+| **Iñigo Guzmán** | Lead Data Engineer / Big Data Aplicado | Infraestructura Docker Compose, gestión de buckets y tokens en InfluxDB 2.9, ingesta streaming en Node-RED 5.0, dashboards y control de acceso RBAC en Grafana 11.2. |
+| **Kerman Latorre** | Scrum Master / Modelos de IA & Protocolos | Servidor MCP (:5001) para consultas de IA a InfluxDB, modelado predictivo complementario, metodología ágil Scrum y memoria técnica MIA. |
 
 ### Checklist de verificación de la rúbrica oficial (SBD / Reto 0)
 
 | | | |
 |---|---|---|
-| ☑ **Contexto y 5 preguntas** *(AP. 1)* | ☑ **Fuentes y auditoría calidad** *(AP. 2)* | ☑ **Integración y pipeline** *(AP. 3)* |
+| ☑ **Contexto y 6 preguntas** *(AP. 1)* | ☑ **Fuentes y auditoría calidad** *(AP. 2)* | ☑ **Integración y pipeline** *(AP. 3)* |
 | ☑ **Resultados analíticos** *(AP. 4)* | ☑ **Figuras con 3 partes** *(AP. 5)* | ☑ **Conclusiones y recomendaciones** *(AP. 6)* |
 | ☑ **Justificación herramientas** *(AP. 7)* | ☑ **Matriz RACI y Scrum** *(AP. 8)* | ☑ **Servicio MCP integrado** *(AP. 7)* |
 

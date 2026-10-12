@@ -109,8 +109,7 @@ Para ver los datos no quería tener que crear paneles a mano cada vez que se rei
 - El cuadro de mando (`grafana/dashboards/haizelab-overview.json`) define de forma declarativa todos los paneles:
   - **Calidad del aire**: Unos relojes con colores tipo semáforo (verde < 25, amarillo 25-40, rojo > 40 µg/m³ según las normas europeas) y la gráfica temporal comparando dentro vs fuera de la ZBE.
   - **Clima**: Gráfica de temperatura y humedad, y otra de viento y lluvia.
-  - **Tráfico**: Cuántos coches se mueven por Bilbao y a qué velocidad media van.
-- He dejado el acceso directo activado en `localhost:3000`: entras con el navegador y ya tienes el panel en pantalla sin tener que loguearte.
+- El acceso a Grafana en `localhost:3000` está protegido y autenticado mediante control de acceso basado en roles (RBAC): la cúpula directiva (`directora`, `ceo`, `coo`, `cfo`) y los equipos de `Análisis` e `IT` disponen de credenciales individuales y permisos de carpeta segregados (`Dirección` y `Análisis`).
 
 ---
 
