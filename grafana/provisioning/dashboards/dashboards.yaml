@@ -1,12 +1,22 @@
 apiVersion: 1
 
 providers:
-  - name: 'HaizeLab Dashboards'
+  - name: 'HaizeLab Dirección'
     orgId: 1
-    folder: 'HaizeLab'
+    folder: 'Dirección'
     type: file
     disableDeletion: false
     updateIntervalSeconds: 10
     allowUiUpdates: true
     options:
-      path: /var/lib/grafana/dashboards
+      path: /var/lib/grafana/dashboards/haizelab-overview.json
+
+  - name: 'HaizeLab Análisis'
+    orgId: 1
+    folder: 'Análisis'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/haizelab-analisis-zbe.json

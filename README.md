@@ -51,7 +51,7 @@ El desarrollo completo está en el [informe para el cliente](docs/informe-client
 ## Arquitectura
 
 <picture>
-  <img src="docs/img/arquitectura_haizelab.png" alt="Arquitectura de HaizeLab: las fuentes abiertas entran por Node-RED y por una carga por lotes, se almacenan en InfluxDB y se consultan en solo lectura desde Grafana, el servidor MCP y un proxy" width="100%">
+  <img src="docs/img/arquitectura_haizelab.png" alt="Arquitectura de HaizeLab: las fuentes abiertas entran por Node-RED y por una carga por lotes, se almacenan en InfluxDB y se consultan en solo lectura desde Grafana y el servidor MCP" width="100%">
 </picture>
 
 Las flechas siguen el sentido del dato. Cada flujo de Node-RED escribe en su propio bucket y ningún servicio de consumo puede escribir. Junto a cada bucket aparece su retención.
@@ -114,6 +114,8 @@ cp .env.example .env
 | `NODE_RED_CREDENTIAL_SECRET` | Clave con la que Node-RED cifra sus credenciales |
 | `NODE_RED_ADMIN_PASSWORD` | Contraseña del editor de Node-RED |
 | `GRAFANA_DEFAULT_PASSWORD` | Base de las contraseñas de los usuarios de Grafana |
+| `ALERT_EMAIL_TO` *(Opcional)* | Correo destinatario que recibirá las alertas (por defecto `alfred.ciuca-andrei06@somo.eus`) |
+| `GF_SMTP_*` *(Opcional)* | Configuración del servidor SMTP emisor para que Grafana pueda enviar los correos |
 | `GEMINI_API_KEY` *(Opcional)* | Clave gratuita de Google Gemini para activar el razonamiento con IA del chatbot |
 
 Para generar un valor aleatorio:
@@ -231,12 +233,12 @@ Los usuarios, los equipos y la página de inicio de cada equipo se crean al arra
 
 | Equipo | Usuarios | Rol | Página de inicio |
 |---|---|---|---|
-| Dirección | `directora` | Viewer | Monitor ZBE en tiempo real (`haizelab-overview`) |
+| Dirección | `directora`, `ceo`, `coo`, `cfo` | Viewer | Monitor ZBE en tiempo real (`haizelab-overview`) |
 | Análisis | `analista1` a `analista6` | Viewer | Panel de análisis ZBE (`haizelab-analisis`) |
 | IT | `it_admin1` | Admin | La predeterminada |
 | IT | `it_admin2` y `it_admin3` | Editor | La predeterminada |
 
-El administrador de Grafana usa el usuario y la contraseña de `INFLUXDB_ADMIN_USER` e `INFLUXDB_ADMIN_PASSWORD`. El editor de Node-RED usa `NODE_RED_ADMIN_USER` y `NODE_RED_ADMIN_PASSWORD`.
+Las contraseñas de cada usuario se derivan automáticamente concatenando `GRAFANA_DEFAULT_PASSWORD` con el sufijo de su usuario (ej: `${GRAFANA_DEFAULT_PASSWORD}dir`, `${GRAFANA_DEFAULT_PASSWORD}ceo`, `${GRAFANA_DEFAULT_PASSWORD}a1`...`${GRAFANA_DEFAULT_PASSWORD}a6`, `${GRAFANA_DEFAULT_PASSWORD}it1`). El administrador principal de Grafana utiliza `admin` y la contraseña definida en `INFLUXDB_ADMIN_PASSWORD`. El editor de Node-RED usa `NODE_RED_ADMIN_USER` y `NODE_RED_ADMIN_PASSWORD`.
 
 Las alertas se aprovisionan desde `grafana/provisioning/alerting/alerting.yaml`:
 
@@ -275,9 +277,8 @@ El servicio `chatbot` (`http://localhost:8000`) proporciona una API en FastAPI d
         ```bash
         docker compose up -d chatbot
         ```
-     * *(Alternativa local)*: Si prefieres no usar la nube, abre **Ollama** en tu ordenador (`ollama run qwen2.5:1.5b`); el contenedor lo detecta automáticamente sin necesidad de claves.
 
-La documentación interactiva de la API está en `http://localhost:8000/docs`, y las pruebas se validan con `python chatbot/test_preguntas.py`.
+La documentación interactiva de la API está disponible en `http://localhost:8000/docs`.
 
 ## Presentación web
 
@@ -330,8 +331,8 @@ Todo funciona en red local (`localhost`), de forma 100% autónoma y sin dependen
 
 ## Equipo
 
-| Persona | Rol |
-|---|---|
-| Alfred Gabriel | Product Owner, Programación de IA |
-| Iñigo Guzman | Lead Data Engineer, Big Data Aplicado |
-| Kerman Latorre | Scrum Master, Modelos de IA |
+| Persona | Rol | Responsabilidades clave |
+|---|---|---|
+| Alfred Gabriel | Product Owner | Sistemas de Big Data & Modelado (pipeline 332k filas, econometría DiD, validación) |
+| Iñigo Guzmán | Lead Data Engineer | Big Data Aplicado (Docker, InfluxDB buckets/tokens, Node-RED streaming, Grafana RBAC) |
+| Kerman Latorre | Scrum Master | Modelos de IA & Protocolos (Servidor MCP, integración de herramientas IA, metodología ágil) |

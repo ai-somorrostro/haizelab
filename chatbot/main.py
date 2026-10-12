@@ -7,9 +7,8 @@ Tecnología: FastAPI + Pydantic + HTTPX.
 
 Arquitectura de Razonamiento:
 1. Inyecta la evidencia empírica oficial del proyecto en un System Prompt de razonamiento analítico.
-2. Si GEMINI_API_KEY está configurada en .env, consulta a Google Gemini (rápido y con razonamiento profundo).
-3. Si Ollama está activo en el host (11434), consulta a Ollama en local.
-4. Si no hay ningún LLM activo, utiliza la base de conocimiento local para responder con datos oficiales.
+2. Si GEMINI_API_KEY está configurada en .env, consulta a Google Gemini 2.0 Flash (rápido y con razonamiento profundo).
+3. Si no hay clave de API externa, utiliza el motor de conocimiento local determinista y explicable sin dependencias.
 """
 
 from pathlib import Path
@@ -26,8 +25,6 @@ DIR_CHATBOT = Path(__file__).resolve().parent
 FICHERO_KB = DIR_CHATBOT / "knowledge_base.json"
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434").rstrip("/")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:1.5b")
 
 app = FastAPI(
     title="HaizeLab Assistant API",
@@ -58,8 +55,8 @@ EVIDENCIA EMPÍRICA Y DATOS OFICIALES DEL PROYECTO:
 3. Comparativa: Dentro de la ZBE (Mazarredo y Mª Díaz de Haro) el NO2 bajó de 25,50 a 21,90 µg/m³ (-14,1%). Fuera en control metropolitano (Europa, Barakaldo, Basauri, Erandio, Castrejana) bajó de 18,25 a 16,29 µg/m³ (-10,8%). La diferencia neta (-1,63 µg/m³) aísla el efecto real de la ZBE.
 4. Control de Meteorología: En episodios de calma atmosférica (<2 m/s), el NO2 bajó un -13,4% dentro de la ZBE, demostrando que la mejora no dependió del viento. Regresión con controles climáticos arroja -1,74 µg/m³.
 5. Control Placebo: El SO2 (que proviene de la industria, no del tráfico) tuvo un cambio neto de +0,33 µg/m³, confirmando que el método no inventa bajadas y que la reducción de NO2 proviene del tráfico.
-6. Aforos de Tráfico: El acceso por San Mamés descendió un -10,1% en 2024 (de 50.127 a 45.052 veh/día) con rebote a 48.543 en 2025 (-3,2% neto vs 2023).
-7. Equipo y Metodología: Alfred Gabriel (Product Owner / Docker, redes, MCP), Iñigo Guzman (Lead Data Engineer / InfluxDB, Node-RED, Grafana), Kerman Latorre (Scrum Master / econometría Diff-in-Diff).
+6. Aforos de Tráfico: El acceso por San Mamés descendió un -10,1% en 2024 (de 50.127 a 45.052 veh/día) con rebote a 48.543 en 2025 (-3,2% neto vs 2023). Total accesos consolidados: -0,68%.
+7. Equipo y Metodología: Iñigo Guzmán (Lead Data Engineer / Big Data Aplicado: InfluxDB, Node-RED, Grafana, Docker), Alfred Gabriel (Product Owner / Sistemas de Big Data & Modelado: Pipeline 332k filas, econometría Diff-in-Diff), Kerman Latorre (Scrum Master / Modelos de IA & Protocolos: Servidor MCP, metodología ágil).
 8. Stack: Docker Compose, InfluxDB 2.9 (buckets aire, meteo, trafico, aire_demo), Node-RED 5.0, Grafana 11.2 (con control de acceso por roles: Directiva, Análisis, IT), Servidor MCP (:5001).
 
 DIRECTRICES DE RAZONAMIENTO:
@@ -96,9 +93,9 @@ RESPUESTAS_LOCALES = {
     ),
     "equipo": (
         "El equipo de HaizeLab (Reto 0) está formado por tres especialistas:\n"
-        "- **Alfred Gabriel:** Product Owner (infraestructura Docker, despliegue y MCP).\n"
-        "- **Iñigo Guzman:** Lead Data Engineer (Node-RED, InfluxDB y cuadros de mando en Grafana).\n"
-        "- **Kerman Latorre:** Scrum Master (análisis econométrico Diff-in-Diff y modelado en Python)."
+        "- **Alfred Gabriel:** Product Owner / Sistemas de Big Data & Modelado (pipeline reproducible de datos 332k filas, econometría Diff-in-Diff e informe).\n"
+        "- **Iñigo Guzmán:** Lead Data Engineer / Big Data Aplicado (infraestructura Docker, InfluxDB, Node-RED, Grafana RBAC y alertas).\n"
+        "- **Kerman Latorre:** Scrum Master / Modelos de IA & Protocolos (servidor MCP, integración de herramientas IA y metodología ágil Scrum)."
     ),
     "general": (
         "Soy HaizeLab Assistant. Puedo razonar y responder a tus preguntas sobre los resultados de la ZBE de Bilbao, "
@@ -117,7 +114,7 @@ class ChatResponse(BaseModel):
     fuentes: List[str]
     modelo: str
 
-# ── Motores de Razonamiento (Gemini / Ollama / Local) ──────────────────────────
+# ── Motores de Razonamiento (Gemini / Local Determinista) ──────────────────────
 async def razonar_con_gemini(pregunta: str) -> Optional[str]:
     """Razonamiento dinámico mediante Google Gemini API."""
     if not GEMINI_API_KEY:
@@ -135,23 +132,6 @@ async def razonar_con_gemini(pregunta: str) -> Optional[str]:
                 cands = data.get("candidates", [])
                 if cands:
                     return cands[0]["content"]["parts"][0]["text"].strip()
-    except Exception:
-        pass
-    return None
-
-async def razonar_con_ollama(pregunta: str) -> Optional[str]:
-    """Razonamiento local mediante Ollama si está activo."""
-    prompt = f"{SYSTEM_PROMPT}\n\nPregunta del usuario:\n{pregunta}\n\nRespuesta razonada:"
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                f"{OLLAMA_URL}/api/generate",
-                json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}
-            )
-            if resp.status_code == 200:
-                texto = resp.json().get("response", "").strip()
-                if texto:
-                    return texto
     except Exception:
         pass
     return None
@@ -175,12 +155,13 @@ def responder_localmente(pregunta: str) -> str:
 
 # ── Endpoints HTTP ─────────────────────────────────────────────────────────────
 @app.get("/health")
+@app.get("/info")
 def health():
     return {
         "status": "ok",
         "servicio": "haizelab-chatbot",
         "razonamiento_gemini": bool(GEMINI_API_KEY),
-        "razonamiento_ollama": OLLAMA_URL
+        "modo": "Gemini 2.0 Flash" if GEMINI_API_KEY else "Knowledge Engine (Offline)"
     }
 
 @app.post("/chat", response_model=ChatResponse)
@@ -202,16 +183,7 @@ async def chat(peticion: ChatRequest):
             modelo="Gemini 2.0 Flash (Razonamiento)"
         )
 
-    # 2. Intentar razonamiento con Ollama local (si Ollama está corriendo)
-    resp_ollama = await razonar_con_ollama(pregunta)
-    if resp_ollama:
-        return ChatResponse(
-            respuesta=resp_ollama,
-            fuentes=["Ollama Local", "Evidencia HaizeLab"],
-            modelo=f"Ollama ({OLLAMA_MODEL})"
-        )
-
-    # 3. Fallback seguro desde la base de conocimiento local
+    # 2. Fallback seguro desde la base de conocimiento local
     resp_fija = responder_localmente(pregunta)
     return ChatResponse(
         respuesta=resp_fija,

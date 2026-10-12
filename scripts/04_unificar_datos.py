@@ -120,8 +120,8 @@ def main():
     traf_sm_var_23_25 = row_sm["var_pct_23_25"].iloc[0] if not row_sm.empty else np.nan
     traf_sm_var_24_25 = row_sm["var_pct_24_25"].iloc[0] if not row_sm.empty else np.nan
 
-    # Tráfico Total
-    row_tot = df_traf[df_traf.acceso.str.contains("TOTAL", case=False, na=False)]
+    # Tráfico Total Consolidado (11 accesos a Bilbao)
+    row_tot = df_traf[df_traf.acceso.str.strip() == "TOTAL"]
     traf_tot_var = row_tot["var_pct_23_24"].iloc[0] if not row_tot.empty else np.nan
 
     sintesis = pd.DataFrame([
