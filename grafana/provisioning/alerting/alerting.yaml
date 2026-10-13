@@ -261,7 +261,7 @@ contactPoints:
       - uid: haizelab-ops-default
         type: email
         settings:
-          addresses: "${ALERT_EMAIL_TO}" 
+          addresses: "$__env{ALERT_EMAIL_TO}" 
           singleEmail: false
 
 policies:
