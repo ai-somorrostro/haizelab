@@ -247,6 +247,34 @@ services:
       - ./salida:/app/salida
     command: python scripts/06_visualizar_decision.py
 
+  # ── Carga del histórico a InfluxDB (bajo demanda, perfil "pipeline") ────────
+  carga-historica:
+    profiles: ["pipeline"]
+    build: .
+    image: haizelab:latest
+    container_name: haizelab_carga_historica
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      influxdb_setup:
+        condition: service_completed_successfully
+    environment:
+      INFLUXDB_URL:         http://influxdb:8086
+      INFLUXDB_ORG:         ${INFLUXDB_ORG}
+      INFLUXDB_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
+    volumes:
+      - ./ingesta:/app/ingesta:ro
+      - ./datos:/app/datos:ro
+      - ./data:/app/data:ro
+      - influxdb_tokens:/tokens:ro
+    # Usa el token restringido batch-write si existe; si no, el de administración.
+    entrypoint:
+      - sh
+      - -c
+      - 'set -a; [ -f /tokens/tokens.env ] && . /tokens/tokens.env; set +a; exec python ingesta/carga_historica.py "$$@"'
+      - --
+    command: ["--bucket", "all"]
+
 volumes:
   influxdb_data:
   influxdb_config:

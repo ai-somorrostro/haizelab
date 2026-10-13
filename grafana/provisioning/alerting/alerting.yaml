@@ -261,7 +261,7 @@ contactPoints:
       - uid: haizelab-ops-default
         type: email
         settings:
-          addresses: "${ALERT_EMAIL_TO:-alfred.ciuca-andrei06@somo.eus}"
+          addresses: "${ALERT_EMAIL_TO}" 
           singleEmail: false
 
 policies:
