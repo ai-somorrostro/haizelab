@@ -154,6 +154,7 @@ groups:
                   |> filter(fn: (r) => r["_field"] == "no2")
                   |> group()
                   |> max()
+                  |> keep(columns: ["_value"])
               intervalMs: 60000
               maxDataPoints: 43200
           - refId: C
@@ -261,7 +262,7 @@ contactPoints:
       - uid: haizelab-ops-default
         type: email
         settings:
-          addresses: "haizelab-ops@example.com"
+          addresses: "$__env{ALERT_EMAIL_TO}" 
           singleEmail: false
 
 policies:

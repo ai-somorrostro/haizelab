@@ -4,7 +4,7 @@
 > **Curso de Especialización en Inteligencia Artificial y Big Data**  
 > **Módulo:** Modelos de IA (5071) · CF Somorrostro  
 > **Reto 0:** «HERE WE GO»  
-> **Equipo:** Haizen Lab (Iñigo, Kerman y Alfred)  
+> **Equipo:** HaizeLab (Alfred Gabriel, Iñigo Guzmán y Kerman Latorre)  
 > **Cliente (simulado):** Ayuntamiento de Bilbao, área de Movilidad y Sostenibilidad  
 > **Documento entregable oficial:** [MIA_Haizen_Lab.pdf](MIA_Haizen_Lab.pdf) | [MIA_Haizen_Lab.docx](MIA_Haizen_Lab.docx)
 
@@ -12,7 +12,7 @@
 
 ## Objetivo del documento
 
-Se recoge la propuesta de modelo de IA con la que **Haizen Lab** responde al encargo del Ayuntamiento de Bilbao: separar cuánto ha cambiado el $\text{NO}_2$ del centro por la Zona de Bajas Emisiones (ZBE) y cuánto por todo lo demás. El documento sigue los ocho puntos del enunciado y describe el diseño y su justificación técnica (sin resultados empíricos definitivos).
+Se recoge la propuesta de modelo de IA con la que **HaizeLab** responde al encargo del Ayuntamiento de Bilbao: separar cuánto ha cambiado el $\text{NO}_2$ del centro por la Zona de Bajas Emisiones (ZBE) y cuánto por todo lo demás. El documento sigue los ocho puntos del enunciado y describe el diseño y su justificación técnica (sin resultados empíricos definitivos).
 
 ---
 

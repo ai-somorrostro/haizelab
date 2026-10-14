@@ -142,7 +142,8 @@ from(bucket: "aire")
 | `admin`           | Todos (creación inicial)        | Todos           | Solo setup, nunca en runtime |
 | `nodered-write`   | `meteo`, `trafico`, `aire_demo` | —               | Node-RED (runtime)           |
 | `batch-write`     | `aire`, `meteo`                 | —               | `carga_historica.py`         |
-| `read-all`        | —                               | Los 4 buckets   | Grafana, MCP futuro          |
+| `read-all`        | —                               | Los 4 buckets   | Grafana                      |
+| `mcp-read-only`   | —                               | Los 4 buckets   | Servidor MCP (:5001)         |
 
 > Un único token para todo puntúa como **deficiente** en la evaluación del reto.
 
@@ -152,8 +153,8 @@ from(bucket: "aire")
 
 | Grupo              | Nº usuarios | Rol Grafana | Dashboards visibles | Home dashboard     |
 |--------------------|-------------|-------------|---------------------|--------------------|
-| Cúpula directiva   | ~1          | Viewer      | Todos               | HaizeLab Overview  |
-| Equipo Análisis    | 6           | Viewer      | Asignados           | HaizeLab Overview  |
+| Cúpula directiva   | 4 (dir/ceo/coo/cfo) | Viewer | Todos (Dirección y Análisis) | HaizeLab Overview  |
+| Equipo Análisis    | 6           | Viewer      | Asignados (Análisis)| HaizeLab Análisis  |
 | Equipo IT          | 3           | Admin/Editor| Todos               | HaizeLab Overview  |
 
 ---

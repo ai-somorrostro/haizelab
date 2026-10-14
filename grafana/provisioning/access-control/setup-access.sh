@@ -175,9 +175,18 @@ asignar_a_team() {
   fi
 }
 
-# Dirección: 1 usuario (Viewer)
+# Dirección: Cúpula directiva (Viewer)
 gestionar_usuario "Directora ZBE" "directora@haizelab.eus" "directora" "Viewer" "${PASS_BASE}dir"
 [ -n "$ID_TEAM_DIR" ] && asignar_a_team "$ID_TEAM_DIR" "$USER_ID" "directora"
+
+gestionar_usuario "CEO HaizeLab" "ceo@haizelab.eus" "ceo" "Viewer" "${PASS_BASE}ceo"
+[ -n "$ID_TEAM_DIR" ] && asignar_a_team "$ID_TEAM_DIR" "$USER_ID" "ceo"
+
+gestionar_usuario "COO HaizeLab" "coo@haizelab.eus" "coo" "Viewer" "${PASS_BASE}coo"
+[ -n "$ID_TEAM_DIR" ] && asignar_a_team "$ID_TEAM_DIR" "$USER_ID" "coo"
+
+gestionar_usuario "CFO HaizeLab" "cfo@haizelab.eus" "cfo" "Viewer" "${PASS_BASE}cfo"
+[ -n "$ID_TEAM_DIR" ] && asignar_a_team "$ID_TEAM_DIR" "$USER_ID" "cfo"
 
 # Análisis: 6 analistas (Viewer con home dashboard específico)
 for i in 1 2 3 4 5 6; do
@@ -194,6 +203,34 @@ gestionar_usuario "IT Admin 2" "it2@haizelab.eus" "it_admin2" "Editor" "${PASS_B
 
 gestionar_usuario "IT Admin 3" "it3@haizelab.eus" "it_admin3" "Editor" "${PASS_BASE}it3"
 [ -n "$ID_TEAM_IT" ] && asignar_a_team "$ID_TEAM_IT" "$USER_ID" "it_admin3"
+
+# ──── 4. Segregación de Carpetas y Permisos ACL ──────────────────────────────
+echo "[acceso] Configurando permisos ACL por carpetas..."
+
+crear_o_obtener_carpeta() {
+  local title="$1"
+  FOLDER_UID=""
+  api_req GET "/api/folders"
+  FOLDER_UID=$(echo "$RESP_BODY" | grep -o '{"id":[0-9]*,"uid":"[^"]*","title":"'"$title"'"' | grep -o '"uid":"[^"]*"' | head -n1 | cut -d'"' -f4 || true)
+  if [ -z "$FOLDER_UID" ]; then
+    api_req POST "/api/folders" "{\"title\":\"$title\"}"
+    FOLDER_UID=$(echo "$RESP_BODY" | grep -o '"uid":"[^"]*"' | head -n1 | cut -d'"' -f4 || true)
+  fi
+}
+
+# Permisos para Carpeta Dirección (Solo Team Dirección puede ver)
+crear_o_obtener_carpeta "Dirección"
+if [ -n "$FOLDER_UID" ] && [ -n "$ID_TEAM_DIR" ]; then
+  api_req POST "/api/folders/$FOLDER_UID/permissions" "{\"items\":[{\"teamId\":$ID_TEAM_DIR,\"permission\":1}]}"
+  echo "[acceso] [$RESP_CODE] ACL Carpeta 'Dirección': Team Direccion (View)"
+fi
+
+# Permisos para Carpeta Análisis (Team Dirección y Team Análisis pueden ver)
+crear_o_obtener_carpeta "Análisis"
+if [ -n "$FOLDER_UID" ] && [ -n "$ID_TEAM_ANL" ]; then
+  api_req POST "/api/folders/$FOLDER_UID/permissions" "{\"items\":[{\"teamId\":$ID_TEAM_DIR,\"permission\":1},{\"teamId\":$ID_TEAM_ANL,\"permission\":1}]}"
+  echo "[acceso] [$RESP_CODE] ACL Carpeta 'Análisis': Team Direccion (View) + Team Analisis (View)"
+fi
 
 echo "[acceso] ====================================================="
 echo "[acceso] Control de acceso RBAC provisionado correctamente."

@@ -1,4 +1,4 @@
-# Presentación Haizen Lab · Reto 0
+# Presentación HaizeLab · Reto 0
 
 Versión web de la presentación: un `index.html` y la carpeta `assets/`, sin dependencias.
 
