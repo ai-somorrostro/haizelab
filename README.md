@@ -115,7 +115,7 @@ cp .env.example .env
 | `NODE_RED_ADMIN_PASSWORD` | Contraseña del editor de Node-RED |
 | `GRAFANA_DEFAULT_PASSWORD` | Base de las contraseñas de los usuarios de Grafana |
 | `ALERT_EMAIL_TO` *(Opcional)* | Correo destinatario que recibirá las alertas (por defecto `alfred.ciuca-andrei06@somo.eus`) |
-| `GF_SMTP_*` *(Opcional)* | Configuración del servidor SMTP emisor para que Grafana pueda enviar los correos |
+| `GF_SMTP_*` *(Opcional)* | 	Configuración del servidor SMTP emisor para que Grafana pueda enviar los correos. GF_SMTP_PASSWORD no es la contraseña normal del correo, sino una contraseña de aplicación. Con Gmail, activa primero la verificación en dos pasos en tu cuenta de Google y después crea la contraseña en myaccount.google.com/apppasswords. Cópiala sin espacios |
 | `GEMINI_API_KEY` *(Opcional)* | Clave gratuita de Google Gemini para activar el razonamiento con IA del chatbot |
 
 Para generar un valor aleatorio:
@@ -168,30 +168,48 @@ docker compose down -v
 
 ## Carga del histórico
 
-Tras el primer arranque, `aire_demo`, `meteo` y `trafico` empiezan a recibir datos por Node-RED. El bucket `aire`, con el histórico oficial de NO₂, se rellena una vez con el script de carga.
+Tras el primer arranque, `aire_demo`, `meteo` y `trafico` empiezan a recibir datos por Node-RED. El bucket `aire`, con el histórico oficial de NO₂, se rellena una vez con el script de carga, que se ejecuta en un contenedor y no requiere instalar nada en el host.
 
-**1. Consultar el token de escritura por lotes (opcional).** `init-influxdb.sh` ya generó el token `batch-write` en el volumen de Docker. Si ejecutas la carga desde el host (fuera de Docker) y quieres usar este token restringido en vez del de administración, puedes leerlo con:
+**1. Validar sin escribir.** La plataforma debe estar levantada (`docker compose ps -a` con `influxdb` en `healthy`).
 
 ```bash
-docker run --rm -v haizelab_influxdb_tokens:/tokens:ro alpine grep '^INFLUXDB_BATCH_WRITE_TOKEN=' /tokens/tokens.env
+docker compose run --rm carga-historica --dry-run
 ```
 
-Copia la línea obtenida al final de tu `.env`. Si no se añade, el script recurre de forma transparente al token de administración (`INFLUXDB_ADMIN_TOKEN`).
-
-El prefijo `haizelab_` del volumen es el nombre de la carpeta del proyecto. Si la carpeta se llama de otra forma, hay que cambiarlo.
-
-**2. Instalar las dependencias y validar sin escribir.**
+**2. Cargar.**
 
 ```bash
+docker compose run --rm carga-historica
+```
+
+El contenedor usa automáticamente el token `batch-write` generado por `init-influxdb.sh` y recurre al de administración si no lo encuentra. Para cargar un solo bucket: `docker compose run --rm carga-historica --bucket aire`.
+
+<details>
+<summary>Alternativa: ejecutar desde el host con entorno virtual</summary>
+
+En Debian/Ubuntu recientes `pip` no permite instalar paquetes en el Python del sistema (PEP 668), por eso la carga se ejecuta desde el host en su propio entorno virtual.
+
+```bash
+sudo apt install python3-full python3-venv   # solo la primera vez
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 python ingesta/carga_historica.py --bucket all --dry-run
-```
-
-**3. Cargar.**
-
-```bash
 python ingesta/carga_historica.py --bucket all
 ```
+
+El directorio `.venv/` ya está en `.gitignore`. El entorno hay que activarlo con `source .venv/bin/activate` en cada terminal nueva.
+
+Si `pip install` falla con tu versión de Python (por ejemplo, 3.14), crea el entorno con Python 3.12:
+
+```bash
+pipx install uv
+uv venv --python 3.12 .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+</details>
 
 ## Pipeline analítico
 
@@ -238,7 +256,7 @@ Los usuarios, los equipos y la página de inicio de cada equipo se crean al arra
 | IT | `it_admin1` | Admin | La predeterminada |
 | IT | `it_admin2` y `it_admin3` | Editor | La predeterminada |
 
-Las contraseñas de cada usuario se derivan automáticamente concatenando `GRAFANA_DEFAULT_PASSWORD` con el sufijo de su usuario (ej: `${GRAFANA_DEFAULT_PASSWORD}dir`, `${GRAFANA_DEFAULT_PASSWORD}ceo`, `${GRAFANA_DEFAULT_PASSWORD}a1`...`${GRAFANA_DEFAULT_PASSWORD}a6`, `${GRAFANA_DEFAULT_PASSWORD}it1`). El administrador principal de Grafana utiliza `admin` y la contraseña definida en `INFLUXDB_ADMIN_PASSWORD`. El editor de Node-RED usa `NODE_RED_ADMIN_USER` y `NODE_RED_ADMIN_PASSWORD`.
+Acceso: `admin` usa `INFLUXDB_ADMIN_PASSWORD`. El resto usa `GRAFANA_DEFAULT_PASSWORD` + sufijo (`directora` → `...dir`, `analista1` → `...a1`, `it_admin1` → `...it1`). Se entra con el usuario, no con el correo de alertas.
 
 Las alertas se aprovisionan desde `grafana/provisioning/alerting/alerting.yaml`:
 
