@@ -1405,14 +1405,14 @@ x-connector { display: block; }
 
     <div class="haize-chat-messages" id="haize-chat-msgs">
       <div class="haize-chat-msg asistente">
-        <p>Hola. Soy el asistente de <strong>HaizeLab</strong> especializado exclusivamente en nuestro proyecto <strong>Reto 0</strong>.</p>
-        <p>Respondo únicamente a consultas basadas en nuestros datos reales: impacto de la ZBE en Bilbao (-1,63 µg/m³ de NO₂), meteorología, tráfico en accesos, arquitectura técnica y equipo de desarrollo.</p>
+        <p>Hola. Soy el asistente de <strong>HaizeLab</strong> con razonamiento híbrido (Google Gemini + Servidor MCP InfluxDB).</p>
+        <p>Tengo acceso en directo a los datos de series temporales (calidad del aire en tiempo real, histórico 2022-2026, meteorología continua y tráfico vehicular en Bilbao).</p>
         <p>¿Qué dato del proyecto deseas consultar?</p>
         <div class="haize-chat-sugerencias">
-          <button class="haize-sug-btn" data-sug="¿Quiénes son los desarrolladores y autores de este proyecto?">✦ ¿Quiénes son los autores y qué rol tuvo cada uno?</button>
+          <button class="haize-sug-btn" data-sug="¿Cuál es el nivel actual de NO2 en Mazarredo y en Europa según InfluxDB?">✦ NO₂ actual en Mazarredo y Europa (En vivo)</button>
+          <button class="haize-sug-btn" data-sug="¿Qué temperatura y viento hace ahora mismo según la monitorización en vivo?">✦ Clima y viento en directo (Meteo)</button>
           <button class="haize-sug-btn" data-sug="¿Cuál fue el impacto neto de la ZBE según el modelo Diff-in-Diff?">✦ Impacto neto real de la ZBE (-1,63 µg/m³)</button>
-          <button class="haize-sug-btn" data-sug="¿Cómo se aisló la meteorología del efecto del tráfico?">✦ ¿Cómo se aisló la meteorología?</button>
-          <button class="haize-sug-btn" data-sug="¿Qué arquitectura tecnológica tiene el proyecto HaizeLab?">✦ Arquitectura tecnológica y contenedores</button>
+          <button class="haize-sug-btn" data-sug="¿Quiénes son los desarrolladores y autores de este proyecto?">✦ Equipo y roles de HaizeLab</button>
         </div>
       </div>
     </div>
@@ -2128,7 +2128,7 @@ const Transiciones = (function () {
 
       if (info) {
         conectado = true;
-        const modName = info.razonamiento_gemini ? '● Gemini' : '● Local';
+        const modName = (info.razonamiento_gemini && info.mcp_disponible) ? '● Gemini + MCP' : (info.razonamiento_gemini ? '● Gemini' : '● Local');
         badge.textContent = modName;
         badge.classList.remove('offline');
         return;

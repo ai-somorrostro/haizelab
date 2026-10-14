@@ -48,6 +48,13 @@ La conclusión es un efecto confirmado pero moderado: algo más de la mitad de l
 
 El desarrollo completo está en el [informe para el cliente](docs/informe-cliente-sbd.md) y en el [notebook](notebooks/zbe_bilbao.ipynb). Las cifras de esta sección salen de la ejecución de ese notebook sobre 332.776 registros horarios de ocho estaciones.
 
+### Modelos utilizados: Gradient Boosting (Propuesta MIA) y Diferencias en Diferencias (Contraste SBD)
+
+Para garantizar la máxima solidez, el proyecto articula dos enfoques metodológicos que están **implementados y ejecutados** en el [notebook](notebooks/zbe_bilbao.ipynb):
+
+1. **Gradient Boosting (Modelo de IA Elegido en MIA):** Un modelo de Machine Learning (`HistGradientBoostingRegressor`) que captura interacciones meteorológicas no lineales complejas (velocidad y ángulo de viento, lluvia, temperatura, estacionalidad y hora). Entrenado con los datos previos (2022–junio 2024), predice el contrafactual de lo que habría ocurrido en el centro sin ZBE. Estima una reducción neta de **-2,87 µg/m³ (-11,6 %)**. La justificación técnica formal se detalla en la [Propuesta de modelo de IA](docs/propuesta-modelo-ia.md), y su ejecución práctica está en las celdas 18 y 19 del notebook.
+2. **Diferencias en Diferencias (DiD - Contraste Econométrico en SBD):** Modelo causal cuasiexperimental de referencia que compara las dos estaciones interiores frente a cinco estaciones metropolitanas de control, aislando un impacto neto atribuible de **-1,63 µg/m³ (-6,4 %)** (p < 0,001). Actúa como contraste de robustez para validar que ambas aproximaciones (Machine Learning y Econometría) convergen en la misma conclusión.
+
 ## Arquitectura
 
 <picture>
@@ -101,7 +108,6 @@ Requisito: Docker con Compose v2.
 ```bash
 git clone https://github.com/ai-somorrostro/haizelab.git
 cd haizelab
-git switch develop
 cp .env.example .env
 ```
 
@@ -145,14 +151,14 @@ docker compose ps -a
 
 `haizelab_influxdb_setup` debe aparecer como `Exited (0)` y el resto de contenedores como `healthy`.
 
-| Servicio | Dirección |
-|---|---|
-| Presentación interactiva | http://localhost:8080 |
-| Grafana | http://localhost:3000 |
-| Node-RED | http://localhost:1880 |
-| InfluxDB | http://localhost:8086 |
-| Servidor MCP | http://127.0.0.1:5001/mcp/ |
-| Chatbot (API / Docs) | http://localhost:8000/docs |
+| Servicio | Dirección | Usuario | Contraseña | Notas |
+|---|---|---|---|---|
+| Presentación interactiva | http://localhost:8080 | — | — | Sin autenticación |
+| Grafana | http://localhost:3000 | `admin` *(o ver tabla RBAC)* | `admin` | Ver detalle de usuarios y roles abajo |
+| Node-RED | http://localhost:1880 | `admin` | `admin` | Configurado en `.env` |
+| InfluxDB | http://localhost:8086 | `admin` | `adminadmin` | Organización: `haizenlab` (mín. 8 caracteres) |
+| Servidor MCP | http://127.0.0.1:5001/mcp/ | — | — | Autenticado internamente por token |
+| Chatbot (API / Docs) | http://localhost:8000/docs | — | — | Sin autenticación |
 
 Para detener la plataforma conservando los datos:
 
@@ -247,16 +253,31 @@ docker compose run --rm visualizar
 
 ## Grafana: usuarios, roles y alertas
 
-Los usuarios, los equipos y la página de inicio de cada equipo se crean al arrancar mediante `grafana/provisioning/access-control/setup-access.sh`. Las contraseñas se derivan de `GRAFANA_DEFAULT_PASSWORD`.
+Los usuarios, los equipos y la página de inicio de cada equipo se crean al arrancar mediante `grafana/provisioning/access-control/setup-access.sh`.
 
-| Equipo | Usuarios | Rol | Página de inicio |
-|---|---|---|---|
-| Dirección | `directora`, `ceo`, `coo`, `cfo` | Viewer | Monitor ZBE en tiempo real (`haizelab-overview`) |
-| Análisis | `analista1` a `analista6` | Viewer | Panel de análisis ZBE (`haizelab-analisis`) |
-| IT | `it_admin1` | Admin | La predeterminada |
-| IT | `it_admin2` y `it_admin3` | Editor | La predeterminada |
+Por defecto (según [.env](.env) con `INFLUXDB_ADMIN_PASSWORD=admin` y `GRAFANA_DEFAULT_PASSWORD=admin`), las credenciales de acceso son:
 
-Acceso: `admin` usa `INFLUXDB_ADMIN_PASSWORD`. El resto usa `GRAFANA_DEFAULT_PASSWORD` + sufijo (`directora` → `...dir`, `analista1` → `...a1`, `it_admin1` → `...it1`). Se entra con el usuario, no con el correo de alertas.
+| Equipo | Usuario | Contraseña | Rol / Permisos | Página de inicio |
+|---|---|---|---|---|
+| **Super Admin** | `admin` | `admin` | Admin (Control total) | Principal |
+| **IT** | `it_admin1` | `adminit1` | Admin | Principal |
+| **IT** | `it_admin2` | `adminit2` | Editor (Crear y editar paneles) | Principal |
+| **IT** | `it_admin3` | `adminit3` | Editor (Crear y editar paneles) | Principal |
+| **Dirección** | `directora` | `admindir` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
+| **Dirección** | `ceo` | `adminceo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
+| **Dirección** | `coo` | `admincoo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
+| **Dirección** | `cfo` | `admincfo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
+| **Análisis** | `analista1` | `admina1` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista2` | `admina2` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista3` | `admina3` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista4` | `admina4` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista5` | `admina5` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista6` | `admina6` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+
+> **Nota:** Se debe iniciar sesión en Grafana con el nombre de usuario (ej. `admin`, `directora`), no con el correo electrónico. En caso de bloqueo por intentos erróneos, se puede restablecer la contraseña de admin con:
+> ```bash
+> docker compose exec grafana grafana-cli admin reset-admin-password admin
+> ```
 
 Las alertas se aprovisionan desde `grafana/provisioning/alerting/alerting.yaml`:
 
