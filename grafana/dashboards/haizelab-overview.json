@@ -105,7 +105,7 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"aire_demo\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> last()\n  |> map(fn: (r) => ({\n      r with\n      latitude: if r.estacion == \"Mazarredo\" then 43.2662\n                else if r.estacion == \"Europa\" then 43.2568\n                else if r.estacion == \"Arraiz\" then 43.2458\n                else 43.2612,\n      longitude: if r.estacion == \"Mazarredo\" then -2.9298\n                 else if r.estacion == \"Europa\" then -2.9515\n                 else if r.estacion == \"Arraiz\" then -2.9665\n                 else -2.9431,\n      tipo_estacion: if r.estacion == \"Mazarredo\" or r.estacion == \"María Díaz de Haro\" then \"Interior ZBE\"\n                     else if r.estacion == \"Europa\" then \"Control Exterior\"\n                     else \"Fondo Rural\",\n      etiqueta: r.estacion + \" (\" + string(v: int(v: r._value)) + \" µg/m³)\"\n  }))\n  |> keep(columns: [\"_time\", \"_value\", \"estacion\", \"zona\", \"tipo_estacion\", \"etiqueta\", \"latitude\", \"longitude\"])",
+          "query": "from(bucket: \"aire_demo\")\n  |> range(start: -15m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> last()\n  |> map(fn: (r) => ({\n      r with\n      latitude: if r.estacion == \"Mazarredo\" then 43.2662\n                else if r.estacion == \"Europa\" then 43.2568\n                else if r.estacion == \"Arraiz\" then 43.2458\n                else 43.2612,\n      longitude: if r.estacion == \"Mazarredo\" then -2.9298\n                 else if r.estacion == \"Europa\" then -2.9515\n                 else if r.estacion == \"Arraiz\" then -2.9665\n                 else -2.9431,\n      tipo_estacion: if r.estacion == \"Mazarredo\" or r.estacion == \"Mª Díaz de Haro\" or r.estacion == \"María Díaz de Haro\" then \"Interior ZBE\"\n                     else if r.estacion == \"Europa\" then \"Control Exterior\"\n                     else \"Fondo Rural\",\n      etiqueta: r.estacion + \" (\" + string(v: int(v: r._value)) + \" µg/m³)\"\n  }))\n  |> keep(columns: [\"_time\", \"_value\", \"estacion\", \"zona\", \"tipo_estacion\", \"etiqueta\", \"latitude\", \"longitude\"])",
           "refId": "A"
         }
       ],
@@ -496,9 +496,9 @@
     },
     {
       "id": 11,
-      "title": "Estadísticas NO₂ — Resumen Sesión",
-      "description": "Media, percentil 90 y máximo global del periodo seleccionado en todas las estaciones.",
-      "type": "stat",
+      "title": "Resumen Estadístico NO₂",
+      "description": "Media, percentil 90 y pico máximo del periodo analizado frente a los límites normativos (25 OMS / 40 UE).",
+      "type": "bargauge",
       "gridPos": {
         "h": 8,
         "w": 8,
@@ -515,7 +515,7 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"aire_demo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> group()\n  |> mean()\n  |> map(fn: (r) => ({r with _field: \"Media NO2\"}))\n  |> yield(name: \"media\")",
+          "query": "from(bucket: \"aire_demo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> group()\n  |> mean()\n  |> map(fn: (r) => ({r with _field: \"Media del Periodo\"}))\n  |> yield(name: \"media\")",
           "refId": "A"
         },
         {
@@ -523,7 +523,7 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"aire_demo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> group()\n  |> quantile(q: 0.9)\n  |> map(fn: (r) => ({r with _field: \"Percentil 90\"}))\n  |> yield(name: \"p90\")",
+          "query": "from(bucket: \"aire_demo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> group()\n  |> quantile(q: 0.9)\n  |> map(fn: (r) => ({r with _field: \"Percentil 90 (P90)\"}))\n  |> yield(name: \"p90\")",
           "refId": "B"
         },
         {
@@ -531,32 +531,34 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"aire_demo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> group()\n  |> max()\n  |> map(fn: (r) => ({r with _field: \"Máximo\"}))\n  |> yield(name: \"max\")",
+          "query": "from(bucket: \"aire_demo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> group()\n  |> max()\n  |> map(fn: (r) => ({r with _field: \"Pico Máximo\"}))\n  |> yield(name: \"max\")",
           "refId": "C"
         }
       ],
       "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "vertical",
+        "displayMode": "gradient",
+        "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "showUnfilled": true,
+        "valueMode": "color"
       },
       "fieldConfig": {
         "defaults": {
+          "min": 0,
+          "max": 100,
           "unit": "µg/m³",
           "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#73BF69",
                 "value": null
               },
               {
@@ -564,13 +566,50 @@
                 "value": 25
               },
               {
-                "color": "red",
+                "color": "#F2495C",
                 "value": 40
               }
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Media del Periodo"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Percentil 90 (P90)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Pico Máximo"
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -605,7 +644,7 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"meteo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"clima\")\n  |> filter(fn: (r) => r[\"_field\"] == \"temp_c\" or r[\"_field\"] == \"humedad\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "query": "from(bucket: \"meteo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"clima\")\n  |> filter(fn: (r) => r[\"_field\"] == \"temp_c\" or r[\"_field\"] == \"humedad\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "refId": "A"
         }
       ],
@@ -698,7 +737,7 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"meteo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"clima\")\n  |> filter(fn: (r) => r[\"_field\"] == \"viento_kmh\" or r[\"_field\"] == \"lluvia_mm\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "query": "from(bucket: \"meteo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"clima\")\n  |> filter(fn: (r) => r[\"_field\"] == \"viento_kmh\" or r[\"_field\"] == \"lluvia_mm\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "refId": "A"
         }
       ],

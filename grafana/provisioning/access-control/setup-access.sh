@@ -44,6 +44,15 @@ until curl -s "$GRAFANA_URL/api/health" 2>/dev/null | grep -Eq '"database":[[:sp
 done
 echo "[acceso] Grafana API lista. Iniciando aprovisionamiento RBAC..."
 
+# Verificar si las credenciales de admin son válidas o si se restableció a 'admin'
+if [ "$(curl -s -o /dev/null -w "%{http_code}" -u "$AUTH" "$GRAFANA_URL/api/org")" != "200" ]; then
+  if [ "$(curl -s -o /dev/null -w "%{http_code}" -u "$ADMIN_USER:admin" "$GRAFANA_URL/api/org")" = "200" ]; then
+    echo "[acceso] Detectada contraseña 'admin' en el usuario administrador (restablecida)."
+    ADMIN_PASS="admin"
+    AUTH="$ADMIN_USER:$ADMIN_PASS"
+  fi
+fi
+
 # ──── Función HTTP con trazabilidad de código de respuesta ───────────────────
 api_req() {
   local method="$1"
@@ -218,18 +227,18 @@ crear_o_obtener_carpeta() {
   fi
 }
 
-# Permisos para Carpeta Dirección (Solo Team Dirección puede ver)
+# Permisos para Carpeta Dirección (Team Dirección puede ver, Team IT puede editar)
 crear_o_obtener_carpeta "Dirección"
 if [ -n "$FOLDER_UID" ] && [ -n "$ID_TEAM_DIR" ]; then
-  api_req POST "/api/folders/$FOLDER_UID/permissions" "{\"items\":[{\"teamId\":$ID_TEAM_DIR,\"permission\":1}]}"
-  echo "[acceso] [$RESP_CODE] ACL Carpeta 'Dirección': Team Direccion (View)"
+  api_req POST "/api/folders/$FOLDER_UID/permissions" "{\"items\":[{\"teamId\":$ID_TEAM_DIR,\"permission\":1},{\"teamId\":$ID_TEAM_IT,\"permission\":2}]}"
+  echo "[acceso] [$RESP_CODE] ACL Carpeta 'Dirección': Team Direccion (View) + Team IT (Edit)"
 fi
 
-# Permisos para Carpeta Análisis (Team Dirección y Team Análisis pueden ver)
+# Permisos para Carpeta Análisis (Team Dirección y Team Análisis pueden ver, Team IT puede editar)
 crear_o_obtener_carpeta "Análisis"
 if [ -n "$FOLDER_UID" ] && [ -n "$ID_TEAM_ANL" ]; then
-  api_req POST "/api/folders/$FOLDER_UID/permissions" "{\"items\":[{\"teamId\":$ID_TEAM_DIR,\"permission\":1},{\"teamId\":$ID_TEAM_ANL,\"permission\":1}]}"
-  echo "[acceso] [$RESP_CODE] ACL Carpeta 'Análisis': Team Direccion (View) + Team Analisis (View)"
+  api_req POST "/api/folders/$FOLDER_UID/permissions" "{\"items\":[{\"teamId\":$ID_TEAM_DIR,\"permission\":1},{\"teamId\":$ID_TEAM_ANL,\"permission\":1},{\"teamId\":$ID_TEAM_IT,\"permission\":2}]}"
+  echo "[acceso] [$RESP_CODE] ACL Carpeta 'Análisis': Team Direccion (View) + Team Analisis (View) + Team IT (Edit)"
 fi
 
 echo "[acceso] ====================================================="
