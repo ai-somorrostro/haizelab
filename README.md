@@ -274,10 +274,14 @@ Por defecto (según [.env](.env) con `INFLUXDB_ADMIN_PASSWORD=admin` y `GRAFANA_
 | **Análisis** | `analista5` | `admina5` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
 | **Análisis** | `analista6` | `admina6` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
 
-> **Nota:** Se debe iniciar sesión en Grafana con el nombre de usuario (ej. `admin`, `directora`), no con el correo electrónico. En caso de bloqueo por intentos erróneos, se puede restablecer la contraseña de admin con:
+> [!IMPORTANT]
+> **Resolución de problemas de acceso en Grafana:**
+> - Inicia sesión siempre con el **nombre de usuario** (ej. `admin`, `directora`, `it_admin1`, `analista1`), **no** con el correo electrónico.
+> - Si falla la contraseña o el usuario en Grafana (`Login failed: Invalid username or password`), ejecuta el siguiente comando en la terminal para restablecer la contraseña a `admin`:
 > ```bash
-> docker compose exec grafana grafana-cli admin reset-admin-password admin
+> docker exec -it haizelab_grafana grafana-cli admin reset-admin-password admin
 > ```
+> *(O bien desde el directorio del proyecto con Docker Compose: `docker compose exec grafana grafana-cli admin reset-admin-password admin`)*.
 
 Las alertas se aprovisionan desde `grafana/provisioning/alerting/alerting.yaml`:
 

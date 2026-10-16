@@ -24,7 +24,7 @@
     {
       "id": 1,
       "title": "NO₂ Diferencias en Diferencias (Dentro vs Fuera)",
-      "description": "Comparativa horaria en streaming de las estaciones diana dentro de la ZBE frente a las 5 estaciones de control del Gran Bilbao.",
+      "description": "Comparativa de concentración de NO₂ entre estaciones dentro de la ZBE y estaciones de control del Gran Bilbao. Variable conmutador arriba.",
       "type": "timeseries",
       "gridPos": {
         "h": 8,
@@ -42,12 +42,28 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"aire_demo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> filter(fn: (r) => r[\"zona\"] == \"dentro\" or r[\"zona\"] == \"fuera\")\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)",
+          "query": "from(bucket: \"${bucket_aire}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"contaminantes\")\n  |> filter(fn: (r) => r[\"_field\"] == \"no2\")\n  |> filter(fn: (r) => r[\"zona\"] == \"dentro\" or r[\"zona\"] == \"fuera\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "refId": "A"
         }
       ],
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
       "fieldConfig": {
         "defaults": {
+          "displayName": "${__field.labels.estacion} (${__field.labels.zona})",
           "color": {
             "mode": "palette-classic"
           },
@@ -87,12 +103,23 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"meteo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"clima\")\n  |> filter(fn: (r) => r[\"_field\"] == \"viento_kmh\")\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)",
+          "query": "from(bucket: \"meteo\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"clima\")\n  |> filter(fn: (r) => r[\"_field\"] == \"viento_kmh\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "refId": "A"
         }
       ],
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
       "fieldConfig": {
         "defaults": {
+          "displayName": "Velocidad del Viento",
           "color": {
             "fixedColor": "#38BDF8",
             "mode": "fixed"
@@ -101,7 +128,8 @@
             "axisLabel": "km/h",
             "drawStyle": "line",
             "fillOpacity": 20,
-            "lineWidth": 2
+            "lineWidth": 2,
+            "spanNulls": true
           },
           "unit": "velocitykmh"
         },
@@ -141,12 +169,27 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"trafico\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"estado\")\n  |> filter(fn: (r) => r[\"_field\"] == \"ocupacion\")\n  |> group(columns: [\"codigo_seccion\"])\n  |> mean()\n  |> group()\n  |> sort(desc: true)\n  |> limit(n: 5)",
+          "query": "from(bucket: \"trafico\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"estado\")\n  |> filter(fn: (r) => r[\"_field\"] == \"ocupacion\")\n  |> last()\n  |> group()\n  |> sort(columns: [\"_value\"], desc: true)\n  |> limit(n: 5)",
           "refId": "A"
         }
       ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true
+      },
       "fieldConfig": {
         "defaults": {
+          "displayName": "Tramo ${__field.labels.codigo_seccion}",
+          "min": 0,
+          "max": 100,
           "color": {
             "mode": "thresholds"
           },
@@ -158,12 +201,12 @@
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 25
+                "color": "#EAB839",
+                "value": 20
               },
               {
                 "color": "red",
-                "value": 40
+                "value": 35
               }
             ]
           },
@@ -175,7 +218,7 @@
     {
       "id": 4,
       "title": "Intensidad Media Circulatoria (veh/h)",
-      "description": "Media móvil de intensidad en accesos monitorizados en tiempo real.",
+      "description": "Media de intensidad en accesos y tramos monitorizados de Bilbao en tiempo real.",
       "type": "stat",
       "gridPos": {
         "h": 7,
@@ -193,17 +236,31 @@
             "type": "influxdb",
             "uid": "InfluxDB-HaizeLab"
           },
-          "query": "from(bucket: \"trafico\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"estado\")\n  |> filter(fn: (r) => r[\"_field\"] == \"intensidad\")\n  |> mean()",
+          "query": "from(bucket: \"trafico\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"estado\")\n  |> filter(fn: (r) => r[\"_field\"] == \"intensidad\")\n  |> group()\n  |> mean()",
           "refId": "A"
         }
       ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
       "fieldConfig": {
         "defaults": {
+          "displayName": "Intensidad Media Global",
           "color": {
             "fixedColor": "#F59E0B",
             "mode": "fixed"
           },
-          "unit": "conhs"
+          "unit": "none"
         },
         "overrides": []
       }
@@ -231,7 +288,7 @@
   "timezone": "browser",
   "title": "HaizeLab — Panel Especializado de Análisis ZBE",
   "uid": "haizelab-analisis",
-  "version": 1,
+  "version": 2,
   "templating": {
     "list": [
       {
