@@ -194,3 +194,96 @@ Las cifras salen de `resultados/resultados.json` (ejecución del notebook en la 
 | NO, NOx, CO, benceno, PM10, PM2,5 | Tabla de P4 | P4 pregunta solo por el SO₂. El CO y el benceno no los miden todas las estaciones |
 | Aforos de San Mamés | −10,12 % (2023-2024) | No responde a ninguna de las cinco preguntas |
 | Gradient Boosting | −2,77 | Se mantiene en el anexo como provisional y no se cita hasta la fase 4 |
+
+---
+
+## Fase 3 · Informe SBD impreso
+
+El informe se rehace entero. `docs/generar_informe.py` lee `resultados/resultados.json` y escribe `docs/informe-cliente-sbd.md`, el `.docx` y el `.pdf` (estos dos, con Word). Ninguna cifra del informe está escrita a mano. Si una cifra cambia de signo y una frase deja de ser cierta, el script se para.
+
+Formato: portada y 4 páginas de cuerpo en A4, en Arial 11 (títulos en Arial 12). El PDF generado tiene 5 páginas.
+
+### SBD-01
+- **Comentario:** «renovación vegetativa» → «??».
+- **Qué se ha cambiado:** «la sustitución normal de coches viejos por otros más limpios, que ocurre con o sin ZBE». Se quita «dictaminar».
+- **Dónde:** informe, sección 1.
+- **Por qué:** era jerga que no se entendía.
+
+### SBD-02, SBD-03, SBD-04 y SBD-05
+- **Comentarios:** fuentes subrayadas · «NaN» (círculo) · «¿armonizaron, en qué sentido?» · «98,8 %: ¿qué significa? ¿de dónde sale?».
+- **Qué se ha cambiado:** la sección 3 tiene:
+  - una tabla de fuentes con quién la publica, el formato y la frecuencia, las variables y la pregunta;
+  - qué es NaN y por qué no se pone 0 ni se borra la fila;
+  - la conversión exacta del viento (km/h ÷ 3,6, media 8,85 → 2,46) y de la hora (GMT → Madrid);
+  - la completitud definida y calculada: 96,66 % en total, de 91,98 % a 99,07 % por estación. El 98,8 % desaparece.
+- **Dónde:** informe, sección 3.
+- **Por qué:** cada término y cada cifra tenían que tener definición y origen.
+
+### SBD-06
+- **Comentario:** «¿por qué? ¿con qué contexto? ¿Máx.? ¿Alta? ¿Media?»
+- **Qué se ha cambiado:** se usa el mismo criterio que en el notebook (cuánto cambia la respuesta la decisión), con dos niveles definidos y una frase por pregunta.
+- **Dónde:** informe, sección 2.
+- **Por qué:** los niveles no tenían criterio.
+
+### SBD-07, SBD-08 y SBD-09
+- **Comentarios:** «¿es un sesgo?» · «cuenca y flota» · columna «Rol» → «??».
+- **Qué se ha cambiado:**
+  - Se quitan «sesgo», «cuenca y flota» y «Rol».
+  - Se definen los grupos dentro (tratamiento), fuera (control) y fondo, con sus estaciones y el motivo de cada uno. Arraiz no entra en el control.
+  - Se explica por qué no basta con comparar antes y después.
+- **Dónde:** informe, sección 4.
+- **Por qué:** el lector no sabía qué significaba cada grupo.
+
+### SBD-10 y SBD-11
+- **Comentarios:** «¿Qué es cada indicador?» · Europa 20,10 → 17,55 en el impreso y 21,30 → 18,35 en el `.md`.
+- **Qué se ha cambiado:**
+  - Tabla de estaciones sin la columna «Papel», con la definición de cada columna debajo y los periodos con fechas exactas.
+  - Todas las filas salen de `resultados.json` → `estaciones_no2`. Europa es 20,92 → 15,32 (−26,8 %) en el `.md`, el `.docx` y el `.pdf`.
+  - Las estaciones de dentro ya no salen intercambiadas: Mazarredo es 22,44 → 19,07 y Mª Díaz de Haro, 28,67 → 25,03.
+- **Dónde:** informe, sección 4.
+- **Por qué:** las cifras por estación no salían del código y eran distintas en cada documento.
+
+### SBD-12
+- **Comentario:** −2,93 presentado como caída; «p > 0,40»; «corroborando la causalidad».
+- **Qué se ha cambiado:** P2 dice que −2,93 es un efecto neto, no una caída. El SO₂ se da con su intervalo (de −0,01 a +0,66), sin p-valor. Se quitan «corroborando», «3,4 veces» y «causal».
+- **Dónde:** informe, sección 5 (P2 y P4).
+- **Por qué:** igual que en el notebook (fase 2).
+
+### SBD-13
+- **Comentario:** el panel oscuro de 4 cuadrantes es ilegible impreso.
+- **Qué se ha cambiado:**
+  - Se elimina `docs/img/dashboard_decision_v1.png`, como pide la decisión 12 del equipo.
+  - El informe lleva 3 gráficas del notebook con fondo claro: evolución mensual (P1), horario (P2) y fases (P5).
+  - Las gráficas se han reducido en el notebook para que el texto se lea impreso a 11-15 cm de ancho. Solo cambia el tamaño; `resultados.json` no cambia.
+- **Dónde:** informe, sección 5; notebook, celdas de las gráficas.
+- **Por qué:** el panel venía del pipeline B, era oscuro y tenía cifras fijas que ya no eran correctas («−7,1 %»).
+
+### SBD-14
+- **Comentario:** «p < 0,001», «desmontando titulares inflados».
+- **Qué se ha cambiado:** se quitan el p-valor y el tono efectista. La incertidumbre se da como intervalo del 95 % y se explica en tres líneas.
+- **Dónde:** informe, secciones 4 y 5.
+- **Por qué:** el p-valor del OLS horario era engañoso.
+
+### SBD-15
+- **Comentario:** «Rendimientos decrecientes en Fase 2» contradice el notebook.
+- **Qué se ha cambiado:** una sola conclusión, igual que en el notebook: la fase 2 no muestra una bajada adicional distinguible de cero (−0,52; de −1,72 a +0,74). La bajada propia de dentro llegó sobre todo con la fase 1 (−1,29).
+- **Dónde:** informe, secciones 5 (P5) y 6.
+- **Por qué:** el informe y el notebook decían cosas opuestas.
+
+### SBD-16
+- **Comentario:** el reparto de responsabilidades debe reflejar lo que hizo cada uno de verdad y el orden de tareas.
+- **Qué se ha cambiado:** la sección 8 tiene el orden de las tareas (de la descarga al informe) y una columna «Responsable» con `[A COMPLETAR POR EL EQUIPO]`.
+- **Dónde:** informe, sección 8.
+- **Por qué:** el reparto lo tiene que escribir el equipo (decisión 7).
+
+### EV-07 (informe)
+- **Comentario:** «verificar que las cifras de calidad y cobertura del informe coinciden con las obtenidas al ejecutar el código».
+- **Qué se ha cambiado:** las cifras de calidad del informe se leen de `resultados.json` → `calidad_datos`: 0,021 % de negativos (antes decía 0,04 %), completitud del 96,66 % (antes 98,8 %) y 332.619 filas (antes 332.776).
+- **Dónde:** informe, sección 3.
+- **Por qué:** el informe citaba cifras que no salían del código.
+
+### Otros cambios del informe
+- Se quitan las referencias al curso, al módulo y al reto, la checklist de la rúbrica y la tabla RACI con roles inventados.
+- Se quitan cifras sin fuente verificada: «27 cámaras», «2 km²», «Abando», los aforos de San Mamés y las dos referencias bibliográficas.
+- La sección de herramientas explica por qué InfluxDB y no SQL Server, y deja claro que Node-RED es automatización, no IA.
+- El notebook dice en una frase que el análisis llega hasta el 30/09/2026 y que Grafana puede mostrar datos posteriores (decisión 11). El informe lo dice en la sección 3.
