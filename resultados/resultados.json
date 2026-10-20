@@ -1,0 +1,285 @@
+{
+  "periodo_estudio": {
+    "fecha_inicio": "2022-01-01",
+    "fecha_fin": "2026-09-30",
+    "fecha_fase1": "2024-06-15",
+    "fecha_fase2": "2025-06-16"
+  },
+  "calidad_datos": {
+    "filas_crudas": 336480,
+    "filas_fecha_invalida": 0,
+    "filas_duplicadas": 0,
+    "filas_limpias": 336480,
+    "filas_fuera_periodo": 3861,
+    "filas_en_periodo": 332619,
+    "no2_negativos_a_nan": 71,
+    "no2_negativos_pct": 0.021,
+    "filas_hora_24_corregidas": 14020,
+    "celdas_coma_decimal_corregidas": 199004,
+    "horas_esperadas_por_estacion": 41615,
+    "completitud_no2_total_pct": 96.66,
+    "completitud_no2_por_estacion_pct": {
+      "Mª Díaz de Haro": 91.98,
+      "Europa": 93.13,
+      "Basauri": 95.46,
+      "Arraiz": 97.61,
+      "Mazarredo": 98.42,
+      "Barakaldo": 98.56,
+      "Castrejana": 99.02,
+      "Erandio": 99.07
+    },
+    "horas_sin_dato_no2_por_estacion": {
+      "Mª Díaz de Haro": 3339,
+      "Europa": 2858,
+      "Basauri": 1889,
+      "Arraiz": 994,
+      "Mazarredo": 656,
+      "Barakaldo": 599,
+      "Castrejana": 408,
+      "Erandio": 386
+    },
+    "completitud_meteo_pct": 100.0,
+    "media_no2_crudo_por_estacion": {
+      "Mazarredo": 20.822,
+      "Mª Díaz de Haro": 26.952,
+      "Europa": 18.175,
+      "Arraiz": 8.538,
+      "Barakaldo": 18.325,
+      "Basauri": 19.543,
+      "Erandio": 19.496,
+      "Castrejana": 11.085
+    },
+    "media_no2_limpio_periodo_por_estacion": {
+      "Mazarredo": 20.828,
+      "Mª Díaz de Haro": 26.978,
+      "Europa": 18.183,
+      "Arraiz": 8.522,
+      "Barakaldo": 18.317,
+      "Basauri": 19.572,
+      "Erandio": 19.502,
+      "Castrejana": 11.076
+    }
+  },
+  "viento": {
+    "unidad_crudo": "km/h",
+    "unidad_analisis": "m/s",
+    "factor_conversion": 3.6,
+    "media_crudo_kmh": 8.85,
+    "media_limpio_ms": 2.46
+  },
+  "integracion": {
+    "filas_integradas": 332619,
+    "duplicados_estacion_hora": 0,
+    "pct_horas_en_horario_zbe": 36.98
+  },
+  "p1_did": {
+    "dentro_pre": 25.5,
+    "dentro_post": 21.91,
+    "fuera_pre": 18.25,
+    "fuera_post": 16.29,
+    "caida_bruta_dentro": -3.59,
+    "caida_bruta_fuera": -1.96,
+    "caida_bruta_dentro_pct": -14.08,
+    "efecto_neto_did": -1.63,
+    "efecto_neto_did_pct": -6.38
+  },
+  "medias_anuales_no2": {
+    "dentro": {
+      "2022": 25.85,
+      "2023": 25.95,
+      "2024": 23.12,
+      "2025": 22.22,
+      "2026": 21.03
+    },
+    "fondo": {
+      "2022": 8.74,
+      "2023": 8.69,
+      "2024": 8.73,
+      "2025": 7.64,
+      "2026": 8.93
+    },
+    "fuera": {
+      "2022": 19.09,
+      "2023": 17.95,
+      "2024": 16.98,
+      "2025": 16.56,
+      "2026": 15.5
+    }
+  },
+  "p2_horario": {
+    "efecto_neto_en_horario_zbe": -2.93,
+    "efecto_neto_fuera_horario": -0.85,
+    "caida_bruta_dentro_en_horario": -4.64,
+    "caida_bruta_dentro_fuera_horario": -2.98,
+    "caida_pct": {
+      "dentro_en_horario": -15.5,
+      "fuera_en_horario": -8.17,
+      "dentro_fuera_horario": -12.99,
+      "fuera_fuera_horario": -12.74
+    }
+  },
+  "p3_calma": {
+    "dentro_calma_pre": 29.32,
+    "dentro_calma_fase1": 26.61,
+    "dentro_calma_fase2": 24.82,
+    "dentro_calma_post": 25.56,
+    "var_calma_fase1_pct": -9.25,
+    "var_calma_fase2_pct": -15.37,
+    "var_calma_post_pct": -12.84,
+    "correlacion_no2_viento_dentro": -0.3,
+    "correlacion_no2_temp_dentro": -0.27
+  },
+  "p3_regresion_controles": {
+    "coef_post_dentro": -1.73
+  },
+  "anexo_gbm_provisional": {
+    "nota": "Validación no temporal; no citar hasta rehacer el modelo.",
+    "mae_validacion": 7.53,
+    "rmse_validacion": 10.19,
+    "r2_validacion": 0.514,
+    "efecto_neto": -2.77
+  },
+  "p4_contaminantes": {
+    "NO2": {
+      "media_pre_dentro": 25.5,
+      "media_post_dentro": 21.91,
+      "var_pct_dentro": -14.08,
+      "var_pct_fuera": -10.76,
+      "efecto_neto_did": -1.63
+    },
+    "NO": {
+      "media_pre_dentro": 10.9,
+      "media_post_dentro": 7.14,
+      "var_pct_dentro": -34.46,
+      "var_pct_fuera": -30.95,
+      "efecto_neto_did": -2.0
+    },
+    "NOX": {
+      "media_pre_dentro": 41.94,
+      "media_post_dentro": 33.06,
+      "var_pct_dentro": -21.16,
+      "var_pct_fuera": -18.06,
+      "efecto_neto_did": -4.06
+    },
+    "CO": {
+      "media_pre_dentro": 0.28,
+      "media_post_dentro": 0.26,
+      "var_pct_dentro": -4.84,
+      "var_pct_fuera": -4.1,
+      "efecto_neto_did": -0.0
+    },
+    "BENCENO": {
+      "media_pre_dentro": 0.24,
+      "media_post_dentro": 0.27,
+      "var_pct_dentro": 13.27,
+      "var_pct_fuera": null,
+      "efecto_neto_did": null
+    },
+    "PM10": {
+      "media_pre_dentro": 16.87,
+      "media_post_dentro": 15.16,
+      "var_pct_dentro": -10.09,
+      "var_pct_fuera": -3.45,
+      "efecto_neto_did": -1.1
+    },
+    "PM25": {
+      "media_pre_dentro": 10.03,
+      "media_post_dentro": 9.23,
+      "var_pct_dentro": -7.93,
+      "var_pct_fuera": -9.69,
+      "efecto_neto_did": 0.14
+    },
+    "SO2": {
+      "media_pre_dentro": 4.96,
+      "media_post_dentro": 4.77,
+      "var_pct_dentro": -3.91,
+      "var_pct_fuera": -10.01,
+      "efecto_neto_did": 0.33
+    }
+  },
+  "p5_fases": {
+    "dentro_previo": 25.5,
+    "dentro_fase1": 23.02,
+    "dentro_fase2": 21.11,
+    "fuera_previo": 18.25,
+    "fuera_fase1": 17.07,
+    "fuera_fase2": 15.68,
+    "var_fase1_vs_previo_pct": -9.73,
+    "var_fase2_vs_fase1_pct": -8.3,
+    "var_fase2_vs_previo_pct": -17.22
+  },
+  "estaciones_no2": {
+    "Arraiz": {
+      "zona": "fondo",
+      "previo": 8.73,
+      "fase1": 7.98,
+      "fase2": 8.57,
+      "post": 8.3,
+      "var_post_vs_previo_pct": -4.82
+    },
+    "Barakaldo": {
+      "zona": "fuera",
+      "previo": 17.96,
+      "fase1": 19.1,
+      "fase2": 18.38,
+      "post": 18.7,
+      "var_post_vs_previo_pct": 4.1
+    },
+    "Basauri": {
+      "zona": "fuera",
+      "previo": 19.81,
+      "fase1": 22.66,
+      "fase2": 16.72,
+      "post": 19.31,
+      "var_post_vs_previo_pct": -2.51
+    },
+    "Castrejana": {
+      "zona": "fuera",
+      "previo": 11.67,
+      "fase1": 10.54,
+      "fase2": 10.35,
+      "post": 10.43,
+      "var_post_vs_previo_pct": -10.6
+    },
+    "Erandio": {
+      "zona": "fuera",
+      "previo": 21.11,
+      "fase1": 17.9,
+      "fase2": 17.69,
+      "post": 17.78,
+      "var_post_vs_previo_pct": -15.79
+    },
+    "Europa": {
+      "zona": "fuera",
+      "previo": 20.92,
+      "fase1": 15.35,
+      "fase2": 15.3,
+      "post": 15.32,
+      "var_post_vs_previo_pct": -26.79
+    },
+    "Mazarredo": {
+      "zona": "dentro",
+      "previo": 22.44,
+      "fase1": 20.19,
+      "fase2": 18.21,
+      "post": 19.07,
+      "var_post_vs_previo_pct": -15.02
+    },
+    "Mª Díaz de Haro": {
+      "zona": "dentro",
+      "previo": 28.67,
+      "fase1": 26.49,
+      "fase2": 24.09,
+      "post": 25.03,
+      "var_post_vs_previo_pct": -12.7
+    }
+  },
+  "trafico_san_mames": {
+    "imd_2023": 50127,
+    "imd_2024": 45052,
+    "imd_2025": 48543,
+    "var_2023_2024_pct": -10.12,
+    "var_2024_2025_pct": 7.75,
+    "var_2023_2025_pct": -3.16
+  }
+}
