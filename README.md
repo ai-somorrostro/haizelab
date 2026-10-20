@@ -344,6 +344,8 @@ Todo funciona en red local (`localhost`), de forma 100% autónoma y sin dependen
 | [Servidor MCP](mcp/README.md) | Programación de IA | Instalación, clientes y verificación del protocolo MCP |
 | [Asistente inteligente](chatbot/README.md) | Programación de IA / Modelos de IA | API FastAPI, base de conocimiento local y modo offline |
 
+El informe para el cliente se genera con `python docs/generar_informe.py` a partir de `resultados/resultados.json`; la versión de referencia es `docs/informe-cliente-sbd.md`. Para crear el `.docx` y el `.pdf` hace falta Windows con Microsoft Word instalado (con `--solo-md` genera solo el Markdown en cualquier sistema).
+
 ## Flujo de trabajo
 
 - La rama de integración es `develop`.
