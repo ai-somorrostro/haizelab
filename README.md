@@ -219,36 +219,17 @@ uv pip install -r requirements.txt
 
 ## Pipeline analítico
 
-El repositorio contiene dos recorridos sobre los mismos datos de origen. El primero es el entregable del módulo de Sistemas de Big Data y es el que produce las cifras de la sección [Resultado](#resultado).
+Hay un solo pipeline. `ingesta/descargar_y_limpiar.py` descarga los datos de Open Data Euskadi y Open-Meteo, los limpia y los cruza; `notebooks/zbe_bilbao.ipynb` hace el análisis, guarda las figuras en `docs/img/` y todas las cifras en `resultados/resultados.json`.
 
-| Recorrido | Código | Datos | Salida |
-|---|---|---|---|
-| Ingesta reproducible y notebook | `ingesta/descargar_y_limpiar.py` y `notebooks/zbe_bilbao.ipynb` | `data/` | Figuras en `docs/img/` |
-| Scripts numerados | `scripts/01` a `scripts/06` | `datos/` | Figuras en `salida/` |
+| Código | Datos | Salida |
+|---|---|---|
+| `ingesta/descargar_y_limpiar.py` y `notebooks/zbe_bilbao.ipynb` | `data/raw/` (crudo, no versionado) y `data/clean/` (limpio) | `docs/img/` y `resultados/resultados.json` |
 
-Para reproducir el primero, que descarga los datos de Open Data Euskadi y Open-Meteo y ejecuta el notebook:
+Para reproducirlo:
 
 ```bash
 docker compose run --rm sbd-pipeline
 docker compose run --rm sbd-notebook
-```
-
-Los scripts numerados siguen este orden:
-
-| Paso | Script | Qué hace |
-|---:|---|---|
-| 1 | `01_extraer_calidad_aire.py` | Limpia el NO₂ horario y clasifica cada estación como dentro, fuera o fondo |
-| 2 | `02_extraer_meteorologia.py` | Normaliza la serie meteorológica horaria |
-| 3 | `03_extraer_trafico.py` | Extrae los aforos de las memorias de la Diputación Foral de Bizkaia |
-| 4 | `04_unificar_datos.py` | Cruza aire, meteorología y tráfico por hora |
-| 5 | `05_analisis_impacto_zbe.py` | Calcula el DiD y el análisis por régimen de viento |
-| 6 | `06_visualizar_decision.py` | Genera el panel de decisión |
-
-Los pasos 1 a 3 leen de `datos/crudo/`, que no está versionado por tamaño. Los pasos 4 a 6 funcionan con los datos procesados que sí están en el repositorio:
-
-```bash
-docker compose run --rm analisis
-docker compose run --rm visualizar
 ```
 
 ## Grafana: usuarios, roles y alertas
@@ -348,10 +329,8 @@ Todo funciona en red local (`localhost`), de forma 100% autónoma y sin dependen
 | `presentacion/` | Web de diapositivas interactivas servida por Nginx (:8080) |
 | `notebooks/` | Notebook oficial del análisis exploratorio y causal (SBD) |
 | `ingesta/` | Scripts de ingesta y carga histórica por lotes a InfluxDB |
-| `scripts/` | Pipeline modular de extracción y análisis |
 | `data/` | Datasets limpios del análisis |
-| `datos/` | Datos procesados del pipeline |
-| `salida/` | Figuras generadas por el análisis |
+| `resultados/` | Cifras del análisis (`resultados.json`), generadas por el notebook |
 | `docs/` | Entregables oficiales de SBD, MIA y BDA |
 
 ## Documentación

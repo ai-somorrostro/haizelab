@@ -227,30 +227,9 @@ services:
       - ./data:/app/data
       - ./notebooks:/app/notebooks
       - ./docs/img:/app/docs/img
+      - ./resultados:/app/resultados
       - ./ingesta:/app/ingesta
     command: python -c "import nbformat; from nbclient import NotebookClient; nb = nbformat.read('notebooks/zbe_bilbao.ipynb', as_version=4); NotebookClient(nb, timeout=600, kernel_name='python3').execute(); nbformat.write(nb, 'notebooks/zbe_bilbao.ipynb'); print('[OK] Notebook ejecutado con exito')"
-
-  analisis:
-    profiles: ["pipeline"]
-    build: .
-    image: haizelab:latest
-    container_name: haizelab_analisis
-    volumes:
-      - ./datos:/app/datos
-      - ./scripts:/app/scripts
-      - ./salida:/app/salida
-    command: sh -c "python scripts/04_unificar_datos.py && python scripts/05_analisis_impacto_zbe.py"
-
-  visualizar:
-    profiles: ["pipeline"]
-    build: .
-    image: haizelab:latest
-    container_name: haizelab_visualizar
-    volumes:
-      - ./datos:/app/datos
-      - ./scripts:/app/scripts
-      - ./salida:/app/salida
-    command: python scripts/06_visualizar_decision.py
 
   # ── Carga del histórico a InfluxDB (bajo demanda, perfil "pipeline") ────────
   carga-historica:
@@ -269,7 +248,6 @@ services:
       INFLUXDB_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
     volumes:
       - ./ingesta:/app/ingesta:ro
-      - ./datos:/app/datos:ro
       - ./data:/app/data:ro
       - influxdb_tokens:/tokens:ro
     # Usa el token restringido batch-write si existe; si no, el de administración.
