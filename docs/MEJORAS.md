@@ -88,3 +88,109 @@ Estos errores no venían en las correcciones; se encontraron en el diagnóstico 
 - `ingesta/carga_historica.py` lee ahora la salida del pipeline A (`data/clean/calidad_aire_limpio.csv` y `data/clean/meteorologia_limpia.csv`) y usa la hora GMT como instante. Antes cargaba el zip y la meteo del pipeline B.
 - `trafico_accesos_bilbao.csv` se mueve de `datos/procesados/trafico/` a `data/clean/`.
 - El servicio `sbd-notebook` monta `resultados/` para que `resultados.json` se guarde fuera del contenedor.
+
+---
+
+## Fase 2 · Notebook SBD simple
+
+Las cifras salen de `resultados/resultados.json` (ejecución del notebook en la rama `fix/analisis-sbd-simple`). Las 149 cifras que ya existían en la fase 1 no cambian.
+
+### EV-09
+- **Comentario:** «Lo presentado no tiene ningún tipo de coherencia, se ha intentado un análisis demasiado complejo que ni vosotros entendéis. […] Tenéis que hacer un análisis que seáis capaces de entender vosotros.»
+- **Qué se ha cambiado:**
+  - El notebook se reorganiza en torno a cinco preguntas (P1-P5). Cada una tiene una consulta en pandas, una tabla, una gráfica y una frase «Qué significa».
+  - Se quitan la regresión OLS con `summary()` y sus p-valores, la matriz de correlaciones, el perfil horario, la comparación de 8 contaminantes, los aforos de tráfico, el GeoJSON y 5 de las 10 gráficas.
+  - Todos los textos con cifras se generan con f-strings. Las conclusiones y recomendaciones se escriben a partir de `resultados.json`.
+- **Dónde:** `notebooks/zbe_bilbao.ipynb`, secciones 1-8.
+- **Por qué:** un solo método (la resta de restas) responde a las cinco preguntas, y el equipo puede explicar cada cifra.
+
+### SBD-14
+- **Comentario:** «"p < 0,001", "desmontando titulares inflados"» (tono efectista; incertidumbre mal presentada).
+- **Qué se ha cambiado:** se quitan los p-valores del OLS horario. El margen de error se calcula con un bootstrap por bloques semanales (2.000 repeticiones). Efecto neto del NO₂: −1,63 µg/m³, con un intervalo del 95 % de −2,38 a −0,94. Se explica en dos líneas por qué las horas consecutivas no son independientes.
+- **Dónde:** notebook, apartado 6.2 (función `efecto_neto_con_intervalo`); `resultados.json` → `p1_did.ic95_*`.
+- **Por qué:** con más de 300.000 horas tratadas como independientes, el margen salía demasiado estrecho (±0,24) y el «p < 0,001» daba una seguridad falsa.
+
+### SBD-06
+- **Comentario:** «¿por qué? ¿con qué contexto? ¿Máx.? ¿Alta? ¿Media?»
+- **Qué se ha cambiado:** el criterio es cuánto cambia la respuesta la decisión de ampliar, mantener o ajustar la ZBE. Hay dos niveles definidos: alta (cambia la decisión por sí sola: P1, P2, P5) y media (comprueba una pregunta alta: P3, P4). Cada pregunta lleva una frase.
+- **Dónde:** notebook, sección 2.
+- **Por qué:** las etiquetas «Máxima, Alta, Media» no tenían criterio.
+
+### SBD-02
+- **Comentario:** nombres de las fuentes subrayados.
+- **Qué se ha cambiado:** tabla con quién publica cada fuente, el formato, el periodo, la frecuencia, las variables usadas y para qué pregunta. La fuente oficial de cada festivo queda como `[PENDIENTE DE VERIFICAR]`.
+- **Dónde:** notebook, sección 3.
+- **Por qué:** era una lista de nombres sin datos de cada fuente.
+
+### SBD-03
+- **Comentario:** «se convirtieron a **NaN**» (círculo).
+- **Qué se ha cambiado:** se explica qué es NaN, con un ejemplo, y por qué no se pone un 0 (bajaría la media) ni se borra la fila (se perderían el SO₂ y el viento de esa hora).
+- **Dónde:** notebook, sección 3.
+- **Por qué:** el término se usaba sin explicar.
+
+### SBD-07 y SBD-08
+- **Comentario:** «¿es un sesgo? ¿en qué sentido?» · «cuenca y flota» (subrayado).
+- **Qué se ha cambiado:** se explica sin esos términos. Comparar solo antes y después mezcla el efecto de la ZBE con lo que habría bajado igualmente (el tiempo, coches más nuevos y limpios, cambios de movilidad). Las estaciones de control tienen «el mismo tiempo atmosférico y el mismo tipo de coches, pero no la ZBE».
+- **Dónde:** notebook, sección 6, «Definiciones».
+- **Por qué:** la jerga no se entendía. El informe se corrige en la fase 3.
+
+### SBD-09
+- **Comentario:** columna «Rol» → «??».
+- **Qué se ha cambiado:** se definen tratamiento, control y fondo, con las estaciones de cada grupo y el motivo. Arraiz (fondo) no entra en el control porque está en un monte, lejos del tráfico, y su NO₂ es mucho más bajo (8,73 µg/m³ antes de la ZBE frente a 18,25 de media en el control).
+- **Dónde:** notebook, sección 6, «Definiciones», y tabla por estación de P1.
+- **Por qué:** los grupos no estaban explicados.
+
+### SBD-10
+- **Comentario:** «¿Qué es cada indicador?»
+- **Qué se ha cambiado:** se definen Pre-ZBE (01/01/2022-14/06/2024), Post-ZBE (15/06/2024-30/09/2026), fase 1, fase 2, caída bruta y efecto neto. P1 muestra la resta de restas con nuestros números: (21,91 − 25,50) − (16,29 − 18,25) = −1,63. La tabla por estación se genera en el notebook y se guarda en `estaciones_no2`.
+- **Dónde:** notebook, sección 6 y P1; `resultados.json` → `p1_did`, `estaciones_no2`.
+- **Por qué:** las columnas del informe no estaban definidas y las cifras por estación no salían del código. El informe se rehace en la fase 3.
+
+### SBD-12
+- **Comentario:** −2,93 presentado como caída; placebo SO₂ «p > 0,40»; «corroborando la causalidad».
+- **Qué se ha cambiado:**
+  - P2 dice que −2,93 es un efecto neto, no una caída. En horario ZBE el NO₂ bajó 4,64 dentro y 1,71 fuera; −2,93 es la diferencia.
+  - Se quita el «3,4 veces».
+  - El SO₂ no tiene p-valor. Su efecto neto es +0,33 µg/m³, con un intervalo de −0,01 a +0,66, que incluye el cero. Castrejana no mide SO₂ y no entra en ese cálculo.
+- **Dónde:** notebook, P2 y P4; `resultados.json` → `p2_horario`, `p4_so2`.
+- **Por qué:** el p-valor del SO₂ no existía en el código y «caída» confundía dos cifras distintas.
+
+### SBD-15
+- **Comentario:** «Rendimientos decrecientes en Fase 2» contradice el notebook («ganancia progresiva continuada», −8,3 % adicional).
+- **Qué se ha cambiado:** se calcula el efecto neto de cada fase contra el control. Fase 1 frente a antes: −1,29 µg/m³ (de −2,43 a −0,13). Fase 2 frente a fase 1: −0,52 µg/m³ (de −1,72 a +0,74). Conclusión única: la fase 2 no muestra una bajada adicional que se pueda distinguir de cero, y la bajada propia de dentro se produjo sobre todo con la fase 1. Se quitan las dos frases contradictorias y el −8,3 %, que era una caída bruta sin control.
+- **Dónde:** notebook, P5 y sección 8; `resultados.json` → `p5_fases`.
+- **Por qué:** había dos conclusiones opuestas y ninguna descontaba lo que bajó fuera.
+
+### MIA-05
+- **Comentario:** «objetivo final !!!» · «no perdáis el foco».
+- **Qué se ha cambiado:** el contexto (5 líneas), la prioridad de las preguntas y las tres recomendaciones giran en torno a la decisión de ampliar, mantener o ajustar la ZBE. El documento MIA se corrige en la fase 4.
+- **Dónde:** notebook, secciones 1, 2 y 8.
+- **Por qué:** el análisis debe servir a esa decisión.
+
+### MIA-07
+- **Comentario:** «¿qué tendencia traía la ciudad?»
+- **Qué se ha cambiado:** tabla de medias anuales por zona. De 2022 a 2023 el NO₂ medio pasó de 25,85 a 25,95 dentro (+0,10) y de 19,09 a 17,95 fuera (−1,14). Se dice que antes de la ZBE no iban del todo en paralelo y que, por eso, el efecto neto es una estimación aproximada.
+- **Dónde:** notebook, P1; `resultados.json` → `medias_anuales_no2`.
+- **Por qué:** la frase no tenía datos detrás.
+
+### EV-08 (se completa)
+- **Comentario:** (sin comentario; nivel «integración básica con poca justificación o comprobación»).
+- **Qué se ha cambiado:** la sección de integración explica qué se añade a cada medición y por qué se cruza cada fuente por una clave distinta: el calendario por la fecha en hora de Madrid y la meteorología por la hora GMT. Se comprueban las filas antes y después (332.619 → 332.619), las repetidas (0) y las filas sin viento o sin fase (0). Hay una conclusión por fuente.
+- **Dónde:** notebook, secciones 4.3 y 5.
+- **Por qué:** faltaba justificar el JOIN.
+
+### EV-07 (ajuste)
+- **Comentario:** «Presentar con más claridad los resultados de las comprobaciones…»
+- **Qué se ha cambiado:** la tabla crudo frente a limpio la genera ahora `ingesta/descargar_y_limpiar.py` (función `guardar_comprobacion_crudo_limpio`) en `data/clean/comprobacion_crudo_limpio.csv`. El notebook solo la lee. Se ha calculado una sola vez con los crudos locales y coincide con los ficheros limpios de la fase 1.
+- **Dónde:** `ingesta/descargar_y_limpiar.py`; `data/clean/comprobacion_crudo_limpio.csv`; notebook, apartado 4.1.
+- **Por qué:** los crudos no se versionan. Con la tabla en `data/clean/`, el notebook se ejecuta desde un clon sin volver a descargar ni limpiar (decisión 15 del equipo).
+
+### Cifras que se dejan de calcular en el notebook
+
+| Cifra | Antes | Motivo |
+|---|---|---|
+| Regresión con controles meteorológicos (OLS) | −1,73 | Respondía a lo mismo que P1 (−1,63) con un método más difícil de explicar. Además, su p-valor trataba cada hora como un dato independiente, así que daba una seguridad falsa. El margen de error lo da ahora el bootstrap semanal |
+| Correlaciones NO₂-viento / NO₂-temperatura | −0,30 / −0,27 | No responde a ninguna pregunta |
+| NO, NOx, CO, benceno, PM10, PM2,5 | Tabla de P4 | P4 pregunta solo por el SO₂. El CO y el benceno no los miden todas las estaciones |
+| Aforos de San Mamés | −10,12 % (2023-2024) | No responde a ninguna de las cinco preguntas |
+| Gradient Boosting | −2,77 | Se mantiene en el anexo como provisional y no se cita hasta la fase 4 |

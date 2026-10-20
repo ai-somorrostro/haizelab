@@ -455,6 +455,8 @@ def limpiar_calidad_aire():
     for id_est, cfg in ESTACIONES_CONFIG.items():
         dfs_est = []
         no2_crudo = []
+        hora_24_est = 0
+        coma_decimal_est = 0
         for año in sorted(URLS_AIRE.keys()):
             f_csv = dir_raw_aire / str(año) / "datos_horarios" / f"{id_est}.csv"
             if not f_csv.exists():
@@ -473,6 +475,7 @@ def limpiar_calidad_aire():
             horas_raw = df[col_hora].astype(str).str.strip()
             es_24 = horas_raw.isin(["24:00", "24", "24:00:00"])
             conteo_problemas["filas_hora_24"] += int(es_24.sum())
+            hora_24_est += int(es_24.sum())
 
             horas_clean = horas_raw.replace({"24:00": "00:00", "24": "00:00", "24:00:00": "00:00"})
             fechas_raw = df[col_fecha].astype(str).str.strip()
@@ -500,6 +503,7 @@ def limpiar_calidad_aire():
                 if col_encontrada:
                     serie_raw = df[col_encontrada].fillna("").astype(str).str.strip()
                     conteo_problemas["campos_coma_decimal"] += int(serie_raw.str.contains(",").sum())
+                    coma_decimal_est += int(serie_raw.str.contains(",").sum())
 
                     # Conversión numérica
                     vals_num = pd.to_numeric(serie_raw.str.replace(",", ".", regex=False), errors="coerce")
@@ -546,6 +550,8 @@ def limpiar_calidad_aire():
                 "filas_fecha_invalida": filas_fecha_invalida,
                 "filas_duplicadas": filas_duplicadas,
                 "filas_limpias": len(df_est_total),
+                "filas_hora_24": hora_24_est,
+                "celdas_coma_decimal": coma_decimal_est,
                 "no2_vacios_crudo": int(no2_crudo_est.isna().sum()),
                 "no2_negativos": int((no2_crudo_est < 0).sum()),
                 "media_no2_crudo": no2_crudo_est.mean(),
@@ -636,6 +642,57 @@ def limpiar_meteorologia():
     df_limpio.to_csv(f_salida, index=False)
     print(f"[OK] Guardada meteorologia limpia en data/clean/{f_salida.name} ({len(df_limpio):,} horas)")
     return df_limpio
+
+
+def guardar_comprobacion_crudo_limpio(df_auditoria, df_meteo_limpio):
+    """
+    Guarda en data/clean/comprobacion_crudo_limpio.csv la comparación entre los datos crudos
+    y los limpios: una fila por estación de calidad del aire (NO2) y una para la meteorología
+    (viento). El notebook solo lee esta tabla, porque los datos crudos no se versionan.
+    """
+    filas = []
+    for f in df_auditoria.itertuples():
+        filas.append({
+            "fuente": f.estacion,
+            "zona": f.zona,
+            "filas_crudas": f.filas_crudas,
+            "filas_fecha_invalida": f.filas_fecha_invalida,
+            "filas_duplicadas": f.filas_duplicadas,
+            "filas_limpias": f.filas_limpias,
+            "filas_hora_24": f.filas_hora_24,
+            "celdas_coma_decimal": f.celdas_coma_decimal,
+            "variable": "no2",
+            "unidad_crudo": "µg/m3",
+            "unidad_limpio": "µg/m3",
+            "valores_negativos": f.no2_negativos,
+            "media_crudo": f.media_no2_crudo,
+            "media_limpio": f.media_no2_limpio,
+        })
+
+    f_meteo_crudo = DIR_DATA_RAW / "meteorologia" / "open_meteo_bilbao_crudo.csv"
+    meteo_crudo = pd.read_csv(f_meteo_crudo)
+    unidades = json.loads(f_meteo_crudo.with_name("open_meteo_unidades.json").read_text(encoding="utf-8"))
+    filas.append({
+        "fuente": "Meteorología (Open-Meteo)",
+        "zona": "",
+        "filas_crudas": len(meteo_crudo),
+        "filas_fecha_invalida": 0,
+        "filas_duplicadas": len(meteo_crudo) - len(df_meteo_limpio),
+        "filas_limpias": len(df_meteo_limpio),
+        "filas_hora_24": 0,
+        "celdas_coma_decimal": 0,
+        "variable": "viento",
+        "unidad_crudo": unidades["wind_speed_10m"],
+        "unidad_limpio": "m/s",
+        "valores_negativos": int((meteo_crudo["wind_speed_10m"] < 0).sum()),
+        "media_crudo": meteo_crudo["wind_speed_10m"].mean(),
+        "media_limpio": df_meteo_limpio["viento_ms"].mean(),
+    })
+
+    f_salida = DIR_DATA_CLEAN / "comprobacion_crudo_limpio.csv"
+    pd.DataFrame(filas).to_csv(f_salida, index=False)
+    print(f"[OK] Guardada la comprobación crudo frente a limpio en data/clean/{f_salida.name}")
+    return f_salida
 
 
 def limpiar_calendario():
@@ -737,8 +794,9 @@ def integrar_datasets(fecha_fin=None):
 def ejecutar_pipeline_completo():
     """Ejecuta de principio a fin la adquisición, limpieza e integración."""
     descargar_todos_los_datos()
-    limpiar_calidad_aire()
-    limpiar_meteorologia()
+    _, _, _, df_auditoria = limpiar_calidad_aire()
+    df_meteo = limpiar_meteorologia()
+    guardar_comprobacion_crudo_limpio(df_auditoria, df_meteo)
     limpiar_calendario()
     df_int = integrar_datasets()
     print("\n" + "=" * 70)
