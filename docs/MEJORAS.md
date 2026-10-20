@@ -189,7 +189,7 @@ Las cifras salen de `resultados/resultados.json` (ejecución del notebook en la 
 
 | Cifra | Antes | Motivo |
 |---|---|---|
-| Regresión con controles | −1,73 (p-valor del OLS horario) | Duplicaba P1 con un método que el equipo no podía defender y un p-valor engañoso |
+| Regresión con controles meteorológicos (OLS) | −1,73 | Respondía a lo mismo que P1 (−1,63) con un método más difícil de explicar. Además, su p-valor trataba cada hora como un dato independiente, así que daba una seguridad falsa. El margen de error lo da ahora el bootstrap semanal |
 | Correlaciones NO₂-viento / NO₂-temperatura | −0,30 / −0,27 | No responde a ninguna pregunta |
 | NO, NOx, CO, benceno, PM10, PM2,5 | Tabla de P4 | P4 pregunta solo por el SO₂. El CO y el benceno no los miden todas las estaciones |
 | Aforos de San Mamés | −10,12 % (2023-2024) | No responde a ninguna de las cinco preguntas |
