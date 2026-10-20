@@ -1,183 +1,127 @@
-# ¿Ha funcionado la Zona de Bajas Emisiones de Bilbao?
-## Evaluación de impacto sobre la calidad del aire y movilidad urbana
+# ¿Ha reducido la ZBE de Bilbao el NO₂?
+### Datos para decidir si ampliar, mantener o ajustar la Zona de Bajas Emisiones
 
-> **Curso de Especialización en Inteligencia Artificial y Big Data**  
-> **Módulo:** Sistemas de Big Data (5074) · CF Somorrostro  
-> **Reto 0:** «HERE WE GO»  
-> **Equipo:** HaizeLab (Alfred Gabriel, Iñigo Guzmán y Kerman Latorre)  
-> **Documento entregable oficial:** [Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx](Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx) | [Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf](Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf)
+**Cliente:** Ayuntamiento de Bilbao  
+**Equipo:** HaizeLab: Alfred Gabriel, Iñigo Guzmán y Kerman Latorre  
+**Periodo analizado:** 01/01/2022 – 30/09/2026  
+**Fecha:** Octubre de 2026  
 
----
+Versión para imprimir: [Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx](Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.docx) · [Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf](Informe_Ejecutivo_ZBE_Bilbao_HaizeLab.pdf). Este fichero lo genera `docs/generar_informe.py` a partir de `resultados/resultados.json`.
 
-## Objetivo del documento
+## 1. Problema y decisión del cliente
 
-Se presenta el informe de consultoría ejecutiva para el Ayuntamiento de Bilbao elaborado por **HaizeLab** en el módulo de Sistemas de Big Data (SBD). El documento evalúa el impacto empírico de la Zona de Bajas Emisiones (ZBE) en el distrito de Abando sobre las concentraciones horarias de $\text{NO}_2$, aislando el efecto de la ordenanza respecto a la meteorología y las tendencias del tráfico mediante un diseño cuasiexperimental de Diferencias en Diferencias (*Diff-in-Diff*) y contraste con aforos vehiculares.
+La ZBE de Bilbao restringe la entrada de vehículos de lunes a viernes laborables, de 7:00 a 20:00: desde el 15/06/2024 (**fase 1**), a los vehículos sin etiqueta ambiental, y desde el 16/06/2025 (**fase 2**), también a los de etiqueta B de no residentes. El Ayuntamiento tiene que decidir si **amplía, mantiene o ajusta** la ZBE. Para ello necesita saber cuánto ha bajado el **NO₂** (dióxido de nitrógeno, un gas que sale sobre todo de los tubos de escape) por la ZBE y cuánto habría bajado igualmente por el tiempo atmosférico o por la sustitución normal de coches viejos por otros más limpios, que ocurre con o sin ZBE.
 
----
+## 2. Preguntas y prioridad
 
-## 1. Problema del cliente y preguntas de negocio
+**Criterio:** cuánto cambia la respuesta la decisión. **Alta:** por sí sola puede cambiar la decisión. **Media:** comprueba una respuesta de prioridad alta.
 
-El Ayuntamiento de Bilbao implantó la ZBE en el distrito de Abando (aproximadamente $2\text{ km}^2$, controlado mediante 27 cámaras de lectura de matrículas ANPR) con el fin de reducir la contaminación ligada al tráfico fósil y decidir técnicamente si procede **ampliarla, mantenerla o ajustarla**.
+|  | Pregunta | Prioridad | Por qué |
+|---|---|---|---|
+| P1 | ¿Bajó el NO₂ dentro de la ZBE más que fuera? | Alta | Si no bajó más dentro, no hay motivo para mantenerla ni ampliarla. |
+| P2 | ¿La bajada se concentra en el horario de la ZBE? | Alta | Dice si el horario actual está bien elegido. |
+| P3 | ¿Se mantiene en las horas de viento en calma? | Media | Comprueba que P1 no se debe a que hiciera más viento. |
+| P4 | ¿Baja también el SO₂, que no viene del tráfico? | Media | Si bajara igual, P1 podría tener otra causa. |
+| P5 | ¿Qué aportó la fase 2 respecto a la fase 1? | Alta | Dice si endurecer las restricciones ha servido. |
 
-El horario de restricción abarca de lunes a viernes lectivos de 7:00 a 20:00 h, desplegado en dos etapas progresivas:
-* **Fase 1 (desde 15/06/2024):** Restricción a vehículos sin etiqueta ambiental (A / sin distintivo DGT).
-* **Fase 2 (desde 16/06/2025):** Restricción ampliada a vehículos con distintivo B para no residentes.
+## 3. Datos: fuentes, tipos y calidad
 
-Una comparación directa de promedios antes y después incurre en sesgos críticos: el $\text{NO}_2$ fluctúa de forma no lineal por inversión térmica invernal, régimen de vientos, lluvia y la renovación tendencial del parque móvil metropolitano. Lo que el cliente requiere es estimar la **reducción neta atribuible a la ZBE**, aislando los factores de confusión:
+| Fuente | Quién la publica | Formato y frecuencia | Variables usadas | Pregunta |
+|---|---|---|---|---|
+| Calidad del aire | Gobierno Vasco (Open Data Euskadi) | CSV anual; horaria | NO₂ y SO₂ (µg/m³), 8 estaciones | P1-P5 |
+| Meteorología | Open-Meteo (modelo meteorológico, no una estación) | JSON de una API; horaria | Velocidad del viento | P3 |
+| Calendario | Elaboración propia: fases y festivos de Bilbao [PENDIENTE DE VERIFICAR la fuente de los festivos] | CSV; diaria | Laborable, fase de la ZBE | P2, P5 |
 
-$$\text{efecto neto ZBE} = \left[\text{NO}_{2,\text{post}}(\text{dentro}) - \text{NO}_{2,\text{pre}}(\text{dentro})\right] - \left[\text{NO}_{2,\text{post}}(\text{fuera}) - \text{NO}_{2,\text{pre}}(\text{fuera})\right]$$
+**Tipos de datos.** Cada fila es una estación en una hora, con datos numéricos (NO₂, SO₂, viento), categóricos (estación, grupo, fase), lógicos (laborable, en horario ZBE) y de fecha y hora.
 
-### Preguntas de negocio priorizadas
+- **Filas:** 336.480 crudas, sin fechas no válidas ni repetidas. Se estudian 332.619, hasta el 30/09/2026, para que las cifras no cambien cuando se publican datos nuevos (Grafana puede mostrar datos posteriores).
+- **Formato:** 199.004 celdas con coma decimal y 14.020 filas con hora 24:00 (pasa a las 00:00 del día siguiente).
+- **Negativos:** 71 valores de NO₂ (0,021 %) pasan a **NaN** (celda vacía). Un 0 bajaría la media sin motivo y borrar la fila perdería los demás datos de esa hora.
+- **Unidades y hora:** el viento llega en km/h (media 8,85) y se pasa a m/s dividiendo entre 3,6 (media 2,46). La hora llega en GMT y se pasa a la de Madrid, que es la del horario de la ZBE.
+- **Completitud** = horas con dato válido de NO₂ ÷ horas que debería haber: 96,66 % en total, de 91,98 % (Mª Díaz de Haro) a 99,07 % (Erandio). Meteorología: 100 %.
+- **Integración:** a cada medición se le une el calendario (por fecha) y el viento (por hora): 332.619 filas antes y 332.619 después, 0 repetidas.
 
-| Pregunta | Objetivo de negocio | Metodología analítica |
+## 4. Método
+
+- **Dentro (tratamiento):** Mazarredo y Mª Díaz de Haro, dentro de la ZBE.
+- **Fuera (control):** Europa, Barakaldo, Basauri, Erandio y Castrejana. Mismo tiempo atmosférico y mismo tipo de coches que el centro, pero sin ZBE: muestran lo que habría bajado el NO₂ sin ella.
+- **Fondo:** Arraiz, en un monte lejos del tráfico (8,73 µg/m³ antes de la ZBE, frente a 18,25 en el control). No se parece a una estación urbana, así que no entra en el control.
+
+**Antes:** 01/01/2022 – 14/06/2024. **Después:** 15/06/2024 – 30/09/2026 (fase 1 hasta el 15/06/2025). **Caída bruta** = media después − media antes. **Efecto neto** = caída bruta dentro − caída bruta fuera (método de diferencias en diferencias, estadístico). Mirar solo dentro mezclaría la ZBE con lo que habría bajado igualmente; restar lo que bajó fuera lo separa.
+
+**Margen de error.** Dos horas seguidas se parecen (mismo atasco, misma falta de viento) y no son datos independientes. Por eso se agrupa por semanas y se repite el cálculo 2.000 veces sorteando semanas (bootstrap). El **intervalo del 95 %** recoge el 95 % central de los resultados; si no incluye el cero, la bajada no se explica por el azar.
+
+| Estación | Grupo | Antes | Después | Cambio (%) |
+|---|---|---|---|---|
+| Mazarredo | Dentro | 22,44 | 19,07 | −15,0 |
+| Mª Díaz de Haro | Dentro | 28,67 | 25,03 | −12,7 |
+| Europa | Fuera | 20,92 | 15,32 | −26,8 |
+| Erandio | Fuera | 21,11 | 17,78 | −15,8 |
+| Castrejana | Fuera | 11,67 | 10,43 | −10,6 |
+| Basauri | Fuera | 19,81 | 19,31 | −2,5 |
+| Barakaldo | Fuera | 17,96 | 18,70 | +4,1 |
+| Arraiz | Fondo | 8,73 | 8,30 | −4,8 |
+
+*Antes* y *Después:* NO₂ medio (µg/m³) en cada periodo. *Cambio:* (Después − Antes) ÷ Antes.
+
+## 5. Resultados
+
+**P1. ¿Bajó el NO₂ dentro más que fuera?** Dentro: 25,50 → 21,91 µg/m³ (−3,59). Fuera: 18,25 → 16,29 (−1,96). Efecto neto: −3,59 − (−1,96) = **−1,63 µg/m³** (−6,4 % del nivel de antes; intervalo de −2,38 a −0,94). *Qué significa:* de la bajada de 3,59 dentro, 1,96 se vio también fuera; la parte propia de dentro, 1,63, es la que se asocia a la ZBE. Es una estimación aproximada: de 2022 a 2023 el NO₂ cambió +0,10 dentro y −1,14 fuera, así que antes de la ZBE no iban del todo en paralelo.
+
+![Figura 1. La distancia entre la línea roja y la azul se reduce después de la fase 1.](img/p1_evolucion_mensual_no2.png)
+
+*Figura 1. La distancia entre la línea roja y la azul se reduce después de la fase 1.*
+
+**P2. ¿Se concentra en el horario de la ZBE?** En horario ZBE el NO₂ bajó 4,64 dentro y 1,71 fuera: efecto neto **−2,93** (intervalo de −3,82 a −2,06). Fuera de horario: −0,85 (intervalo de −1,56 a −0,19). *Qué significa:* −2,93 es un efecto neto, no una caída. La bajada propia de dentro es mayor cuando la ZBE está activa, como cabe esperar si se debe a ella.
+
+![Figura 2. La distancia entre la barra roja y la azul de cada grupo es el efecto neto.](img/p2_horario_zbe.png)
+
+*Figura 2. La distancia entre la barra roja y la azul de cada grupo es el efecto neto.*
+
+**P3. ¿Se mantiene en calma?** Con viento de menos de 2 m/s, dentro pasó de 29,32 a 25,56 µg/m³ (−12,8 %); efecto neto **−1,23** (intervalo de −2,05 a −0,42). *Qué significa:* la bajada se mantiene sin viento; no se debe a que hiciera más viento.
+
+**P4. ¿Baja también el SO₂?** El SO₂ apenas sale de los coches. Efecto neto: **+0,33** (intervalo de −0,01 a 0,66; Castrejana no lo mide). *Qué significa:* no baja más dentro que fuera, así que la bajada del NO₂ no parece venir de una causa que afecte a todo el aire del centro.
+
+**P5. ¿Qué aportó la fase 2?** Fase 1 frente a antes: **−1,29** (intervalo de −2,43 a −0,13). Fase 2 frente a fase 1: **−0,52** (intervalo de −1,72 a 0,74). *Qué significa:* la fase 2 no muestra una bajada adicional que se pueda distinguir de cero; la bajada propia de dentro llegó sobre todo con la fase 1.
+
+![Figura 3. Las dos zonas bajan; lo que cuenta es cuánto más baja la barra roja de una fase a otra.](img/p5_fases_no2.png)
+
+*Figura 3. Las dos zonas bajan; lo que cuenta es cuánto más baja la barra roja de una fase a otra.*
+
+## 6. Conclusiones y recomendaciones
+
+**Conclusiones**
+
+- El NO₂ bajó dentro de la ZBE más que fuera: efecto neto de −1,63 µg/m³ (intervalo de −2,38 a −0,94), frente a una caída bruta de −3,59.
+- Esa bajada se concentra en el horario de la ZBE (−2,93 frente a −0,85), se mantiene en calma (−1,23) y no aparece en el SO₂ (+0,33).
+- La fase 2 no muestra una bajada adicional distinguible de cero (−0,52; intervalo de −1,72 a 0,74).
+
+**Recomendaciones**
+
+- **Mantener la ZBE con su horario actual:** el efecto neto (−1,63 µg/m³) es distinto de cero y mayor cuando la ZBE está activa (−2,93).
+- **No ampliar todavía con medidas como la de la fase 2:** añadió −0,52 µg/m³, dentro del margen de error. Repetir el cálculo cuando la fase 2 tenga más datos.
+- **Ajustar la medición antes de ampliar:** solo hay 2 estaciones dentro y el control es desigual (Europa baja un 26,8 %, más que las de dentro). Comprobar si esa estación tuvo cambios propios, como obras, traslado o cambio de sensor [PENDIENTE DE VERIFICAR POR EL EQUIPO], y valorar más puntos de medida dentro de la ZBE.
+
+**Limitaciones:** pocas estaciones (2 dentro y 5 de control); antes de la ZBE dentro y fuera no iban del todo en paralelo; las estaciones miden la concentración de NO₂ en el aire, no lo que emiten los coches.
+
+## 7. Herramientas
+
+| Herramienta | Para qué | Por qué |
 |---|---|---|
-| **P1 (Prioridad Máxima)** | ¿Ha disminuido el $\text{NO}_2$ dentro de la ZBE más que fuera tras el 15/06/2024? | Modelo cuasiexperimental Diff-in-Diff frente a estaciones exteriores. |
-| **P2 (Prioridad Alta)** | ¿El descenso se concentra en el horario regulado (L-V 7:00-20:00)? | Estratificación horaria activa frente a horario nocturno y fines de semana. |
-| **P3 (Prioridad Alta)** | ¿Se sostiene la reducción en calma atmosférica ($< 2\text{ m/s}$)? | Control estratificado por régimen de viento en Monte Banderas. |
-| **P4 (Prioridad Alta)** | ¿Supera la estimación un control placebo con contaminantes no vehiculares ($\text{SO}_2$)? | Análisis de falsación con $\text{SO}_2$ industrial para descartar sesgos exógenos. |
-| **P5 (Prioridad Media)** | ¿Existe correlación causal con el tráfico en los accesos? | Contraste cruzado con aforos de San Mamés y red de circunvalación. |
-| **P6 (Prioridad Media)** | ¿Aportó la Fase 2 una reducción marginal respecto a la Fase 1? | Contraste de hipótesis de medias entre periodos regulatorios independientes. |
+| Python, pandas y Jupyter | Limpiar, unir y analizar; guardar las cifras en resultados.json. | Lee CSV y fechas con zona horaria; el notebook deja juntos cálculo y resultado y se puede repetir. |
+| Node-RED | Consultar las fuentes y escribir en InfluxDB de forma periódica. | Flujos visuales sin programar un servicio propio. Es automatización, no inteligencia artificial. |
+| InfluxDB 2.9 | Guardar las series horarias para los paneles. | Hecha para datos con fecha y hora: agrupar por hora o día y borrar datos antiguos son funciones del motor. SQL Server (relacional, de uso general) también serviría, pero habría que diseñar las tablas y escribir esas agregaciones a mano, y no necesitamos sus relaciones entre tablas. |
+| Grafana 11.2 | Paneles, alertas y permisos por equipo. | Se conecta a InfluxDB sin código intermedio. |
+| Docker Compose | Arrancar todos los servicios con un comando. | Los tres miembros del equipo trabajan con el mismo entorno. |
+| Servidor MCP | Consultar InfluxDB desde un asistente. | Solo lectura: no puede modificar datos. |
 
----
+## 8. Orden de tareas y responsabilidades
 
-## 2. Fuentes de datos, variables y auditoría de calidad
-
-Para construir el dataset integrado maestro se adquirieron y procesaron cuatro fuentes públicas oficiales:
-
-1. **Red de Calidad del Aire del Gobierno Vasco (Open Data Euskadi):** Registros horarios continuos (2022–2026) en ocho estaciones estratégicas:
-   * *Dentro de la ZBE:* Mazarredo (id 60) y María Díaz de Haro (id 81).
-   * *Control metropolitano exterior:* Europa (id 62), Barakaldo, Basauri, Erandio y Castrejana.
-   * *Fondo regional:* Monte Arraiz (id 92).
-2. **Meteorología horaria (Open-Meteo Historical API / Euskalmet):** Temperatura (°C), humedad relativa (%), velocidad del viento (m/s), dirección (grados) y precipitación (mm) para Bilbao.
-3. **Calendario ZBE y fases regulatorias:** Clasificación diaria de festivos oficiales, fines de semana, horario de vigencia y fases ZBE.
-4. **Aforos de tráfico:** Memorias de aforos de la Diputación Foral de Bizkaia (accesos por San Mamés y circunvalación) y mediciones en tiempo real de Bilbao Open Data (81 tramos urbanos).
-
-### Auditoría y saneamiento de calidad
-
-| Problema de calidad detectado | Tratamiento técnico aplicado en el pipeline |
-|---|---|
-| **Coma decimal europea** | Conversión sistemática de strings numéricos con coma a tipo `float64` estándar. |
-| **Hora 24:00 del Gobierno Vasco** | Conversión algorítmica sumando 1 día calendario a las 00:00 h correspondientes. |
-| **Desfase GMT vs. hora peninsular** | Transformación estricta a zona `Europe/Madrid` con horario de verano/invierno para casar con el horario ZBE. |
-| **Valores negativos anómalos** | Conversión de lecturas $< 0\ \mu\text{g/m}^3$ ($0,04\%$ por descalibración instrumental) a `NaN` sin alterar la serie temporal. |
-
----
-
-## 3. Integración de datos y arquitectura del pipeline
-
-El flujo de ingeniería de datos se estructuró en cinco fases reproducibles:
-
-```
-1. DATOS ──> 2. LIMPIEZA ──> 3. INTEGRACIÓN (JOIN) ──> 4. ANÁLISIS ──> 5. DECISIÓN
-```
-
-* **Dataset maestro integrado:** Se consolidaron **332.776 registros horarios** en `data/clean/dataset_integrado_zbe.csv`.
-* **Integridad referencial:** 0 duplicados en la clave primaria compuesta `(estacion, ts_local)`.
-* **Completitud:** Porcentaje de valores nulos residuales inferior al $1,2\%$ en toda la serie temporal.
-
----
-
-## 4. Resultados analíticos y modelo Diff-in-Diff
-
-La tabla sintética resume la evolución media de la concentración de $\text{NO}_2$ antes y después del 15 de junio de 2024 a partir de las 8 estaciones oficiales del diseño metropolitano:
-
-| Zona / Estación | Media Pre-ZBE | Media Post-ZBE | Variación Absoluta | Variación Relativa Bruta |
-|---|:---:|:---:|:---:|:---:|
-| **Dentro ZBE (Mazarredo + Mª Díaz Haro)** | **25,50 µg/m³** | **21,90 µg/m³** | **-3,59 µg/m³** | **-14,08%** |
-| Control Fuera (5 est. Gran Bilbao Urbano) | 18,25 µg/m³ | 16,29 µg/m³ | -1,96 µg/m³ | -10,75% |
-| Fondo Regional (Monte Arraiz) | 8,73 µg/m³ | 8,16 µg/m³ | -0,57 µg/m³ | -6,53% |
-| Estación Mazarredo (Interior tráfico) | 26,71 µg/m³ | 22,86 µg/m³ | -3,85 µg/m³ | -14,41% |
-| Estación Mª Díaz de Haro (Interior urbano) | 24,28 µg/m³ | 20,95 µg/m³ | -3,33 µg/m³ | -13,71% |
-| Estación Europa (Bilbao Norte control) | 21,30 µg/m³ | 18,35 µg/m³ | -2,95 µg/m³ | -13,85% |
-
-El titular real del impacto es más modesto y riguroso que la simple caída antes/después: mientras que en el interior el $\text{NO}_2$ cayó $-3,59\ \mu\text{g/m}^3$ ($-14,08\%$ bruto), fuera del perímetro las estaciones comparables del Gran Bilbao también descendieron $-1,96\ \mu\text{g/m}^3$ ($-10,75\%$) por meteorología favorable y renovación natural de la flota. 
-
-Por tanto, el **impacto causal neto atribuible a la ZBE mediante Diferencias en Diferencias es de -1,63 µg/m³** (error estándar $0,12$; $t = -13,41$; $p\text{-valor} < 0,001$), lo que representa una **reducción neta de en torno al -6,4%** sobre la base previa de $25,50\ \mu\text{g/m}^3$.
-
----
-
-## 5. Visualizaciones seleccionadas e interpretación causal
-
-### Figura 1: Evolución mensual del NO2 dentro vs. fuera de la ZBE (2022–2026)
-* **Presentación:** Serie temporal agregada por mes entre estaciones interiores (Abando: Mazarredo y Mª Díaz de Haro) y estaciones exteriores del Gran Bilbao entre enero de 2022 y febrero de 2026, señalando la entrada en vigor de la Fase 1.
-* **Gráfica:** ![Evolución Mensual NO2](img/g1_evolucion_mensual_no2.png)
-* **Interpretación causal:** Durante 2022 y 2023 ambas series presentan picos invernales sincronizados por inversión térmica ($> 34\ \mu\text{g/m}^3$). A partir de junio de 2024, la serie interior se desacopla a la baja: en el invierno 2024–2025 el máximo interior no superó los $28\ \mu\text{g/m}^3$, evidenciando un cambio estructural local no explicado por el clima regional.
-
-### Figura 2: Modelo cuasiexperimental de Diferencias en Diferencias (Diff-in-Diff)
-* **Presentación:** Estimación visual de la trayectoria real de tratamiento frente a la contrafactual proyectada a partir del grupo de control exterior del Gran Bilbao.
-* **Gráfica:** ![Diff in Diff](img/g2_diff_in_diff_visual.png)
-* **Interpretación causal:** En ausencia de la ordenanza, el centro de Bilbao habría descendido únicamente a $23,53\ \mu\text{g/m}^3$. El valor real observado cayó hasta $21,90\ \mu\text{g/m}^3$. La brecha vertical cuantifica el impacto causal directo de la política: **-1,63 µg/m³ adicionales de reducción neta atribuible** ($-6,4\%$).
-
-### Figura 3: Control meteorológico bajo calma atmosférica (viento < 2 m/s)
-* **Presentación:** Aislamiento de horas de baja ventilación ($< 2\text{ m/s}$), donde no existe dispersión mecánica y el aire depende directamente de las emisiones a pie de calle.
-* **Gráfica:** ![Dispersión NO2 y Viento](img/g6_dispersion_no2_viento.png)
-* **Interpretación causal:** En calma atmosférica, el $\text{NO}_2$ en el interior pasó de $28,10\ \mu\text{g/m}^3$ pre-ZBE a $25,47\ \mu\text{g/m}^3$ en Fase 1 (**-9,4%**) y a $23,56\ \mu\text{g/m}^3$ en Fase 2 (**-16,2%**), con una media post global de $24,35\ \mu\text{g/m}^3$ (**-13,4%**). Esto confirma que en los episodios de estancamiento invernal la atmósfera urbana está significativamente más protegida.
-
-### Figura 4: Panel multivariable de decisión y correlación con aforos de tráfico
-* **Presentación:** Panel integral de cuatro cuadrantes combinando series de $\text{NO}_2$, aforos de acceso en San Mamés (Diputación de Bizkaia) y variaciones netas consolidadas.
-* **Gráfica:** ![Dashboard Decisión](img/dashboard_decision_v1.png)
-* **Interpretación causal:** El acceso de San Mamés registró en 2024 un descenso acusado del **-10,12%** ($50.127 \to 45.052$ veh/día, $-5.075$ veh/día laborable). En 2025 se observó un rebote parcial a $48.543$ veh/día (+7,75% interanual), dejando la reducción neta 2023–2025 en un **-3,16%** ($\approx -3,2\%$). Este comportamiento refleja una disuasión inicial fuerte seguida de adaptación progresiva de los usuarios. Asimismo, el test placebo con dióxido de azufre ($\text{SO}_2$) mostró una variación neutra en Diff-in-Diff de **+0,33 µg/m³** ($-3,94\%$ bruto dentro), validando que la mejora es atribuible a las restricciones al tráfico fósil.
-
----
-
-## 6. Conclusiones estratégicas y recomendaciones
-
-### Conclusiones clave: Efecto confirmado pero moderado
-1. **Impacto neto probado pero moderado:** La ZBE ha generado una reducción neta atribuible de **-1,63 µg/m³ de NO2** (en torno a un **-6,4%** sobre la base previa), sustancialmente menor que el titular bruto del $-14\%$ antes/después debido a la tendencia general de mejora en todo el Gran Bilbao.
-2. **Eficacia protectora en episodios críticos:** En situaciones de calma e inversión térmica, la reducción interior alcanza entre el **-9,4% y el -16,2%**, disminuyendo las horas de superación de los umbrales de aviso de la OMS.
-3. **Rendimientos decrecientes entre fases:** La Fase 1 (sin etiqueta) concentró la mayor parte del beneficio. La Fase 2 (etiqueta B) aportó una ganancia marginal más reducida, coincidiendo con la estabilización y rebote parcial del tráfico de acceso en 2025 ($-3,2\%$ neto respecto a 2023).
-
-### Cinco limitaciones metodológicas honestas
-1. **Tamaño muestral espacial reducido:** Solo dos estaciones oficiales fijas dentro del perímetro (Mazarredo y Mª Díaz de Haro), lo que restringe la representatividad en calles secundarias.
-2. **Magnitud absoluta moderada:** El impacto neto ($-1,63\ \mu\text{g/m}^3$) es modesto frente a la variabilidad estacional y climática interanual.
-3. **Inercia del periodo previo:** Los años 2022 y 2023 reflejaban aún pautas de movilidad en progresiva normalización tras el COVID-19.
-4. **Factores concurrentes metropolitanos:** Coexistencia de bonificaciones al transporte público, expansión ciclable y renovación tecnológica vegetativa del parque móvil.
-5. **Inmisión ambiental vs. emisiones de escape:** Las estaciones registran concentraciones en el aire ($µ\text{g/m}^3$), influenciadas por el relieve y cañones urbanos, no emisiones brutas directas.
-
-### Recomendaciones técnicas al Ayuntamiento
-* **Mantener la regulación actual y priorizar la electrificación del reparto urbano:** No se aconseja un endurecimiento drástico inmediato a turismos (coste socioeconómico alto con ganancia marginal decreciente); priorizar furgonetas y distribución de última milla.
-* **Instalación de sensores en bordes de la ZBE:** Monitorizar arterias límite (Autonomía, Sagrado Corazón, Deusto) para descartar efectos de desplazamiento de tráfico (*spillover*).
-* **Mantenimiento del esquema horario:** Preservar la vigencia de lunes a viernes de 7:00 a 20:00 h, descartando restricciones nocturnas innecesarias.
-
----
-
-## 7. Herramientas tecnológicas y justificación
-
-| Tecnología | Función en el proyecto | Justificación técnica de selección |
+| Paso | Tarea | Responsable |
 |---|---|---|
-| **Python + Pandas / Statsmodels** | ETL, limpieza y regresión cuasiexperimental. | Procesamiento vectorizado en memoria y cálculo de errores estándar robustos a heterocedasticidad. |
-| **InfluxDB 2.9 (TSDB)** | Almacén de series temporales de alta frecuencia. | Motor columnar TSM optimizado para consultas de tiempo y retención automatizada por bucket. |
-| **Node-RED** | Orquestador de flujos en tiempo real. | Gestión tolerante a fallos para consultar APIs externas y conversión nativa a Line Protocol. |
-| **Grafana 11.2** | Cuadros de mando y control de acceso (RBAC). | Soporte de consultas Flux, reglas de alerta automáticas y segregación de perfiles por equipos. |
-| **InfluxDB MCP Server** | Interfaz Model Context Protocol en solo lectura. | Permite a asistentes de lenguaje interrogar los buckets de InfluxDB mediante herramientas seguras. |
-
----
-
-## 8. Organización del trabajo y responsabilidades (Matriz RACI)
-
-| Miembro del equipo | Rol en el proyecto | Tareas principales asumidas |
-|---|---|---|
-| **Alfred Gabriel** | Product Owner / Sistemas de Big Data & Modelado | Pipeline de descarga y limpieza (`descargar_y_limpiar.py`), econometría Diff-in-Diff, cuaderno Jupyter `zbe_bilbao.ipynb` e informe ejecutivo para el cliente. |
-| **Iñigo Guzmán** | Lead Data Engineer / Big Data Aplicado | Infraestructura Docker Compose, gestión de buckets y tokens en InfluxDB 2.9, ingesta streaming en Node-RED 5.0, dashboards y control de acceso RBAC en Grafana 11.2. |
-| **Kerman Latorre** | Scrum Master / Modelos de IA & Protocolos | Servidor MCP (:5001) para consultas de IA a InfluxDB, modelado predictivo complementario, metodología ágil Scrum y memoria técnica MIA. |
-
-### Checklist de verificación de la rúbrica oficial (SBD / Reto 0)
-
-| | | |
-|---|---|---|
-| ☑ **Contexto y 6 preguntas** *(AP. 1)* | ☑ **Fuentes y auditoría calidad** *(AP. 2)* | ☑ **Integración y pipeline** *(AP. 3)* |
-| ☑ **Resultados analíticos** *(AP. 4)* | ☑ **Figuras con 3 partes** *(AP. 5)* | ☑ **Conclusiones y recomendaciones** *(AP. 6)* |
-| ☑ **Justificación herramientas** *(AP. 7)* | ☑ **Matriz RACI y Scrum** *(AP. 8)* | ☑ **Servicio MCP integrado** *(AP. 7)* |
-
----
-
-## Conclusión
-
-El análisis econométrico multivariable demuestra con rigor estadístico que la ZBE de Bilbao ha alcanzado un impacto neto favorable de **-1,63 µg/m³** en la concentración interior de $\text{NO}_2$. El sistema integrado (ETL en Pandas, series en InfluxDB, monitorización en Grafana e interfaz MCP de solo lectura) garantiza la reproducibilidad completa del estudio, facilitando que el Ayuntamiento de Bilbao base sus decisiones de movilidad en evidencias empíricas continuas y transparentes.
-
----
-
-## Referencias bibliográficas
-
-1. Grange, S. K., & Carslaw, D. C. (2019). *Using meteorological normalisation to detect interventions in air quality time series*. Science of the Total Environment, 653, 578–588.
-2. Angrist, J. D., & Pischke, J. S. (2009). *Mostly Harmless Econometrics: An Empiricist's Companion*. Princeton University Press.
+| 1 | Descarga de las fuentes | [A COMPLETAR POR EL EQUIPO] |
+| 2 | Limpieza y comprobación crudo frente a limpio | [A COMPLETAR POR EL EQUIPO] |
+| 3 | Integración de aire, calendario y meteorología | [A COMPLETAR POR EL EQUIPO] |
+| 4 | Análisis P1-P5 y resultados.json | [A COMPLETAR POR EL EQUIPO] |
+| 5 | Carga en InfluxDB, paneles y alertas de Grafana | [A COMPLETAR POR EL EQUIPO] |
+| 6 | Informe para el cliente | [A COMPLETAR POR EL EQUIPO] |
