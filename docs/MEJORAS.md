@@ -272,7 +272,7 @@ Formato: portada y 4 páginas de cuerpo en A4, en Arial 11 (títulos en Arial 12
 
 ### SBD-16
 - **Comentario:** el reparto de responsabilidades debe reflejar lo que hizo cada uno de verdad y el orden de tareas.
-- **Qué se ha cambiado:** la sección 8 tiene el orden de las tareas (de la descarga al informe) y, para cada una, el responsable con su rol (Product Owner, Lead Data Engineer o Scrum Master). El equipo dio los roles y cada tarea se asignó al rol que mejor encaja. Debajo se añade: «Todo el equipo conoce y puede explicar el trabajo completo; la asignación indica quién lideró cada tarea».
+- **Qué se ha cambiado:** la sección 8 tiene el orden de las tareas (de la descarga al informe) y, para cada una, el responsable con su rol y su área (Product Owner · Relación con el cliente y desarrollo; Lead Data Engineer · Datos e infraestructura; Scrum Master · Análisis y modelado). Se usan áreas, no nombres de módulos del curso. El equipo dio los roles y cada tarea se asignó al rol que mejor encaja. Debajo se añade: «Todo el equipo conoce y puede explicar el trabajo completo; la asignación indica quién lideró cada tarea».
 - **Dónde:** informe, sección 8.
 - **Por qué:** el reparto anterior tenía roles inventados y no mostraba el orden de las tareas.
 

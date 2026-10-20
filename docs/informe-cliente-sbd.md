@@ -119,11 +119,11 @@ La ZBE de Bilbao restringe la entrada de vehículos de lunes a viernes laborable
 
 | Paso | Tarea | Responsable y rol |
 |---|---|---|
-| 1 | Descarga de las fuentes | Iñigo Guzmán (Lead Data Engineer; responsable de Big Data Aplicado) |
-| 2 | Limpieza y comprobación crudo frente a limpio | Iñigo Guzmán (Lead Data Engineer; responsable de Big Data Aplicado) |
-| 3 | Integración de aire, calendario y meteorología | Alfred Gabriel (Product Owner; responsable de Programación de IA) |
-| 4 | Análisis P1-P5, margen de error y resultados.json | Kerman Latorre (Scrum Master; responsable de Modelos de IA) |
-| 5 | Carga en InfluxDB, paneles y alertas de Grafana | Iñigo Guzmán (Lead Data Engineer; responsable de Big Data Aplicado) |
-| 6 | Informe para el cliente | Alfred Gabriel (Product Owner; responsable de Programación de IA) |
+| 1 | Descarga de las fuentes | Iñigo Guzmán (Lead Data Engineer · Datos e infraestructura) |
+| 2 | Limpieza y comprobación crudo frente a limpio | Iñigo Guzmán (Lead Data Engineer · Datos e infraestructura) |
+| 3 | Integración de aire, calendario y meteorología | Alfred Gabriel (Product Owner · Relación con el cliente y desarrollo) |
+| 4 | Análisis P1-P5, margen de error y resultados.json | Kerman Latorre (Scrum Master · Análisis y modelado) |
+| 5 | Carga en InfluxDB, paneles y alertas de Grafana | Iñigo Guzmán (Lead Data Engineer · Datos e infraestructura) |
+| 6 | Informe para el cliente | Alfred Gabriel (Product Owner · Relación con el cliente y desarrollo) |
 
 Todo el equipo conoce y puede explicar el trabajo completo; la asignación indica quién lideró cada tarea.

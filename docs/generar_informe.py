@@ -213,9 +213,9 @@ tabla(["Herramienta", "Para qué", "Por qué"], [
 ], [4, 6, 10])
 
 h("8. Orden de tareas y responsabilidades")
-ALFRED = "Alfred Gabriel (Product Owner; responsable de Programación de IA)"
-INIGO = "Iñigo Guzmán (Lead Data Engineer; responsable de Big Data Aplicado)"
-KERMAN = "Kerman Latorre (Scrum Master; responsable de Modelos de IA)"
+ALFRED = "Alfred Gabriel (Product Owner · Relación con el cliente y desarrollo)"
+INIGO = "Iñigo Guzmán (Lead Data Engineer · Datos e infraestructura)"
+KERMAN = "Kerman Latorre (Scrum Master · Análisis y modelado)"
 tabla(["Paso", "Tarea", "Responsable y rol"], [
     ["1", "Descarga de las fuentes", INIGO],
     ["2", "Limpieza y comprobación crudo frente a limpio", INIGO],
