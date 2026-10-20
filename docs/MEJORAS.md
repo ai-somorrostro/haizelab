@@ -201,7 +201,7 @@ Las cifras salen de `resultados/resultados.json` (ejecución del notebook en la 
 
 El informe se rehace entero. `docs/generar_informe.py` lee `resultados/resultados.json` y escribe `docs/informe-cliente-sbd.md`, el `.docx` y el `.pdf` (estos dos, con Word). Ninguna cifra del informe está escrita a mano. Si una cifra cambia de signo y una frase deja de ser cierta, el script se para.
 
-Formato: portada y 4 páginas de cuerpo en A4, en Arial 11 (títulos en Arial 12). El PDF generado tiene 5 páginas.
+Formato: portada y 4 páginas de cuerpo en A4, en Arial 11 (títulos en Arial 12). El PDF generado tiene 5 páginas. Todo el texto es Arial: el 2 de NO2 y SO2 va como subíndice de Word y las viñetas son un carácter de Arial.
 
 ### SBD-01
 - **Comentario:** «renovación vegetativa» → «??».
@@ -272,9 +272,9 @@ Formato: portada y 4 páginas de cuerpo en A4, en Arial 11 (títulos en Arial 12
 
 ### SBD-16
 - **Comentario:** el reparto de responsabilidades debe reflejar lo que hizo cada uno de verdad y el orden de tareas.
-- **Qué se ha cambiado:** la sección 8 tiene el orden de las tareas (de la descarga al informe) y una columna «Responsable» con `[A COMPLETAR POR EL EQUIPO]`.
+- **Qué se ha cambiado:** la sección 8 tiene el orden de las tareas (de la descarga al informe) y, para cada una, el responsable con su rol (Product Owner, Lead Data Engineer o Scrum Master). El equipo dio los roles y cada tarea se asignó al rol que mejor encaja. Debajo se añade: «Todo el equipo conoce y puede explicar el trabajo completo; la asignación indica quién lideró cada tarea».
 - **Dónde:** informe, sección 8.
-- **Por qué:** el reparto lo tiene que escribir el equipo (decisión 7).
+- **Por qué:** el reparto anterior tenía roles inventados y no mostraba el orden de las tareas.
 
 ### EV-07 (informe)
 - **Comentario:** «verificar que las cifras de calidad y cobertura del informe coinciden con las obtenidas al ejecutar el código».
