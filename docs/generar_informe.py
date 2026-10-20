@@ -213,14 +213,18 @@ tabla(["Herramienta", "Para qué", "Por qué"], [
 ], [4, 6, 10])
 
 h("8. Orden de tareas y responsabilidades")
-tabla(["Paso", "Tarea", "Responsable"], [
-    ["1", "Descarga de las fuentes", "[A COMPLETAR POR EL EQUIPO]"],
-    ["2", "Limpieza y comprobación crudo frente a limpio", "[A COMPLETAR POR EL EQUIPO]"],
-    ["3", "Integración de aire, calendario y meteorología", "[A COMPLETAR POR EL EQUIPO]"],
-    ["4", "Análisis P1-P5 y resultados.json", "[A COMPLETAR POR EL EQUIPO]"],
-    ["5", "Carga en InfluxDB, paneles y alertas de Grafana", "[A COMPLETAR POR EL EQUIPO]"],
-    ["6", "Informe para el cliente", "[A COMPLETAR POR EL EQUIPO]"],
-], [1, 10, 6])
+ALFRED = "Alfred Gabriel (Product Owner; responsable de Programación de IA)"
+INIGO = "Iñigo Guzmán (Lead Data Engineer; responsable de Big Data Aplicado)"
+KERMAN = "Kerman Latorre (Scrum Master; responsable de Modelos de IA)"
+tabla(["Paso", "Tarea", "Responsable y rol"], [
+    ["1", "Descarga de las fuentes", INIGO],
+    ["2", "Limpieza y comprobación crudo frente a limpio", INIGO],
+    ["3", "Integración de aire, calendario y meteorología", ALFRED],
+    ["4", "Análisis P1-P5, margen de error y resultados.json", KERMAN],
+    ["5", "Carga en InfluxDB, paneles y alertas de Grafana", INIGO],
+    ["6", "Informe para el cliente", ALFRED],
+], [1, 8, 9])
+p("Todo el equipo conoce y puede explicar el trabajo completo; la asignación indica quién lideró cada tarea.")
 
 
 # ---------------------------------------------------------------------------
@@ -244,11 +248,16 @@ def a_markdown():
             out.append("")
         elif b[0] == "img":
             out += [f"![{b[2]}]({b[1]})", "", f"*{b[2]}*", ""]
-    return "\n".join(out)
+    return subindices("\n".join(out))
+
+
+def subindices(t):
+    """'NO₂' -> 'NO<sub>2</sub>': Word lo pone como subíndice con la misma fuente (Arial)."""
+    return t.replace("₂", "<sub>2</sub>")
 
 
 def html_inline(t):
-    t = html.escape(t, quote=False)
+    t = subindices(html.escape(t, quote=False))
     t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
     t = re.sub(r"\*(.+?)\*", r"<i>\1</i>", t)
     return t
@@ -259,8 +268,7 @@ def a_html():
     body, p, li, td, th { font-family: Arial; font-size: 11pt; }
     p { margin: 0 0 4pt 0; }
     h2 { font-family: Arial; font-size: 12pt; color: #1F4E79; margin: 8pt 0 3pt 0; page-break-after: avoid; }
-    ul { margin-top: 0; margin-bottom: 4pt; }
-    li { margin-bottom: 1pt; }
+    p.vineta { margin: 0 0 2pt 14pt; text-indent: -10pt; }
     table.datos { border-collapse: collapse; margin: 2pt 0 4pt 0; width: 100%; }
     table.datos td, table.datos th { border: 1px solid #999999; padding: 0 3pt; vertical-align: top; }
     table.datos th { background: #DCE6F0; text-align: left; }
@@ -269,7 +277,7 @@ def a_html():
     """
     out = [f"<html><head><meta charset='utf-8'><style>{css}</style></head><body>"]
     out.append("<p style='margin-top:150pt; text-align:center; font-size:24pt; font-weight:bold; color:#1F4E79'>"
-               f"{html.escape(portada['titulo'])}</p>")
+               f"{html_inline(portada['titulo'])}</p>")
     out.append(f"<p style='text-align:center; font-size:14pt; margin-bottom:60pt'>{html.escape(portada['subtitulo'])}</p>")
     out.append("<table style='margin-left:auto; margin-right:auto; border-collapse:collapse'>")
     for k, v in portada["filas"]:
@@ -282,7 +290,8 @@ def a_html():
         elif b[0] == "p":
             out.append(f"<p>{html_inline(b[1])}</p>")
         elif b[0] == "ul":
-            out.append("<ul>" + "".join(f"<li>{html_inline(i)}</li>" for i in b[1]) + "</ul>")
+            # Viñeta escrita como carácter en Arial (las listas de Word usan la fuente Symbol)
+            out += [f"<p class='vineta'>•&nbsp;&nbsp;{html_inline(i)}</p>" for i in b[1]]
         elif b[0] == "tabla":
             cab, filas, anchos = b[1], b[2], b[3]
             col = "".join(f"<col width='{a / sum(anchos) * 100:.0f}%'>" for a in anchos)
