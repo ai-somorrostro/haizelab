@@ -600,3 +600,12 @@ Rama `fix/bda-revision`. `resultados/resultados.json` no cambia: el notebook se 
 | Notebook de principio a fin (`docker compose run --rm --build sbd-notebook`) | 28 celdas de código ejecutadas sin error. Las salidas son idénticas a las versionadas y `resultados.json` no cambia. |
 | Chatbot leyendo `resultados/` | Dentro del contenedor lee `/resultados/resultados.json`. Responde con esas cifras con Gemini y sin Gemini. |
 | `scripts_check/verificar_cifras.py` | 7 de 7 documentos cuadran con `resultados.json`: README, informe, MIA, presentación, chatbot y los 2 dashboards. El script comprueba que cada cifra existe en el fichero, que no vuelve ninguna cifra antigua y que están las cifras clave de cada documento. Se ha comprobado que detecta una cifra antigua y una inventada. |
+
+### Ajustes tras la revisión del equipo (fase 5)
+
+| ID | Qué se ha cambiado | Dónde | Por qué |
+|---|---|---|---|
+| EV-12 | Se explica que en la demo las alertas se ven en Grafana (*Alerting → Alert rules*) y que para recibirlas por correo hay que configurar el SMTP en el `.env` (`GF_SMTP_*` y `ALERT_EMAIL_TO`). | `docs/alertas.md` («Dónde se ven las alertas») | La demo no tiene servidor de correo |
+| EV-12 | La guía diaria de NO₂ (25 µg/m³) se cita con la fuente oficial: resumen ejecutivo de las guías de calidad del aire de la OMS de 2021, tabla 0.1, consultado en el repositorio de la OMS. La tabla aclara que es un percentil 99 (3-4 días al año por encima), lo que confirma que la regla es solo un aviso preventivo. | `docs/alertas.md` («Límites de referencia» y «Fuentes») | La cifra tenía que salir de una fuente verificada |
+| — | Se eliminan de `docs/img/` las 7 imágenes que no usa ningún documento, el notebook ni la presentación (se ha buscado cada nombre con su ruta): `arquitectura_haizelab_claro.png`, `arquitectura_tiempo_real.png`, `github_pr1_merge.png`, `grafana_relojes_no2.jpg`, `grafana_trafico_81tramos_antiguo.jpg`, `no2_mensual_dentro_vs_fuera.png` y `nodered_flujo_aire_demo.png`. La presentación usa sus propias copias de `presentacion/assets/`. | `docs/img/` | Fase 6, punto 1: quitar lo que no se usa |
+
