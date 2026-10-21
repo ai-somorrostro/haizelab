@@ -2,7 +2,7 @@
 """
 haizelab/chatbot/main.py
 ========================
-Servidor API REST para HaizeLab Assistant (Reto 0) con integración MCP a InfluxDB.
+Servidor API REST para HaizeLab Assistant con integración MCP a InfluxDB.
 Tecnología: FastAPI + Pydantic + HTTPX.
 
 Arquitectura de Razonamiento:
@@ -12,7 +12,8 @@ Arquitectura de Razonamiento:
    - Meteorología (temperatura, viento, lluvia).
    - Aforos e intensidades de tráfico.
    - Consultas Flux personalizadas de solo lectura.
-3. Si no hay clave de API o falla la conexión, utiliza la base de conocimiento local estructurada.
+3. Las cifras del análisis se leen de resultados/resultados.json, que escribe el notebook.
+4. Si no hay clave de API o falla la conexión, responde con textos generados a partir de esas cifras.
 """
 
 from pathlib import Path
@@ -26,7 +27,6 @@ from pydantic import BaseModel
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 DIR_CHATBOT = Path(__file__).resolve().parent
-FICHERO_KB = DIR_CHATBOT / "knowledge_base.json"
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 INFLUXDB_URL = os.environ.get("INFLUXDB_URL", "http://influxdb:8086").rstrip("/")
@@ -35,7 +35,7 @@ MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://influx-mcp:5001/mcp/")
 
 app = FastAPI(
     title="HaizeLab Assistant API",
-    description="Asistente con razonamiento y acceso a InfluxDB MCP para la evaluación de la ZBE de Bilbao (Reto 0)",
+    description="Asistente con razonamiento y acceso a InfluxDB MCP para la evaluación de la ZBE de Bilbao",
     version="2.2.0"
 )
 
@@ -67,45 +67,113 @@ def obtener_token_mcp() -> str:
             pass
     return token or os.environ.get("INFLUXDB_ADMIN_TOKEN", "")
 
-# ── Base de Conocimiento y Prompt de Razonamiento ──────────────────────────────
+# ── Cifras del análisis y prompt de razonamiento ───────────────────────────────
+# Todas las cifras salen de resultados/resultados.json, que escribe el notebook.
+# Aquí no se escribe ninguna a mano: si el fichero no está, el asistente lo dice.
+RUTA_RESULTADOS = Path(os.environ.get("RESULTADOS_JSON", DIR_CHATBOT.parent / "resultados" / "resultados.json"))
+
 try:
-    with open(FICHERO_KB, "r", encoding="utf-8") as f:
-        KB_DATA = json.load(f)
+    RESULTADOS = json.loads(RUTA_RESULTADOS.read_text(encoding="utf-8"))
 except Exception:
-    KB_DATA = {}
+    RESULTADOS = None
 
-SYSTEM_PROMPT = """Eres HaizeLab Assistant, un asistente analítico riguroso del proyecto "Evaluación de la Zona de Bajas Emisiones de Bilbao (2022-2026)" (Reto 0 del Centro de Formación Somorrostro).
 
-ACCESO A DATOS EN TIEMPO REAL (INFLUXDB + MCP):
-Dispones de herramientas integradas para consultar en directo la base de datos de series temporales InfluxDB 2.9 (organización haizenlab):
-- Bucket `aire_demo`: Concentración horaria simulada y en streaming continuo de NO2 en 4 estaciones (Mazarredo y Mª Díaz de Haro dentro de la ZBE; Europa fuera; Monte Arraiz fondo).
-- Bucket `meteo`: Ingesta continua de Open-Meteo cada 15 min (temperatura, viento, lluvia, etc.).
-- Bucket `trafico`: Aforo y ocupación vehicular de los tramos de Bilbao cada 5 min.
-- Bucket `aire`: Histórico completo oficial 2022-2026 de 8 estaciones (332.776 filas).
+def es(x: float, dec: int = 2) -> str:
+    """Número con coma decimal, punto de miles y signo menos tipográfico."""
+    return f"{x:,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".").replace("-", "−")
 
-MODELOS Y EVIDENCIA EMPÍRICA (MIA & SBD):
-En el proyecto se utilizan y contrastan dos familias metodológicas, ambas implementadas y ejecutadas con datos reales en el notebook oficial (`notebooks/zbe_bilbao.ipynb`):
-1. Modelo de IA Propuesto y Elegido (Módulo MIA):
-   - **Gradient Boosting** (`HistGradientBoostingRegressor`): Elegido formalmente en el entregable de MIA (`docs/propuesta-modelo-ia.md`) y ejecutado en el notebook (celdas 18 y 19).
-   - Justificación: Modela la física no lineal del NO2 ante variables meteorológicas (velocidad y dirección de viento, lluvia, temperatura, humedad) y calendario.
-   - Funcionamiento: Se entrena exclusivamente con datos pre-ZBE (2022 a junio 2024) y predice la serie horaria contrafactual (lo que habría ocurrido sin la ZBE).
-   - Resultado: Reducción neta atribuible de **-2,87 µg/m³ (-11,6%)** en el periodo post-ZBE. Se audita mediante explicabilidad SHAP.
-2. Contraste de Robustez Metodológica (Módulo SBD / Econometría Causal):
-   - **Diferencias en Diferencias (Diff-in-Diff / DiD)**: Modelo cuasiexperimental sobre 41.700 horas en 8 estaciones oficiales.
-   - Resultado Neto Atribuible: Reducción neta de **-1,63 µg/m³ (-6,4%)** en NO2 (IC 95%: -1,87 a -1,39 µg/m³, p < 0,001).
-   - Comparativa: Dentro de la ZBE (Mazarredo y Mª Díaz de Haro) el NO2 bajó de 25,50 a 21,90 µg/m³ (-14,1%). Fuera en control metropolitano (Europa, Barakaldo, Basauri, Erandio, Castrejana) bajó de 18,25 a 16,29 µg/m³ (-10,8%). La diferencia neta (-1,63 µg/m³) aísla el efecto real de la ZBE.
-3. Convergencia y Validación:
-   - Ambos modelos convergen en que la ZBE reduce de forma neta el contaminante (-1,63 µg/m³ en DiD y -2,87 µg/m³ en Gradient Boosting), descartando que sea un artefacto metodológico.
-   - Validación triple de placebos: SO2 (variación neta +0,33 µg/m³, confirmando especificidad del tráfico), control exterior y fecha de implantación falsa.
-   - En calma (<2 m/s), el NO2 bajó un -13,4% dentro de la ZBE. Regresión con controles meteorológicos: -1,74 µg/m³.
-4. Aforos de Tráfico: San Mamés cayó un -10,1% en 2024 con rebote a -3,2% en 2025.
-5. Equipo: Alfred Gabriel (Product Owner), Iñigo Guzmán (Lead Data Engineer), Kerman Latorre (Scrum Master).
-6. Stack: InfluxDB 2.9, Node-RED 5.0, Grafana 11.2 (RBAC), Servidor MCP InfluxDB (:5001), FastAPI (:8000).
+
+def con_intervalo(r: Dict[str, float], clave: str = "efecto_neto") -> str:
+    """Cifra con su intervalo del 95 % y si incluye o no el cero."""
+    cero = "incluye el cero" if r["ic95_inf"] <= 0 <= r["ic95_sup"] else "no incluye el cero"
+    return f"{es(r[clave])} µg/m³ (intervalo del 95 %: de {es(r['ic95_inf'])} a {es(r['ic95_sup'])}; {cero})"
+
+
+def fecha(iso: str) -> str:
+    a, m, d = iso.split("-")
+    return f"{d}/{m}/{a}"
+
+
+def textos_resultados(R: Dict[str, Any]) -> Dict[str, str]:
+    """Textos del asistente generados a partir de resultados.json."""
+    per, cal = R["periodo_estudio"], R["calidad_datos"]
+    p1, p2, p3, p4, p5 = R["p1_did"], R["p2_horario"], R["p3_calma"], R["p4_so2"], R["p5_fases"]
+    ia = R["modelo_ia"]
+    mae = ia["metricas"][ia["modelo_elegido"]]["mae_val"]
+    mae_base = ia["metricas"]["Base: media por hora y mes (sin IA)"]["mae_val"]
+    p2_en = {"efecto_neto": p2["efecto_neto_en_horario_zbe"],
+             "ic95_inf": p2["ic95_en_horario_zbe"][0], "ic95_sup": p2["ic95_en_horario_zbe"][1]}
+    p2_fuera = {"efecto_neto": p2["efecto_neto_fuera_horario"],
+                "ic95_inf": p2["ic95_fuera_horario"][0], "ic95_sup": p2["ic95_fuera_horario"][1]}
+    return {
+        "datos": (
+            f"El análisis usa {es(cal['filas_en_periodo'], 0)} horas-estación de NO₂ y SO₂ de 8 estaciones, "
+            f"del {fecha(per['fecha_inicio'])} al {fecha(per['fecha_fin'])}. Hay dato de NO₂ en el "
+            f"{es(cal['completitud_no2_total_pct'])} % de las horas.\n"
+            "- Dentro de la ZBE: Mazarredo y Mª Díaz de Haro.\n"
+            "- Control (fuera de la ZBE): Europa, Barakaldo, Basauri, Erandio y Castrejana.\n"
+            "- Fondo (lejos del tráfico, solo como referencia): Arraiz.\n"
+            "Fuentes: calidad del aire del Gobierno Vasco (Open Data Euskadi), meteorología de Open-Meteo "
+            "y el calendario de la ZBE con los festivos."
+        ),
+        "resultado_zbe": (
+            f"Dentro de la ZBE el NO₂ medio pasó de {es(p1['dentro_pre'])} a {es(p1['dentro_post'])} µg/m³ "
+            f"({es(p1['caida_bruta_dentro'])}). Fuera, sin ZBE, pasó de {es(p1['fuera_pre'])} a "
+            f"{es(p1['fuera_post'])} ({es(p1['caida_bruta_fuera'])}).\n\n"
+            f"El **efecto neto** (lo que bajó dentro menos lo que bajó fuera) es "
+            f"**{con_intervalo(p1, 'efecto_neto_did')}**. Es el método de diferencias en diferencias, "
+            "un método estadístico, no inteligencia artificial."
+        ),
+        "pruebas": (
+            f"- Horario: efecto neto de {con_intervalo(p2_en)} con la ZBE activa y de "
+            f"{con_intervalo(p2_fuera)} fuera de horario.\n"
+            f"- Viento en calma (menos de 2 m/s): {con_intervalo(p3)}.\n"
+            f"- SO₂, que no viene del tráfico: {con_intervalo(p4)}.\n"
+            f"- Fase 1 frente a antes: {con_intervalo(p5['fase1_vs_previo'])}. "
+            f"Fase 2 frente a fase 1: {con_intervalo(p5['fase2_vs_fase1'])}."
+        ),
+        "modelo": (
+            f"El modelo de IA es **{ia['modelo_elegido']}**, elegido entre regresión lineal, Random Forest y "
+            "Gradient Boosting por tener el menor error en un periodo que no vio al entrenar "
+            f"(MAE de {es(mae)} µg/m³ por hora; el modelo base sin IA, {es(mae_base)}). Aprende con los datos de "
+            "antes de la ZBE qué NO₂ hay según el tiempo atmosférico y el calendario, y predice lo que habría "
+            "habido sin ZBE.\n\n"
+            f"Efecto de la ZBE con el modelo (dentro menos fuera): {con_intervalo(ia['efecto'])}. "
+            f"Con una ZBE ficticia el 15/06/2023 sale {con_intervalo(ia['placebo_15_06_2023'])}. "
+            f"Con diferencias en diferencias, el efecto es {es(p1['efecto_neto_did'])} µg/m³: los dos métodos "
+            "dan una bajada, pero de distinto tamaño, así que el tamaño exacto se da con cautela."
+        ),
+    }
+
+
+TEXTOS = textos_resultados(RESULTADOS) if RESULTADOS else {}
+SIN_CIFRAS = f"No encuentro las cifras del análisis ({RUTA_RESULTADOS}). Hay que ejecutar el notebook."
+
+SYSTEM_PROMPT = f"""Eres HaizeLab Assistant, el asistente de la evaluación de la Zona de Bajas Emisiones (ZBE) de Bilbao para el Ayuntamiento, que tiene que decidir si amplía, mantiene o ajusta la ZBE.
+
+DATOS EN DIRECTO (InfluxDB, solo lectura):
+- Bucket `aire_demo`: NO₂ histórico reproducido deprisa (una hora cada 5 s) en 4 estaciones. No es el aire de ahora.
+- Bucket `meteo`: meteorología de Open-Meteo, cada 15 min.
+- Bucket `trafico`: estado del tráfico de Bilbao, cada 5 min.
+- Bucket `aire`: histórico oficial de calidad del aire de 8 estaciones.
+
+RESULTADOS DEL ANÁLISIS (salen de resultados/resultados.json):
+{TEXTOS.get("datos", SIN_CIFRAS)}
+
+{TEXTOS.get("resultado_zbe", "")}
+
+Comprobaciones:
+{TEXTOS.get("pruebas", "")}
+
+Modelo de IA:
+{TEXTOS.get("modelo", "")}
 
 DIRECTRICES:
-- Si el usuario te pregunta por valores actuales, mediciones recientes o datos en directo de estaciones, meteorología o tráfico, USA SIEMPRE tus herramientas de InfluxDB.
-- Si te preguntan por el modelo propuesto, aclara que el modelo de IA elegido para el entregable de MIA es Gradient Boosting (contrafactual no lineal ejecutado en el notebook), y que Diferencias en Diferencias es el contraste econométrico de robustez.
-- Razona y explica el contexto de las cifras de forma analítica, estructurada y en español."""
+- Para valores actuales o recientes de estaciones, meteorología o tráfico, usa tus herramientas de InfluxDB.
+- Usa solo las cifras de arriba. No inventes cifras ni menciones técnicas que no estén aquí.
+- Diferencias en diferencias es un método estadístico, no IA. Node-RED es automatización, no IA.
+- El análisis no usa los aforos de tráfico; el tráfico solo se muestra en directo en Grafana.
+- Responde en español, en lenguaje llano, y define cada término técnico la primera vez."""
 
 # ── Herramientas Function Calling para Gemini ──────────────────────────────────
 GEMINI_TOOLS = [
@@ -247,59 +315,36 @@ class ChatResponse(BaseModel):
 
 # ── Fallback Local de Contingencia ─────────────────────────────────────────────
 RESPUESTAS_LOCALES = {
-    "resultado_zbe": (
-        "La evaluación con el modelo Diferencias en Diferencias (Diff-in-Diff) demuestra que la ZBE "
-        "redujo el NO₂ de forma neta atribuible en **-1,63 µg/m³ (-6,4%)**.\n\n"
-        "Dentro de la ZBE la concentración bajó de 25,50 a 21,90 µg/m³ (-14,1%), mientras que en las estaciones "
-        "de control exteriores bajó de 18,25 a 16,29 µg/m³ (-10,8%). La diferencia entre ambas variaciones "
-        "aísla el efecto real de la ordenanza frente a la meteorología."
-    ),
-    "datos": (
-        "El proyecto integra **41.700 horas de registros** continuos entre 2022 y 2026 de 8 estaciones oficiales:\n"
-        "- Dentro de la ZBE: Mazarredo y María Díaz de Haro.\n"
-        "- Control urbano metropolitano: Europa, Barakaldo, Basauri, Erandio y Castrejana.\n"
-        "- Fondo regional: Monte Arraiz.\n"
-        "Las fuentes son Open Data Euskadi (calidad del aire) y Open-Meteo (clima)."
-    ),
+    "resultado_zbe": TEXTOS.get("resultado_zbe", SIN_CIFRAS),
+    "pruebas": TEXTOS.get("pruebas", SIN_CIFRAS),
+    "datos": TEXTOS.get("datos", SIN_CIFRAS),
+    "modelo_propuesto": TEXTOS.get("modelo", SIN_CIFRAS),
     "trafico": (
-        "El aforo vehicular del acceso principal por San Mamés descendió de 50.127 vehículos/día en 2023 "
-        "a 45.052 en 2024 (**-10,1%**), repuntando a 48.543 en 2025. El descenso del NO₂ en el centro "
-        "guarda correlación directa con esta reducción de intensidad de tráfico."
+        "El análisis de la ZBE no usa los aforos de tráfico: responde con la calidad del aire. "
+        "El tráfico de Bilbao se recoge cada 5 minutos en el bucket `trafico` y se ve en directo en Grafana."
     ),
     "infraestructura": (
-        "La infraestructura se despliega con Docker Compose e integra:\n"
-        "1. **InfluxDB 2.9:** Almacenamiento en series temporales con 4 buckets y tokens con permisos mínimos.\n"
-        "2. **Node-RED 5.0:** Ingesta continua en tiempo real de meteorología cada 15 min y tráfico cada 5 min.\n"
-        "3. **Grafana 11.2:** Cuadros de mando analíticos con control de acceso por roles (Directiva, Análisis e IT).\n"
-        "4. **Servidor MCP:** Servicio de solo lectura (:5001) para conectar herramientas de IA a InfluxDB."
-    ),
-    "modelo_propuesto": (
-        "En el proyecto HaizeLab se articulan dos enfoques metodológicos complementarios, ambos implementados y calculados con datos reales:\n\n"
-        "1. **Modelo de IA Propuesto y Elegido (Módulo MIA):**\n"
-        "Se seleccionó formalmente **Gradient Boosting** (`HistGradientBoostingRegressor`) como el modelo central de Machine Learning "
-        "para estimar el contrafactual de NO₂. Modela de forma no lineal la interacción entre meteorología (viento, lluvia, temperatura, humedad) "
-        "y calendario. **Está implementado y ejecutado en el notebook** (`notebooks/zbe_bilbao.ipynb`, celdas 18 y 19), donde entrenado en pre-ZBE "
-        "predice el NO₂ post-ZBE y arroja una reducción neta de **-2,87 µg/m³ (-11,6%)**, auditado con explicabilidad SHAP.\n\n"
-        "2. **Contraste de Robustez Metodológica (Módulo SBD / Econometría Causal):**\n"
-        "Se utiliza **Diferencias en Diferencias (Diff-in-Diff / DiD)** con 41.700 horas en 8 estaciones oficiales frente al control metropolitano, "
-        "arrojando una reducción neta atribuible de **-1,63 µg/m³ (-6,4%)** (IC 95%: -1,87 a -1,39 µg/m³, p < 0,001).\n\n"
-        "Ambos modelos convergen en que la ZBE genera un impacto positivo y real en el aire de Bilbao, respaldado por tres controles placebo."
+        "La plataforma se arranca con Docker Compose:\n"
+        "1. **InfluxDB 2.9:** base de datos de series temporales con 4 buckets y un token con el permiso mínimo para cada servicio.\n"
+        "2. **Node-RED:** automatización que consulta la meteorología cada 15 min y el tráfico cada 5 min y los escribe en InfluxDB. No es IA.\n"
+        "3. **Grafana 11.2:** paneles, alertas y permisos por equipo (Dirección, Análisis e IT).\n"
+        "4. **Servidor MCP:** consultas de solo lectura a InfluxDB desde un asistente (:5001)."
     ),
     "equipo": (
-        "El equipo de HaizeLab (Reto 0) está formado por tres especialistas:\n"
-        "- **Alfred Gabriel:** Product Owner / Sistemas de Big Data & Modelado (pipeline reproducible de datos 332k filas, econometría Diff-in-Diff e informe).\n"
-        "- **Iñigo Guzmán:** Lead Data Engineer / Big Data Aplicado (infraestructura Docker, InfluxDB, Node-RED, Grafana RBAC y alertas).\n"
-        "- **Kerman Latorre:** Scrum Master / Modelos de IA & Protocolos (servidor MCP, integración de herramientas IA y metodología ágil Scrum)."
+        "El equipo de HaizeLab:\n"
+        "- **Alfred Gabriel:** Product Owner · Relación con el cliente y desarrollo.\n"
+        "- **Iñigo Guzmán:** Lead Data Engineer · Datos e infraestructura.\n"
+        "- **Kerman Latorre:** Scrum Master · Análisis y modelado."
     ),
     "general": (
-        "Soy HaizeLab Assistant. Puedo razonar y responder a tus preguntas sobre los resultados de la ZBE de Bilbao, "
-        "el modelo de Machine Learning propuesto (Gradient Boosting vs Diff-in-Diff), datos en vivo en InfluxDB mediante MCP, métricas de tráfico o arquitectura."
+        "Soy HaizeLab Assistant. Puedo responder sobre el efecto de la ZBE de Bilbao en el NO₂, las comprobaciones "
+        "(horario, calma, SO₂ y fases), el modelo de IA, los datos usados y la plataforma."
     )
 }
 
 def responder_localmente(pregunta: str) -> str:
     p = pregunta.lower()
-    if any(k in p for k in ["modelo", "propuesta", "propuesto", "gradient", "boosting", "mia", "machine learning", "algoritmo"]):
+    if any(k in p for k in ["modelo", "propuesta", "propuesto", "random forest", "gradient", "boosting", "machine learning", "algoritmo", "inteligencia artificial"]):
         return RESPUESTAS_LOCALES["modelo_propuesto"]
     elif any(k in p for k in ["estacion", "estaciones", "mazarredo", "maria diaz", "maría díaz"]):
         return RESPUESTAS_LOCALES["datos"]
@@ -307,8 +352,10 @@ def responder_localmente(pregunta: str) -> str:
         return RESPUESTAS_LOCALES["infraestructura"]
     elif any(k in p for k in ["trafico", "tráfico", "coche", "san mames", "san mamés", "aforo", "vehiculo"]):
         return RESPUESTAS_LOCALES["trafico"]
-    elif any(k in p for k in ["equipo", "autor", "quien", "quién", "iñigo", "kerman", "alfred", "somorrostro"]):
+    elif any(k in p for k in ["equipo", "autor", "quien", "quién", "iñigo", "kerman", "alfred"]):
         return RESPUESTAS_LOCALES["equipo"]
+    elif any(k in p for k in ["placebo", "so2", "so₂", "calma", "viento", "horario", "fase", "comprobaci", "intervalo"]):
+        return RESPUESTAS_LOCALES["pruebas"]
     elif any(k in p for k in ["fuente", "dataset", "hora", "registro", "datos"]):
         return RESPUESTAS_LOCALES["datos"]
     elif any(k in p for k in ["zbe", "no2", "calidad", "resultado", "funcionado", "reduccion", "reducción", "caida", "caída", "efecto", "did", "diff"]):
@@ -403,7 +450,7 @@ def health():
         "servicio": "haizelab-chatbot",
         "razonamiento_gemini": bool(GEMINI_API_KEY),
         "mcp_disponible": token_mcp,
-        "modo": "Google Gemini + MCP InfluxDB" if (GEMINI_API_KEY and token_mcp) else ("Google Gemini (Nube)" if GEMINI_API_KEY else "Knowledge Engine (Local Autónomo)")
+        "modo": "Google Gemini + MCP InfluxDB" if (GEMINI_API_KEY and token_mcp) else ("Google Gemini (Nube)" if GEMINI_API_KEY else "Respuestas locales (resultados.json)")
     }
 
 @app.post("/chat", response_model=ChatResponse)
@@ -429,8 +476,8 @@ async def chat(peticion: ChatRequest):
     resp_fija = responder_localmente(pregunta)
     return ChatResponse(
         respuesta=resp_fija,
-        fuentes=["knowledge_base.json", "Informe ZBE Bilbao"],
-        modelo="HaizeLab Knowledge Engine (Local Autónomo)"
+        fuentes=["resultados/resultados.json"],
+        modelo="Respuestas locales (resultados.json)"
     )
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ Fuentes:
   2. Meteorología: Open-Meteo Historical API (Coordenadas Bilbao: 43.2630 N, -2.9350 W).
      Variables: temperatura, humedad relativa, precipitación, velocidad del viento, dirección del viento.
   3. Calendario ZBE: Fases ZBE (Fase 1: 15/06/2024, Fase 2: 16/06/2025), horario (L-V 7:00-20:00)
-     y festivos oficiales de Bilbao / Bizkaia / Euskadi.
+     y festivos de Bilbao (lista escrita en este script, no contrastada con un calendario oficial).
   4. Tráfico: GeoJSON en tiempo real de Bilbao Open Data (Ayuntamiento de Bilbao).
 
 Problemas de calidad tratados y contabilizados:
@@ -30,7 +30,7 @@ Problemas de calidad tratados y contabilizados:
 
 from pathlib import Path
 import io
-import shutil
+import json
 import zipfile
 import numpy as np
 import pandas as pd
@@ -40,7 +40,6 @@ import requests
 DIR_RAIZ = Path(__file__).resolve().parent.parent
 DIR_DATA_RAW = DIR_RAIZ / "data" / "raw"
 DIR_DATA_CLEAN = DIR_RAIZ / "data" / "clean"
-DIR_DATOS_CRUDO_EXISTENTE = DIR_RAIZ / "datos" / "crudo"
 
 # Hitos temporales de la ZBE
 FECHA_FASE1 = pd.Timestamp("2024-06-15")
@@ -138,10 +137,25 @@ def crear_estructura_directorios():
         d.mkdir(parents=True, exist_ok=True)
 
 
+def descargar_con_reintentos(url, intentos=3, **kwargs):
+    """Hace un GET y lo repite si el servidor devuelve un error pasajero (p. ej. HTTP 503)."""
+    r = None
+    for intento in range(1, intentos + 1):
+        try:
+            r = requests.get(url, **kwargs)
+            if r.status_code == 200:
+                return r
+            print(f"[!] HTTP {r.status_code} en {url} (intento {intento}/{intentos})")
+        except requests.RequestException as e:
+            print(f"[!] Error de red en {url} (intento {intento}/{intentos}): {e}")
+    return r
+
+
 def descargar_calidad_aire(forzar=False):
     """
-    Descarga o copia los ficheros horarios de calidad del aire desde Open Data Euskadi.
-    Utiliza la caché local de datos/crudo si existe para agilizar la ejecución reproducible.
+    Descarga los ficheros horarios de calidad del aire desde Open Data Euskadi.
+    Cada zip anual trae dos carpetas con ficheros del mismo nombre (datos_horarios/ y
+    datos_diarios/); solo se extraen los de datos_horarios/.
     """
     crear_estructura_directorios()
     dir_dest = DIR_DATA_RAW / "calidad_aire"
@@ -149,13 +163,10 @@ def descargar_calidad_aire(forzar=False):
     # 1. Estaciones CSV oficial
     f_est = dir_dest / "estaciones.csv"
     if forzar or not f_est.exists():
-        try:
-            r = requests.get(URL_ESTACIONES_CSV, timeout=15)
-            if r.status_code == 200:
-                f_est.write_bytes(r.content)
-                print(f"[OK] Descargado estaciones.csv ({len(r.content):,} bytes)")
-        except Exception as e:
-            print(f"[!] No se pudo descargar estaciones.csv online: {e}")
+        r = descargar_con_reintentos(URL_ESTACIONES_CSV, timeout=15)
+        if r is not None and r.status_code == 200:
+            f_est.write_bytes(r.content)
+            print(f"[OK] Descargado estaciones.csv ({len(r.content):,} bytes)")
 
     # 2. Ficheros de estaciones por año
     ficheros_descargados = []
@@ -163,8 +174,6 @@ def descargar_calidad_aire(forzar=False):
         dir_año = dir_dest / str(año) / "datos_horarios"
         dir_año.mkdir(parents=True, exist_ok=True)
 
-        # Comprobar si ya existen en datos/crudo/calidad_aire para copiar rápido
-        dir_origen_existente = DIR_DATOS_CRUDO_EXISTENTE / "calidad_aire" / str(año) / "datos_horarios"
         ficheros_necesarios = [f"{est}.csv" for est in ESTACIONES_CONFIG.keys()]
         faltan = [f for f in ficheros_necesarios if not (dir_año / f).exists()]
 
@@ -172,31 +181,18 @@ def descargar_calidad_aire(forzar=False):
             ficheros_descargados.extend(dir_año / f for f in ficheros_necesarios)
             continue
 
-        if dir_origen_existente.exists() and not forzar:
-            for f in ficheros_necesarios:
-                origen = dir_origen_existente / f
-                destino = dir_año / f
-                if origen.exists() and (forzar or not destino.exists()):
-                    shutil.copy2(origen, destino)
-                    ficheros_descargados.append(destino)
-            print(f"[OK] Copiados ficheros de calidad del aire del año {año} desde datos/crudo a data/raw/")
-        else:
-            # Descarga remota del zip oficial
-            print(f"Descargando datos oficiales del año {año} desde Open Data Euskadi...")
-            try:
-                r = requests.get(url, timeout=40)
-                if r.status_code == 200:
-                    with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
-                        for miembro in zf.namelist():
-                            nombre_archivo = Path(miembro).name
-                            if nombre_archivo in ficheros_necesarios:
-                                (dir_año / nombre_archivo).write_bytes(zf.read(miembro))
-                                ficheros_descargados.append(dir_año / nombre_archivo)
-                    print(f"[OK] Extraídos ficheros del año {año} desde {url}")
-                else:
-                    print(f"[!] HTTP {r.status_code} al descargar año {año}")
-            except Exception as e:
-                print(f"[!] Error descargando año {año}: {e}")
+        print(f"Descargando datos oficiales del año {año} desde Open Data Euskadi...")
+        r = descargar_con_reintentos(url, timeout=60)
+        if r is None or r.status_code != 200:
+            print(f"[!] No se pudo descargar el año {año}")
+            continue
+        with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
+            for miembro in zf.namelist():
+                ruta = Path(miembro)
+                if ruta.parent.name == "datos_horarios" and ruta.name in ficheros_necesarios:
+                    (dir_año / ruta.name).write_bytes(zf.read(miembro))
+                    ficheros_descargados.append(dir_año / ruta.name)
+        print(f"[OK] Extraídos ficheros horarios del año {año} desde {url}")
 
     return ficheros_descargados
 
@@ -215,11 +211,14 @@ def descargar_meteorologia(forzar=False):
 
     print("Consultando serie histórica horaria en Open-Meteo API...")
     url = "https://archive-api.open-meteo.com/v1/archive"
+    # La API devuelve la hora en GMT (UTC). Se pide de forma explícita para que quede claro;
+    # la conversión a hora de Madrid se hace en limpiar_meteorologia().
     params = {
         "latitude": 43.2630,
         "longitude": -2.9350,
-        "start_date": "2022-01-01",
+        "start_date": "2021-12-31",
         "end_date": "2026-10-01",
+        "timezone": "GMT",
         "hourly": [
             "temperature_2m",
             "relative_humidity_2m",
@@ -228,20 +227,24 @@ def descargar_meteorologia(forzar=False):
             "wind_direction_10m",
         ],
     }
-    r = requests.get(url, params=params, timeout=30)
-    if r.status_code != 200:
-        raise RuntimeError(f"Error descargando datos de Open-Meteo: HTTP {r.status_code} - {r.text[:200]}")
+    r = descargar_con_reintentos(url, params=params, timeout=60)
+    if r is None or r.status_code != 200:
+        raise RuntimeError("Error descargando datos de Open-Meteo")
 
-    datos = r.json().get("hourly", {})
-    df_meteo = pd.DataFrame(datos)
+    respuesta = r.json()
+    df_meteo = pd.DataFrame(respuesta.get("hourly", {}))
     df_meteo.to_csv(f_salida, index=False)
+    # Unidades tal y como las declara la API (se usan para comprobar la conversión del viento)
+    f_unidades = f_salida.with_name("open_meteo_unidades.json")
+    f_unidades.write_text(json.dumps(respuesta.get("hourly_units", {}), ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"[OK] Guardada meteorologia cruda en data/raw/{f_salida.parent.name}/{f_salida.name} ({len(df_meteo):,} horas)")
     return f_salida
 
 
 def generar_calendario_zbe_festivos(forzar=False):
     """
-    Genera el calendario oficial de Bilbao de 2022 a 2026 con festivos locales,
+    Genera el calendario de Bilbao de 2022 a 2026 con los festivos de la lista de abajo
+    (escrita a mano, no contrastada con un calendario oficial),
     fases de la ZBE y definición de días laborables.
     """
     crear_estructura_directorios()
@@ -249,7 +252,7 @@ def generar_calendario_zbe_festivos(forzar=False):
     if f_salida.exists() and not forzar:
         return f_salida
 
-    festivos_oficiales = {
+    festivos_bilbao = {
         # 2022
         "2022-01-01": "Año Nuevo",
         "2022-01-06": "Epifanía del Señor",
@@ -325,8 +328,8 @@ def generar_calendario_zbe_festivos(forzar=False):
     for f in fechas:
         f_str = f.strftime("%Y-%m-%d")
         es_fin_de_semana = f.weekday() >= 5
-        es_festivo = f_str in festivos_oficiales
-        nombre_festivo = festivos_oficiales.get(f_str, "")
+        es_festivo = f_str in festivos_bilbao
+        nombre_festivo = festivos_bilbao.get(f_str, "")
         es_laborable = (not es_fin_de_semana) and (not es_festivo)
 
         if f < FECHA_FASE1:
@@ -400,6 +403,26 @@ def descargar_todos_los_datos(forzar=False):
     }
 
 
+# Nombre de cada contaminante en la cabecera oficial (parte antes del paréntesis de unidades)
+# -> nombre de la columna limpia. La comparación es exacta: "NO" no debe confundirse con
+# "Benceno" ni con "NOX", y "CO" no debe confundirse con "CO 8h".
+MAPEO_CONTAMINANTES = {
+    "no2": "no2",
+    "no": "no",
+    "nox": "nox",
+    "pm10": "pm10",
+    "pm2,5": "pm25",
+    "so2": "so2",
+    "co": "co",
+    "benceno": "benceno",
+}
+
+
+def nombre_contaminante(columna):
+    """'NO2 (µg/m3)' -> 'no2'; 'PM2,5 (µg/m3)' -> 'pm2,5'; 'CO 8h (mg/m3)' -> 'co 8h'."""
+    return columna.split("(")[0].strip().lower()
+
+
 def limpiar_calidad_aire():
     """
     Lee y limpia los ficheros horarios de calidad del aire tratando y documentando
@@ -409,7 +432,10 @@ def limpiar_calidad_aire():
       3. Huecos y valores ausentes -> contabilización y preservación NaN.
       4. GMT vs Hora local -> conversión a hora oficial Europe/Madrid.
       5. Valores negativos o imposibles -> sustitución por NaN (<0).
-      6. Periodos sin datos -> inventario temporal por estación.
+      6. Periodos sin datos -> se dejan como NaN; la completitud por estación la calcula el notebook (apartado 4.2).
+
+    Devuelve también una tabla de auditoría por estación (filas crudas, filas eliminadas
+    y motivo, media de NO2 en crudo y en limpio) para comparar crudo y limpio.
     """
     print("=" * 70)
     print("LIMPIEZA DE CALIDAD DEL AIRE Y AUDITORÍA DE CALIDAD")
@@ -425,9 +451,13 @@ def limpiar_calidad_aire():
     }
 
     registros_estaciones = []
+    filas_auditoria = []
 
     for id_est, cfg in ESTACIONES_CONFIG.items():
         dfs_est = []
+        no2_crudo = []
+        hora_24_est = 0
+        coma_decimal_est = 0
         for año in sorted(URLS_AIRE.keys()):
             f_csv = dir_raw_aire / str(año) / "datos_horarios" / f"{id_est}.csv"
             if not f_csv.exists():
@@ -446,6 +476,7 @@ def limpiar_calidad_aire():
             horas_raw = df[col_hora].astype(str).str.strip()
             es_24 = horas_raw.isin(["24:00", "24", "24:00:00"])
             conteo_problemas["filas_hora_24"] += int(es_24.sum())
+            hora_24_est += int(es_24.sum())
 
             horas_clean = horas_raw.replace({"24:00": "00:00", "24": "00:00", "24:00:00": "00:00"})
             fechas_raw = df[col_fecha].astype(str).str.strip()
@@ -466,29 +497,19 @@ def limpiar_calidad_aire():
                 "zona": cfg["zona"],
             })
 
-            # Mapear contaminantes
-            mapeo_cols = {
-                "no2": ["no2 (g/m3)", "no2 (µg/m3)", "no2 (ug/m3)", "no2"],
-                "no": ["no (g/m3)", "no (µg/m3)", "no (ug/m3)", "no"],
-                "nox": ["nox (g/m3)", "nox (µg/m3)", "nox (ug/m3)", "nox"],
-                "pm10": ["pm10 (g/m3)", "pm10 (µg/m3)", "pm10 (ug/m3)", "pm10"],
-                "pm25": ["pm2,5 (g/m3)", "pm2.5 (g/m3)", "pm2,5 (µg/m3)", "pm2.5 (µg/m3)", "pm25"],
-                "so2": ["so2 (g/m3)", "so2 (µg/m3)", "so2 (ug/m3)", "so2"],
-                "co": ["co (mg/m3)", "co"],
-                "benceno": ["benceno (g/m3)", "benceno (µg/m3)", "benceno"],
-            }
-
-            for p_nombre, variantes in mapeo_cols.items():
-                col_encontrada = next(
-                    (c for c in df.columns if any(v in c.lower().replace(" ", "") for v in variantes)),
-                    None,
-                )
+            # Mapear contaminantes por nombre exacto de la cabecera oficial
+            columnas_por_nombre = {nombre_contaminante(c): c for c in df.columns}
+            for nombre_oficial, p_nombre in MAPEO_CONTAMINANTES.items():
+                col_encontrada = columnas_por_nombre.get(nombre_oficial)
                 if col_encontrada:
                     serie_raw = df[col_encontrada].fillna("").astype(str).str.strip()
                     conteo_problemas["campos_coma_decimal"] += int(serie_raw.str.contains(",").sum())
+                    coma_decimal_est += int(serie_raw.str.contains(",").sum())
 
                     # Conversión numérica
                     vals_num = pd.to_numeric(serie_raw.str.replace(",", ".", regex=False), errors="coerce")
+                    if p_nombre == "no2":
+                        no2_crudo.append(vals_num.copy())
 
                     # Problema 5: Valores negativos (<0)
                     es_neg = vals_num < 0
@@ -512,33 +533,39 @@ def limpiar_calidad_aire():
 
         if dfs_est:
             df_est_total = pd.concat(dfs_est, ignore_index=True)
-            df_est_total = df_est_total.dropna(subset=["ts_local"]).drop_duplicates(subset=["ts_local"]).sort_values("ts_local")
+            filas_crudas = len(df_est_total)
+            # Se quitan las filas sin fecha válida y las repetidas. Se deduplica por la hora GMT,
+            # que es única: en hora local la 02:00 del cambio de hora de octubre aparece dos veces
+            # y son dos lecturas reales distintas.
+            df_est_total = df_est_total.dropna(subset=["ts_gmt"])
+            filas_fecha_invalida = filas_crudas - len(df_est_total)
+            df_est_total = df_est_total.drop_duplicates(subset=["ts_gmt"]).sort_values("ts_gmt")
+            filas_duplicadas = filas_crudas - filas_fecha_invalida - len(df_est_total)
             registros_estaciones.append(df_est_total)
 
+            no2_crudo_est = pd.concat(no2_crudo) if no2_crudo else pd.Series(dtype=float)
+            filas_auditoria.append({
+                "estacion": cfg["nombre_oficial"],
+                "zona": cfg["zona"],
+                "filas_crudas": filas_crudas,
+                "filas_fecha_invalida": filas_fecha_invalida,
+                "filas_duplicadas": filas_duplicadas,
+                "filas_limpias": len(df_est_total),
+                "filas_hora_24": hora_24_est,
+                "celdas_coma_decimal": coma_decimal_est,
+                "no2_vacios_crudo": int(no2_crudo_est.isna().sum()),
+                "no2_negativos": int((no2_crudo_est < 0).sum()),
+                "media_no2_crudo": no2_crudo_est.mean(),
+                "media_no2_limpio": df_est_total["no2"].mean(),
+            })
+
     df_aire_limpio = pd.concat(registros_estaciones, ignore_index=True)
+    df_auditoria = pd.DataFrame(filas_auditoria)
 
     # Guardar dataset limpio en data/clean/
     f_salida = DIR_DATA_CLEAN / "calidad_aire_limpio.csv"
     df_aire_limpio.to_csv(f_salida, index=False)
     print(f"[OK] Guardado calidad de aire limpia en data/clean/{f_salida.name} ({len(df_aire_limpio):,} filas)")
-
-    # Guardar inventario de auditoría de calidad
-    filas_inv = []
-    for est, g in df_aire_limpio.groupby("estacion"):
-        esperadas = int((g.ts_local.max() - g.ts_local.min()) / pd.Timedelta(hours=1)) + 1
-        filas_inv.append({
-            "estacion": est,
-            "zona": g.zona.iloc[0],
-            "filas": len(g),
-            "horas_esperadas": esperadas,
-            "horas_faltantes": max(esperadas - len(g), 0),
-            "desde": g.ts_local.min().strftime("%Y-%m-%d %H:%M"),
-            "hasta": g.ts_local.max().strftime("%Y-%m-%d %H:%M"),
-            "pct_nulos_no2": round(g["no2"].isna().mean() * 100, 2),
-            "pct_nulos_pm10": round(g["pm10"].isna().mean() * 100, 2),
-        })
-    inv_df = pd.DataFrame(filas_inv)
-    inv_df.to_csv(DIR_DATA_CLEAN / "inventario_calidad.csv", index=False)
 
     # Resumen de problemas
     print("\nRESUMEN DE AUDITORÍA DE CALIDAD:")
@@ -548,32 +575,33 @@ def limpiar_calidad_aire():
     print(f"  - Valores negativos convertidos a NaN por contaminante: {conteo_problemas['valores_negativos_por_contaminante']}")
     print(f"  - Valores ausentes (NaN) por contaminante: {conteo_problemas['valores_ausentes_por_contaminante']}")
 
-    return df_aire_limpio, conteo_problemas, inv_df
+    return df_aire_limpio, conteo_problemas, df_auditoria
 
 
 def limpiar_meteorologia():
     """
     Limpia y estandariza la meteorología horaria de Bilbao (Open-Meteo).
+    Open-Meteo entrega la hora en GMT y el viento en km/h. Aquí se pasa la hora a la de
+    Madrid (igual que la calidad del aire) y el viento a m/s (dividiendo entre 3,6).
     """
     f_crudo = DIR_DATA_RAW / "meteorologia" / "open_meteo_bilbao_crudo.csv"
     if not f_crudo.exists():
         descargar_meteorologia()
 
     df = pd.read_csv(f_crudo)
-    df["ts_local"] = pd.to_datetime(df["time"])
+    df["ts_gmt"] = pd.to_datetime(df["time"])
+    df["ts_local"] = df["ts_gmt"].dt.tz_localize("UTC").dt.tz_convert("Europe/Madrid").dt.tz_localize(None)
 
     df = df.rename(columns={
         "temperature_2m": "temp_c",
         "relative_humidity_2m": "humedad_pct",
         "precipitation": "precipitacion_mm",
-        "wind_speed_10m": "viento_ms",
+        "wind_speed_10m": "viento_kmh",
         "wind_direction_10m": "viento_dir_deg",
     })
 
-    # Convertir velocidad de viento de km/h a m/s si viniera en km/h
-    # Open-Meteo devuelve km/h por defecto si no se especifica m/s
-    if df["viento_ms"].max() > 40:
-        df["viento_ms"] = df["viento_ms"] / 3.6
+    # Viento: la API lo entrega en km/h (ver open_meteo_unidades.json). 1 m/s = 3,6 km/h.
+    df["viento_ms"] = df["viento_kmh"] / 3.6
 
     # Clasificar régimen de viento
     df["regimen_viento"] = pd.cut(
@@ -583,6 +611,7 @@ def limpiar_meteorologia():
     )
 
     df_limpio = df[[
+        "ts_gmt",
         "ts_local",
         "temp_c",
         "humedad_pct",
@@ -590,7 +619,7 @@ def limpiar_meteorologia():
         "viento_ms",
         "viento_dir_deg",
         "regimen_viento",
-    ]].drop_duplicates(subset=["ts_local"]).sort_values("ts_local")
+    ]].drop_duplicates(subset=["ts_gmt"]).sort_values("ts_gmt")
 
     f_salida = DIR_DATA_CLEAN / "meteorologia_limpia.csv"
     df_limpio.to_csv(f_salida, index=False)
@@ -598,9 +627,77 @@ def limpiar_meteorologia():
     return df_limpio
 
 
+def guardar_comprobacion_crudo_limpio(df_auditoria, df_meteo_limpio):
+    """
+    Guarda en data/clean/comprobacion_crudo_limpio.csv la comparación entre los datos crudos
+    y los limpios: una fila por estación de calidad del aire (NO2) y una para la meteorología
+    (viento). El notebook solo lee esta tabla, porque los datos crudos no se versionan.
+    """
+    filas = []
+    for f in df_auditoria.itertuples():
+        filas.append({
+            "fuente": f.estacion,
+            "zona": f.zona,
+            "filas_crudas": f.filas_crudas,
+            "filas_fecha_invalida": f.filas_fecha_invalida,
+            "filas_duplicadas": f.filas_duplicadas,
+            "filas_limpias": f.filas_limpias,
+            "filas_hora_24": f.filas_hora_24,
+            "celdas_coma_decimal": f.celdas_coma_decimal,
+            "variable": "no2",
+            "unidad_crudo": "µg/m3",
+            "unidad_limpio": "µg/m3",
+            "valores_negativos": f.no2_negativos,
+            "media_crudo": f.media_no2_crudo,
+            "media_limpio": f.media_no2_limpio,
+        })
+
+    f_meteo_crudo = DIR_DATA_RAW / "meteorologia" / "open_meteo_bilbao_crudo.csv"
+    meteo_crudo = pd.read_csv(f_meteo_crudo)
+    unidades = json.loads(f_meteo_crudo.with_name("open_meteo_unidades.json").read_text(encoding="utf-8"))
+    filas.append({
+        "fuente": "Meteorología (Open-Meteo)",
+        "zona": "",
+        "filas_crudas": len(meteo_crudo),
+        "filas_fecha_invalida": 0,
+        "filas_duplicadas": len(meteo_crudo) - len(df_meteo_limpio),
+        "filas_limpias": len(df_meteo_limpio),
+        "filas_hora_24": 0,
+        "celdas_coma_decimal": 0,
+        "variable": "viento",
+        "unidad_crudo": unidades["wind_speed_10m"],
+        "unidad_limpio": "m/s",
+        "valores_negativos": int((meteo_crudo["wind_speed_10m"] < 0).sum()),
+        "media_crudo": meteo_crudo["wind_speed_10m"].mean(),
+        "media_limpio": df_meteo_limpio["viento_ms"].mean(),
+    })
+
+    f_salida = DIR_DATA_CLEAN / "comprobacion_crudo_limpio.csv"
+    pd.DataFrame(filas).to_csv(f_salida, index=False)
+    print(f"[OK] Guardada la comprobación crudo frente a limpio en data/clean/{f_salida.name}")
+    return f_salida
+
+
+def guardar_demo_aire():
+    """
+    Guarda en ingesta/no2_demo_reducido.csv el NO2 horario de las 4 estaciones que reproduce
+    Node-RED en el bucket aire_demo. Sale del dato limpio (data/clean/calidad_aire_limpio.csv),
+    así que la demo muestra los mismos valores que el análisis. Se ordena por la hora GMT,
+    que es única (en hora de Madrid la 02:00 del cambio de hora de octubre se repite).
+    """
+    estaciones_demo = ["Mazarredo", "Mª Díaz de Haro", "Europa", "Arraiz"]
+    df = pd.read_csv(DIR_DATA_CLEAN / "calidad_aire_limpio.csv", usecols=["ts_gmt", "estacion", "zona", "no2"])
+    df = df[df["estacion"].isin(estaciones_demo)].dropna(subset=["no2"])
+    df = df.sort_values(["ts_gmt", "estacion"])
+    f_salida = DIR_RAIZ / "ingesta" / "no2_demo_reducido.csv"
+    df[["ts_gmt", "estacion", "zona", "no2"]].to_csv(f_salida, index=False)
+    print(f"[OK] Guardado el NO2 de la demo en ingesta/{f_salida.name} ({len(df):,} filas)")
+    return f_salida
+
+
 def limpiar_calendario():
     """
-    Lee y valida el calendario oficial ZBE con festivos.
+    Lee y valida el calendario de la ZBE con festivos.
     """
     f_crudo = DIR_DATA_RAW / "calendario" / "calendario_zbe_festivos.csv"
     if not f_crudo.exists():
@@ -613,13 +710,17 @@ def limpiar_calendario():
     return df
 
 
-def integrar_datasets():
+def integrar_datasets(fecha_fin=None):
     """
     Realiza el JOIN riguroso de:
       - Mediciones horarias por estación (calidad del aire)
       - Metadatos de la estación (zona, coordenadas, nombre)
       - Meteorología horaria (temperatura, viento, lluvia, humedad)
       - Calendario ZBE (fases, festivos, horario_zbe)
+
+    El cruce con la meteorología se hace por la hora GMT (ts_gmt), que es única en todo el año.
+    La hora local (ts_local) se usa para el calendario y el horario de la ZBE.
+    Si se indica fecha_fin, solo se conservan las horas locales hasta ese día incluido.
 
     Crea las columnas:
       - periodo: 'previo', 'fase1', 'fase2'
@@ -641,9 +742,14 @@ def integrar_datasets():
     if not f_cal.exists():
         limpiar_calendario()
 
-    df_aire = pd.read_csv(f_aire, parse_dates=["ts_local"])
-    df_meteo = pd.read_csv(f_meteo, parse_dates=["ts_local"])
+    df_aire = pd.read_csv(f_aire, parse_dates=["ts_gmt", "ts_local"])
+    df_meteo = pd.read_csv(f_meteo, parse_dates=["ts_gmt", "ts_local"])
     df_cal = pd.read_csv(f_cal)
+
+    if fecha_fin is not None:
+        limite = pd.Timestamp(fecha_fin) + pd.Timedelta(days=1)
+        df_aire = df_aire[df_aire["ts_local"] < limite]
+        print(f"Periodo de estudio: hasta el {pd.Timestamp(fecha_fin):%d/%m/%Y} incluido (hora local)")
 
     filas_aire_antes = len(df_aire)
     print(f"Filas de calidad del aire antes del JOIN: {filas_aire_antes:,}")
@@ -657,6 +763,7 @@ def integrar_datasets():
 
     # 1. Merge con calendario diario
     df_join = pd.merge(df_aire, df_cal[["fecha", "es_laborable", "es_festivo", "fase_zbe"]], on="fecha", how="left")
+    print(f"Filas tras el JOIN con el calendario: {len(df_join):,}")
 
     # Columna periodo requerida por el enunciado: previo / fase1 / fase2
     df_join["periodo"] = df_join["fase_zbe"]
@@ -665,16 +772,16 @@ def integrar_datasets():
     # (7 <= hora <= 19 cubre de 07:00 a 19:59, es decir, el periodo de 7:00 a 20:00)
     df_join["en_horario_zbe"] = df_join["es_laborable"] & (df_join["hora"] >= 7) & (df_join["hora"] < 20)
 
-    # 2. Merge con meteorología horaria por ts_local
+    # 2. Merge con meteorología horaria por la hora GMT
     filas_antes_meteo = len(df_join)
-    df_completo = pd.merge(df_join, df_meteo, on="ts_local", how="inner")
+    df_completo = pd.merge(df_join, df_meteo.drop(columns=["ts_local"]), on="ts_gmt", how="inner")
     filas_despues_meteo = len(df_completo)
 
     print(f"Filas tras el merge meteorológico: {filas_despues_meteo:,} (retención: {filas_despues_meteo / filas_antes_meteo * 100:.2f}%)")
 
     # Verificar ausencia de duplicados
-    num_dup = df_completo.duplicated(subset=["estacion", "ts_local"]).sum()
-    print(f"Duplicados en (estación, timestamp): {num_dup}")
+    num_dup = df_completo.duplicated(subset=["estacion", "ts_gmt"]).sum()
+    print(f"Duplicados en (estación, hora GMT): {num_dup}")
 
     # Guardar dataset integrado en data/clean/
     f_salida = DIR_DATA_CLEAN / "dataset_integrado_zbe.csv"
@@ -687,8 +794,10 @@ def integrar_datasets():
 def ejecutar_pipeline_completo():
     """Ejecuta de principio a fin la adquisición, limpieza e integración."""
     descargar_todos_los_datos()
-    limpiar_calidad_aire()
-    limpiar_meteorologia()
+    _, _, df_auditoria = limpiar_calidad_aire()
+    df_meteo = limpiar_meteorologia()
+    guardar_comprobacion_crudo_limpio(df_auditoria, df_meteo)
+    guardar_demo_aire()
     limpiar_calendario()
     df_int = integrar_datasets()
     print("\n" + "=" * 70)

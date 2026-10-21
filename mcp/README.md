@@ -9,7 +9,7 @@ Servidor Model Context Protocol con acceso de **solo lectura** a InfluxDB 2.9.1
 - Autenticación: token dedicado `INFLUXDB_MCP_TOKEN` (lectura en los 4 buckets, sin escritura),
   autogenerado por `influxdb_setup` (Token 4) junto al resto en `/tokens/tokens.env`.
   Nunca usa los tokens admin ni `read-all`. Override opcional vía `.env`.
-- Clientes: OpenCode (`opencode.json`) + Antigravity (`.agents/mcp_config.json`).
+- Clientes: OpenCode y Antigravity. Su configuración es local de cada persona y no se versiona (apartado 4).
 
 ## 1. Requisitos previos
 
@@ -104,6 +104,12 @@ influx-mcp:
     INFLUXDB_TOKEN: ${INFLUXDB_MCP_TOKEN:-} # vacio -> entrypoint carga desde /tokens/tokens.env
   volumes:
     - influxdb_tokens:/tokens:ro
+  healthcheck:
+    test: ["CMD-SHELL", "python -c \"import urllib.request,json; r=urllib.request.Request('http://127.0.0.1:5001/mcp/', data=json.dumps({'jsonrpc':'2.0','method':'ping','id':1}).encode(), headers={'Content-Type':'application/json','Accept':'application/json, text/event-stream'}); urllib.request.urlopen(r)\""]
+    interval: 15s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
 ```
 
 > `mcp[cli]==1.9.0` está fijado a propósito: sin fijar, `mcp 2.x` elimina
@@ -122,7 +128,9 @@ docker logs haizelab_influx_mcp --tail 10
 
 Endpoint común: `http://127.0.0.1:5001/mcp/`
 
-OpenCode (`opencode.json`):
+Los ficheros de configuración de los clientes no están en el repositorio (`opencode.json` y `.agents/` están en `.gitignore`). Cada persona los crea en su copia local con este contenido.
+
+OpenCode (`opencode.json` en la raíz del proyecto):
 
 ```json
 {

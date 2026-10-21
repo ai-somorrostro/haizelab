@@ -27,13 +27,13 @@ Variables de entorno necesarias (en .env):
 Optimizaciones:
   - Carga en batches de 5000 puntos para no saturar la API.
   - Si el bucket ya tiene datos, se puede forzar con --force (no idempotente).
-  - Usa pandas chunked read para ficheros grandes (NO2 ~1 M filas).
+  - Usa pandas chunked read para ficheros grandes (NO2 ~340.000 filas).
+  - El instante de cada punto es la hora GMT (columna ts_gmt), que InfluxDB guarda en UTC.
 """
 
 import argparse
 import os
 import sys
-import zipfile
 from pathlib import Path
 
 import pandas as pd
@@ -41,12 +41,11 @@ import requests
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 DIR_BASE = Path(__file__).resolve().parent.parent
-DIR_PROCESADOS = DIR_BASE / "datos" / "procesados"
 DIR_DATA_CLEAN = DIR_BASE / "data" / "clean"
 
-ARCHIVO_NO2_ZIP  = DIR_PROCESADOS / "calidad_aire" / "no2_horario_limpio.zip"
-ARCHIVO_NO2_CSV  = DIR_DATA_CLEAN / "calidad_aire_limpio.csv"
-ARCHIVO_METEO    = DIR_PROCESADOS / "meteorologia" / "meteo_bilbao_horario.csv"
+# Salidas de ingesta/descargar_y_limpiar.py (el mismo pipeline que usa el notebook).
+# calidad_aire_limpio.csv no está versionado: hay que ejecutar antes ese script.
+ARCHIVO_NO2_CSV = DIR_DATA_CLEAN / "calidad_aire_limpio.csv"
 ARCHIVO_METEO_CLEAN = DIR_DATA_CLEAN / "meteorologia_limpia.csv"
 
 BATCH_SIZE = 5_000   # puntos por petición POST a InfluxDB
@@ -79,8 +78,9 @@ def cargar_env() -> dict:
 
 
 def ts_a_nanosegundos(serie: pd.Series) -> pd.Series:
-    """Convierte una serie de timestamps a nanosegundos Unix (entero)."""
-    return pd.to_datetime(serie, utc=True).astype("int64")
+    """Convierte una serie de timestamps en hora GMT a nanosegundos Unix (entero)."""
+    # pandas 3 lee las fechas en microsegundos: sin as_unit("ns") InfluxDB las colocaría en 1970.
+    return pd.to_datetime(serie, utc=True).dt.as_unit("ns").astype("int64")
 
 
 def escribir_batch(cfg: dict, bucket: str, lineas: list[str], dry_run: bool) -> None:
@@ -131,7 +131,7 @@ def generar_lp_no2(df_chunk: pd.DataFrame):
       fields:      no2=<float>
       timestamp:   nanosegundos UTC
     """
-    ts_ns = ts_a_nanosegundos(df_chunk["ts"])
+    ts_ns = ts_a_nanosegundos(df_chunk["ts_gmt"])
     for i, fila in df_chunk.iterrows():
         no2 = fila["no2"]
         if pd.isna(no2):
@@ -146,41 +146,21 @@ def generar_lp_no2(df_chunk: pd.DataFrame):
 
 
 def cargar_no2(cfg: dict, dry_run: bool) -> None:
-    """Lee el fichero de NO2 (ZIP de procesados o CSV limpio) y sube al bucket 'aire'."""
-    if ARCHIVO_NO2_ZIP.exists():
-        fichero_fuente = ARCHIVO_NO2_ZIP
-        es_zip = True
-    elif ARCHIVO_NO2_CSV.exists():
-        fichero_fuente = ARCHIVO_NO2_CSV
-        es_zip = False
-    else:
-        print(f"ERROR: No se encontro ni {ARCHIVO_NO2_ZIP} ni {ARCHIVO_NO2_CSV}", file=sys.stderr)
+    """Lee data/clean/calidad_aire_limpio.csv y sube el NO2 al bucket 'aire'."""
+    if not ARCHIVO_NO2_CSV.exists():
+        print(f"ERROR: No se encontro {ARCHIVO_NO2_CSV}. Ejecuta antes: python ingesta/descargar_y_limpiar.py", file=sys.stderr)
         sys.exit(1)
 
-    print(f"\n[NO2] Abriendo fuente: {fichero_fuente.name}")
+    print(f"\n[NO2] Abriendo fuente: {ARCHIVO_NO2_CSV.name}")
     chunk_size = 50_000
     total_global = 0
 
-    if es_zip:
-        with zipfile.ZipFile(fichero_fuente) as z:
-            nombre_interno = z.namelist()[0]
-            print(f"  Fichero interno: {nombre_interno}")
-            with z.open(nombre_interno) as f:
-                reader = pd.read_csv(f, chunksize=chunk_size)
-                for n_chunk, chunk in enumerate(reader, 1):
-                    filas_antes = len(chunk)
-                    chunk = chunk.dropna(subset=["no2"])
-                    print(f"  Chunk {n_chunk}: {filas_antes:,} filas -> {len(chunk):,} validas")
-                    total_global += enviar_dataframe(cfg, "aire", generar_lp_no2(chunk), dry_run)
-    else:
-        reader = pd.read_csv(fichero_fuente, chunksize=chunk_size)
-        for n_chunk, chunk in enumerate(reader, 1):
-            if "ts_local" in chunk.columns and "ts" not in chunk.columns:
-                chunk["ts"] = chunk["ts_local"]
-            filas_antes = len(chunk)
-            chunk = chunk.dropna(subset=["no2"])
-            print(f"  Chunk {n_chunk}: {filas_antes:,} filas -> {len(chunk):,} validas")
-            total_global += enviar_dataframe(cfg, "aire", generar_lp_no2(chunk), dry_run)
+    reader = pd.read_csv(ARCHIVO_NO2_CSV, chunksize=chunk_size)
+    for n_chunk, chunk in enumerate(reader, 1):
+        filas_antes = len(chunk)
+        chunk = chunk.dropna(subset=["no2"])
+        print(f"  Chunk {n_chunk}: {filas_antes:,} filas -> {len(chunk):,} validas")
+        total_global += enviar_dataframe(cfg, "aire", generar_lp_no2(chunk), dry_run)
 
     print(f"[NO2] Total puntos cargados en bucket 'aire': {total_global:,}")
 
@@ -200,12 +180,12 @@ def generar_lp_meteo(df: pd.DataFrame):
     Nota: el CSV tiene viento en m/s; se convierte a km/h (× 3.6) para
     mantener consistencia con los datos en tiempo real de Node-RED.
     """
-    ts_ns = ts_a_nanosegundos(df["ts"])
+    ts_ns = ts_a_nanosegundos(df["ts_gmt"])
     for i, fila in df.iterrows():
         temp    = fila.get("temp_c")
         viento  = fila.get("viento_ms")
-        dir_v   = fila.get("viento_dir")
-        humedad = fila.get("humedad")
+        dir_v   = fila.get("viento_dir_deg")
+        humedad = fila.get("humedad_pct")
 
         if pd.isna(temp) and pd.isna(viento):
             continue
@@ -231,19 +211,13 @@ def generar_lp_meteo(df: pd.DataFrame):
 
 
 def cargar_meteo(cfg: dict, dry_run: bool) -> None:
-    """Lee el CSV de meteorologia (de procesados o clean) y sube al bucket 'meteo'."""
-    if ARCHIVO_METEO.exists():
-        fichero_fuente = ARCHIVO_METEO
-    elif ARCHIVO_METEO_CLEAN.exists():
-        fichero_fuente = ARCHIVO_METEO_CLEAN
-    else:
-        print(f"ERROR: No se encontro ni {ARCHIVO_METEO} ni {ARCHIVO_METEO_CLEAN}", file=sys.stderr)
+    """Lee data/clean/meteorologia_limpia.csv y sube la meteorología al bucket 'meteo'."""
+    if not ARCHIVO_METEO_CLEAN.exists():
+        print(f"ERROR: No se encontro {ARCHIVO_METEO_CLEAN}. Ejecuta antes: python ingesta/descargar_y_limpiar.py", file=sys.stderr)
         sys.exit(1)
 
-    print(f"\n[METEO] Leyendo: {fichero_fuente.name}")
-    df = pd.read_csv(fichero_fuente)
-    if "ts_local" in df.columns and "ts" not in df.columns:
-        df["ts"] = df["ts_local"]
+    print(f"\n[METEO] Leyendo: {ARCHIVO_METEO_CLEAN.name}")
+    df = pd.read_csv(ARCHIVO_METEO_CLEAN)
     print(f"  {len(df):,} filas | columnas: {list(df.columns)}")
 
     total = enviar_dataframe(cfg, "meteo", generar_lp_meteo(df), dry_run)

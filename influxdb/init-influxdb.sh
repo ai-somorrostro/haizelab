@@ -99,7 +99,7 @@ ID_AIRE=$(get_id "aire")
 echo "[setup] IDs: aire=$ID_AIRE meteo=$ID_METEO trafico=$ID_TRAFICO aire_demo=$ID_DEMO"
 
 # ── Tokens con minimo privilegio ──────────────────────────────────────────────
-# Criterio: un token por rol, nunca uno solo para todo (puntua como deficiente).
+# Criterio: un token por rol con el permiso minimo; nunca uno solo para todo.
 #
 # Token 1: nodered-write  → escritura meteo + trafico + aire_demo (NO aire)
 # Token 2: batch-write    → escritura SOLO en aire y meteo (carga historica Python)

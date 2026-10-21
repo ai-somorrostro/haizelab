@@ -1,5 +1,5 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
-FROM python:3.11-slim AS base
+FROM python:3.11.17-slim AS base
 
 LABEL maintainer="haizelab"
 LABEL description="Analisis Multivariable ZBE Bilbao"
@@ -17,14 +17,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar scripts, ingesta, notebooks y documentacion
-COPY scripts/ ./scripts/
+# Copiar ingesta, notebooks y documentacion
 COPY ingesta/ ./ingesta/
 COPY notebooks/ ./notebooks/
 COPY docs/ ./docs/
 
-# Las carpetas de datos y salida se montan como volumenes en ejecucion
-VOLUME ["/app/datos", "/app/salida", "/app/data", "/app/docs/img"]
+# Las carpetas de datos e imagenes se montan como volumenes en ejecucion
+VOLUME ["/app/data", "/app/docs/img"]
 
-# Por defecto ejecuta el paso de extraccion
-CMD ["python", "scripts/01_extraer_calidad_aire.py"]
+# Por defecto ejecuta la descarga, limpieza e integracion de datos
+CMD ["python", "ingesta/descargar_y_limpiar.py"]

@@ -24,7 +24,7 @@
     {
       "id": 1,
       "title": "Concentración Actual de NO₂ por Estación",
-      "description": "Umbrales según directivas de calidad del aire: Verde (< 25 µg/m³), Amarillo (25-40 µg/m³ límite OMS/UE), Rojo (> 40 µg/m³ superación).",
+      "description": "Colores de referencia, no superaciones legales: verde < 25 µg/m³ (guía diaria de la OMS), amarillo 25-40, rojo > 40 (valor del límite anual de la UE). Un valor horario solo supera el límite legal si pasa de 200 µg/m³.",
       "type": "gauge",
       "gridPos": {
         "h": 8,
@@ -497,7 +497,7 @@
     {
       "id": 11,
       "title": "Resumen Estadístico NO₂",
-      "description": "Media, percentil 90 y pico máximo del periodo analizado frente a los límites normativos (25 OMS / 40 UE).",
+      "description": "Media, percentil 90 y pico máximo del periodo. Referencias: 25 µg/m³ (guía diaria de la OMS), 40 µg/m³ (límite de la media anual de la UE) y 200 µg/m³ (límite horario de la UE).",
       "type": "bargauge",
       "gridPos": {
         "h": 8,

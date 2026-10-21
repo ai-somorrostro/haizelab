@@ -1,7 +1,7 @@
 # Organigrama de Datos — HaizeLab InfluxDB 2
 
 > Esquema completo: **Organización → Buckets → Measurements → Fields + Tags**  
-> Organización: `haizenlab`
+> Organización: `haizenlab`. Comprobado contra lo que escriben `nodered/flows.json` e `ingesta/carga_historica.py`, consultando InfluxDB después de un arranque limpio y de la carga histórica.
 
 ---
 
@@ -10,32 +10,34 @@
 ```
 haizenlab (org)
 │
-├── aire              ← Histórico NO₂ oficial (retencion: infinita)
+├── aire              ← Histórico NO₂ oficial (retención: infinita)
 │   └── contaminantes
 │       ├── tags:   estacion, zona
 │       └── fields: no2 (float, µg/m³)
 │
-├── aire_demo         ← Reproducción acelerada histórico NO₂ (retencion: 7 días)
+├── aire_demo         ← Reproducción acelerada del histórico de NO₂ (retención: 7 días)
 │   └── contaminantes
 │       ├── tags:   estacion, zona
-│       └── fields: no2 (float), fecha_original (string)
+│       └── fields: no2 (float, µg/m³)
 │
-├── meteo             ← Meteorología en tiempo real + histórico (retencion: infinita)
+├── meteo             ← Meteorología en tiempo real + histórico (retención: infinita)
 │   └── clima
 │       ├── tags:   ubicacion, fuente
 │       └── fields: temp_c (float, °C)
 │                   viento_kmh (float, km/h)
 │                   viento_dir (float, grados)
-│                   lluvia_mm (float, mm)
 │                   humedad (float, %)
+│                   lluvia_mm (float, mm; solo tiempo real)
 │
-└── trafico           ← Tráfico urbano Bilbao Open Data (retencion: 30 días)
+└── trafico           ← Tráfico urbano Bilbao Open Data (retención: 30 días)
     └── estado
         ├── tags:   codigo_seccion
-        └── fields: intensidad (int, veh/h)
-                    ocupacion  (int, %)
-                    velocidad  (int, km/h)
+        └── fields: intensidad (float, veh/h)
+                    ocupacion  (float, %)
+                    velocidad  (float, km/h)
 ```
+
+Todos los valores numéricos se guardan como `float`: Node-RED y la carga histórica escriben números sin el sufijo de entero de InfluxDB. Los tags son siempre texto.
 
 ---
 
@@ -46,15 +48,18 @@ haizenlab (org)
 | Elemento       | Valor                                  |
 |----------------|----------------------------------------|
 | Retención      | Infinita (datos históricos ZBE)        |
-| Fuente         | `ingesta/carga_historica.py` (batch)   |
-| Token acceso   | `batch-write` (escritura solo `aire`)  |
+| Fuente         | `ingesta/carga_historica.py` (por lotes), desde `data/clean/calidad_aire_limpio.csv` |
+| Token acceso   | `batch-write` (escritura en `aire` y `meteo`) |
 | Measurement    | `contaminantes`                        |
+| Instante       | Hora GMT de cada medición (columna `ts_gmt`) |
 
 | Campo / Tag     | Tipo    | Descripción                              |
 |-----------------|---------|------------------------------------------|
-| `estacion` (tag)| string  | Nombre de la estación (Mazarredo, Europa…) |
+| `estacion` (tag)| string  | Nombre de la estación (Mazarredo, Mª Díaz de Haro, Europa…) |
 | `zona` (tag)    | string  | `dentro` / `fuera` / `fondo`             |
 | `no2`           | float   | Concentración NO₂ en µg/m³               |
+
+Las horas sin dato de NO₂ (NaN) no se escriben.
 
 **Ejemplo Flux:**
 ```flux
@@ -73,21 +78,19 @@ from(bucket: "aire")
 | Elemento       | Valor                                        |
 |----------------|----------------------------------------------|
 | Retención      | 7 días                                       |
-| Fuente         | Node-RED `tab_demo` (CSV → InfluxDB, cada 5 s) |
-| Token acceso   | `nodered-write` (escritura `aire_demo`)      |
+| Fuente         | Node-RED `tab_demo`: lee `ingesta/no2_demo_reducido.csv` y escribe un valor horario por estación cada 5 s |
+| Origen del CSV | `guardar_demo_aire()` en `ingesta/descargar_y_limpiar.py`, a partir de `data/clean/calidad_aire_limpio.csv` |
+| Token acceso   | `nodered-write` (escritura en `meteo`, `trafico` y `aire_demo`) |
 | Measurement    | `contaminantes`                              |
+| Instante       | Hora en que Node-RED escribe el punto (no la del dato histórico) |
 
 | Campo / Tag          | Tipo    | Descripción                          |
 |----------------------|---------|--------------------------------------|
-| `estacion` (tag)     | string  | Nombre ASCII de la estación          |
+| `estacion` (tag)     | string  | Mazarredo, Mª Díaz de Haro, Europa o Arraiz |
 | `zona` (tag)         | string  | `dentro` / `fuera` / `fondo`         |
 | `no2`                | float   | Concentración NO₂ en µg/m³           |
-| `fecha_original`     | string  | Timestamp del dato histórico (ISO)   |
 
-**Umbrales de alerta configurados:**
-- > 25 µg/m³ → Aviso (OMS)
-- > 40 µg/m³ → Superación límite EU
-- > 200 µg/m³ → Pico horario crítico
+**Alertas sobre este bucket:** valor horario > 200 µg/m³ y media de las últimas 24 horas > 25 µg/m³. Detalle en [alertas.md](alertas.md).
 
 ---
 
@@ -95,23 +98,23 @@ from(bucket: "aire")
 
 | Elemento       | Valor                                          |
 |----------------|------------------------------------------------|
-| Retención      | Infinita (preserva histórico 2022-2026 y lecturas RT) |
-| Fuente RT      | Node-RED `tab_meteo` (Open-Meteo, cada 15 min) |
-| Fuente hist.   | `ingesta/carga_historica.py --bucket meteo`    |
-| Token acceso   | `nodered-write` (RT) / `batch-write` (histórico)|
+| Retención      | Infinita (preserva histórico 2022-2026 y lecturas en tiempo real) |
+| Fuente tiempo real | Node-RED `tab_meteo` (Open-Meteo, cada 15 min) |
+| Fuente histórico | `ingesta/carga_historica.py`, desde `data/clean/meteorologia_limpia.csv` |
+| Token acceso   | `nodered-write` (tiempo real) / `batch-write` (histórico) |
 | Measurement    | `clima`                                        |
 
-| Campo / Tag         | Tipo   | Descripción                                          |
-|---------------------|--------|------------------------------------------------------|
-| `ubicacion` (tag)   | string | Siempre `bilbao`                                     |
-| `fuente` (tag)      | string | `open-meteo` (RT) o `historico-open-meteo` (batch)  |
-| `temp_c`            | float  | Temperatura en °C                                    |
-| `viento_kmh`        | float  | Velocidad del viento en km/h                         |
-| `viento_dir`        | float  | Dirección del viento en grados (0-360)               |
-| `lluvia_mm`         | float  | Precipitación en mm                                  |
-| `humedad`           | float  | Humedad relativa en %                                |
+| Campo / Tag         | Tipo   | Tiempo real | Histórico | Descripción |
+|---------------------|--------|:-:|:-:|-------------|
+| `ubicacion` (tag)   | string | Sí | Sí | Siempre `bilbao` |
+| `fuente` (tag)      | string | `open-meteo` | `historico-open-meteo` | Quién escribió el punto |
+| `temp_c`            | float  | Sí | Sí | Temperatura en °C |
+| `viento_kmh`        | float  | Sí | Sí | Velocidad del viento en km/h |
+| `viento_dir`        | float  | Sí | Sí | Dirección del viento en grados (0-360) |
+| `humedad`           | float  | Sí | Sí | Humedad relativa en % |
+| `lluvia_mm`         | float  | Sí | No | Precipitación en mm |
 
-> **Nota**: el CSV histórico tiene `viento_ms` (m/s). El script lo convierte × 3.6 al escribir en InfluxDB para mantener coherencia con los datos de Node-RED.
+> **Nota**: el CSV histórico tiene el viento en m/s (`viento_ms`), que es la unidad del análisis. La carga histórica lo multiplica por 3,6 al escribir en InfluxDB para que coincida con los km/h de Node-RED.
 
 ---
 
@@ -121,41 +124,41 @@ from(bucket: "aire")
 |----------------|----------------------------------------------------|
 | Retención      | 30 días (2.592.000 s)                              |
 | Fuente         | Node-RED `tab_trafico` (Bilbao Open Data, cada 5 min) |
-| Token acceso   | `nodered-write` (escritura `trafico`)              |
+| Token acceso   | `nodered-write` (escritura en `meteo`, `trafico` y `aire_demo`) |
 | Measurement    | `estado`                                           |
 
-| Campo / Tag              | Tipo | Descripción                                      |
-|--------------------------|------|--------------------------------------------------|
-| `codigo_seccion` (tag)   | int  | ID del tramo de Bilbao (1–81 aprox.)             |
-| `intensidad`             | int  | Vehículos por hora                               |
-| `ocupacion`              | int  | % de ocupación del tramo                         |
-| `velocidad`              | int  | Velocidad media en km/h                          |
+| Campo / Tag              | Tipo   | Descripción                                      |
+|--------------------------|--------|--------------------------------------------------|
+| `codigo_seccion` (tag)   | string | Código del tramo de Bilbao                       |
+| `intensidad`             | float  | Vehículos por hora                               |
+| `ocupacion`              | float  | % de ocupación del tramo                         |
+| `velocidad`              | float  | Velocidad media en km/h (solo si es mayor que 0) |
 
-**Umbral de alerta:** ocupación media > 35% durante 10 min → ⚠️ Congestión alta
+Si un tramo no trae un valor, ese field no se escribe en ese punto.
+
+**Alerta:** ocupación media > 35 % durante 10 min. Detalle en [alertas.md](alertas.md).
 
 ---
 
 ## Tokens de acceso — Resumen
 
-| Token             | Alcance escritura               | Alcance lectura | Usado por                    |
+Los crea `influxdb/init-influxdb.sh` en el primer arranque y los guarda en el volumen `influxdb_tokens`. Ninguno está en el repositorio.
+
+| Token             | Escritura                       | Lectura         | Usado por                    |
 |-------------------|---------------------------------|-----------------|------------------------------|
-| `admin`           | Todos (creación inicial)        | Todos           | Solo setup, nunca en runtime |
-| `nodered-write`   | `meteo`, `trafico`, `aire_demo` | —               | Node-RED (runtime)           |
+| Administración (`INFLUXDB_ADMIN_TOKEN`) | Todo | Todo | `influxdb_setup` para crear buckets y tokens. `carga_historica.py` lo usa solo si no encuentra `batch-write` |
+| `nodered-write`   | `meteo`, `trafico`, `aire_demo` | —               | Node-RED                     |
 | `batch-write`     | `aire`, `meteo`                 | —               | `carga_historica.py`         |
 | `read-all`        | —                               | Los 4 buckets   | Grafana                      |
-| `mcp-read-only`   | —                               | Los 4 buckets   | Servidor MCP (:5001)         |
+| `mcp-read-only`   | —                               | Los 4 buckets   | Servidor MCP (:5001) y chatbot |
 
-> Un único token para todo puntúa como **deficiente** en la evaluación del reto.
+Cada servicio tiene su propio token con el permiso mínimo: si uno se filtra, no da acceso a lo demás.
 
 ---
 
 ## Control de acceso Grafana
 
-| Grupo              | Nº usuarios | Rol Grafana | Dashboards visibles | Home dashboard     |
-|--------------------|-------------|-------------|---------------------|--------------------|
-| Cúpula directiva   | 4 (dir/ceo/coo/cfo) | Viewer | Todos (Dirección y Análisis) | HaizeLab Overview  |
-| Equipo Análisis    | 6           | Viewer      | Asignados (Análisis)| HaizeLab Análisis  |
-| Equipo IT          | 3           | Admin/Editor| Todos               | HaizeLab Overview  |
+Usuarios, equipos, roles, dashboards visibles y pasos para comprobarlo: [permisos-grafana.md](permisos-grafana.md).
 
 ---
 
@@ -172,7 +175,7 @@ from(bucket: "aire")
 
 ---
 
-## Evidencias Visuales y Capturas de Pantalla (Rúbrica BDA)
+## Evidencias visuales y capturas de pantalla
 
 ### 1. InfluxDB 2 — Data Explorer y Estructura de Buckets
 Visualización de los cuatro buckets aprovisionados (`aire`, `meteo`, `trafico`, `aire_demo`) y consulta Flux de verificación de series temporales:
