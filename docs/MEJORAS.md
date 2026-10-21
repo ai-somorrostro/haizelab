@@ -649,3 +649,13 @@ Comprobado después de la limpieza: el notebook se ejecuta entero sin errores y 
 |---|---|---|---|---|
 | Issue #26 | «El punto sobre valores negativos menciona que se convierten a NaN, pero no explica qué es NaN ni por qué se elige esa opción» | La viñeta «Negativos» define NaN (*Not a Number*: celda sin dato), pone el ejemplo del notebook (el sensor de Europa que no midió a una hora), dice que las medias no cuentan esas celdas y desarrolla los dos motivos: un 0 diría que el aire estaba limpio y bajaría la media; borrar la fila perdería el SO₂ y el viento de esa hora. Se mantienen los 71 valores (0,021 %). | Informe SBD, sección 3 (`docs/generar_informe.py`, `docs/informe-cliente-sbd.md`, `.docx` y `.pdf`) | Quien no conoce pandas no sabía qué es NaN; el notebook ya lo explicaba |
 | Issue #26 | — | Para no pasar de 4 páginas: se quita «Mirar solo dentro mezclaría la ZBE con lo que habría bajado igualmente; restar lo que bajó fuera lo separa» (lo dice ya la viñeta del grupo de control), y se acortan dos frases sin cambiar su sentido («mismo tiempo atmosférico y tipo de coches»; «la parte propia de dentro, 1,63, se asocia a la ZBE»). | Informe SBD, secciones 4 y 5 (P1) | Al añadir la explicación, la figura 1 pasaba a la página siguiente y el informe llegaba a 5 páginas de cuerpo |
+
+---
+
+## README breve (rama `fix/readme-breve`)
+
+`resultados/resultados.json` no cambia.
+
+| ID | Comentario | Qué se ha cambiado | Dónde | Por qué |
+|---|---|---|---|---|
+| — | La profesora dice que el README es «titánico» | El README pasa de 122 a unas 60 líneas: qué es (3 líneas); resultado principal en 4 viñetas (P1 con su cifra en horario ZBE, P5, comprobación con SO₂ y modelo de IA) con enlaces al informe y al MIA; arquitectura con la imagen y una tabla de servicios y puertos; arranque solo con comandos y tabla de direcciones; estructura con una línea por carpeta; autores. La tabla de usuarios de Grafana se sustituye por un enlace a `docs/permisos-grafana.md`. | `README.md` | El detalle ya está en el informe, el MIA, `permisos-grafana.md`, `alertas.md` y el organigrama de datos; el README solo orienta. Las cifras siguen saliendo de `resultados.json` (`verificar_cifras.py`: 7 de 7) |
