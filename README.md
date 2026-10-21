@@ -111,20 +111,33 @@ cd haizelab
 cp .env.example .env
 ```
 
-**2. Editar `.env`** y sustituir los cinco valores de ejemplo. El fichero está en `.gitignore` y no debe subirse.
+**2. Configurar `.env`**. Copia la plantilla y edita las variables. El fichero `.env` está en `.gitignore` y **nunca** debe subirse al repositorio:
 
-| Variable | Para qué sirve |
-|---|---|
-| `INFLUXDB_ADMIN_PASSWORD` | Contraseña del administrador de InfluxDB y de Grafana |
-| `INFLUXDB_ADMIN_TOKEN` | Token de administración de InfluxDB, usado solo por `influxdb_setup` |
-| `NODE_RED_CREDENTIAL_SECRET` | Clave con la que Node-RED cifra sus credenciales |
-| `NODE_RED_ADMIN_PASSWORD` | Contraseña del editor de Node-RED |
-| `GRAFANA_DEFAULT_PASSWORD` | Base de las contraseñas de los usuarios de Grafana |
-| `ALERT_EMAIL_TO` *(Opcional)* | Correo destinatario que recibirá las alertas (por defecto `alfred.ciuca-andrei06@somo.eus`) |
-| `GF_SMTP_*` *(Opcional)* | 	Configuración del servidor SMTP emisor para que Grafana pueda enviar los correos. GF_SMTP_PASSWORD no es la contraseña normal del correo, sino una contraseña de aplicación. Con Gmail, activa primero la verificación en dos pasos en tu cuenta de Google y después crea la contraseña en myaccount.google.com/apppasswords. Cópiala sin espacios |
-| `GEMINI_API_KEY` *(Opcional)* | Clave gratuita de Google Gemini para activar el razonamiento con IA del chatbot |
+```bash
+cp .env.example .env
+```
 
-Para generar un valor aleatorio:
+En `.env.example`, las credenciales vienen con valores de plantilla (`cambia_esta_...`). Debes sustituir las **cinco variables obligatorias** por contraseñas seguras (o por credenciales simples para pruebas locales / aula):
+
+##### Variables obligatorias (5)
+
+| Variable | Para qué sirve | Requisitos / Formato |
+|---|---|---|
+| `INFLUXDB_ADMIN_PASSWORD` | Contraseña del administrador de InfluxDB (y de Grafana si no se define `GF_SECURITY_ADMIN_PASSWORD`) | Mínimo 8 caracteres (requisito de InfluxDB) |
+| `INFLUXDB_ADMIN_TOKEN` | Token de administración de InfluxDB (usado solo internamente por `influxdb_setup`) | Cadena alfanumérica segura (ej. `openssl rand -hex 32`) |
+| `NODE_RED_CREDENTIAL_SECRET` | Clave con la que Node-RED cifra sus credenciales en `flows.json` | Cadena alfanumérica segura (ej. `openssl rand -hex 32`) |
+| `NODE_RED_ADMIN_PASSWORD` | Contraseña del editor web de Node-RED (usuario `admin`) | Contraseña del administrador de Node-RED |
+| `GRAFANA_DEFAULT_PASSWORD` | Contraseña base para los usuarios aprovisionados de Grafana | Cada rol recibe esta base + sufijo (ej. `${GRAFANA_DEFAULT_PASSWORD}it1`) |
+
+##### Variables opcionales (Alertas por correo e IA en la nube)
+
+| Variable | Para qué sirve | Valor por defecto / Ejemplo |
+|---|---|---|
+| `ALERT_EMAIL_TO` | Correo destinatario que recibirá las notificaciones de alertas de Grafana | `alfred.ciuca-andrei06@somo.eus` |
+| `GF_SMTP_*` | Configuración del servidor SMTP emisor para que Grafana envíe correos | Ver detalle en `.env.example` (requiere contraseña de aplicación) |
+| `GEMINI_API_KEY` | Clave gratuita de Google Gemini para activar el razonamiento con IA del chatbot | Opcional (si no se define, opera en modo local con `knowledge_base.json`) |
+
+Para generar un valor aleatorio seguro:
 
 ```bash
 openssl rand -hex 32
@@ -154,11 +167,15 @@ docker compose ps -a
 | Servicio | Dirección | Usuario | Contraseña | Notas |
 |---|---|---|---|---|
 | Presentación interactiva | http://localhost:8080 | — | — | Sin autenticación |
-| Grafana | http://localhost:3000 | `admin` *(o ver tabla RBAC)* | `admin` | Ver detalle de usuarios y roles abajo |
-| Node-RED | http://localhost:1880 | `admin` | `admin` | Configurado en `.env` |
-| InfluxDB | http://localhost:8086 | `admin` | `adminadmin` | Organización: `haizenlab` (mín. 8 caracteres) |
-| Servidor MCP | http://127.0.0.1:5001/mcp/ | — | — | Autenticado internamente por token |
+| Grafana | http://localhost:3000 | `admin` *(o ver tabla RBAC)* | Definida en `.env` (`GF_SECURITY_ADMIN_PASSWORD` o `INFLUXDB_ADMIN_PASSWORD`) | Ver detalle de contraseñas por rol abajo |
+| Node-RED | http://localhost:1880 | `admin` *(o `NODE_RED_ADMIN_USER`)* | Definida en `.env` (`NODE_RED_ADMIN_PASSWORD`) | Editor visual de flujos de ingesta |
+| InfluxDB | http://localhost:8086 | `admin` *(o `INFLUXDB_ADMIN_USER`)* | Definida en `.env` (`INFLUXDB_ADMIN_PASSWORD`) | Organización: `haizenlab` (`INFLUXDB_ORG`) |
+| Servidor MCP | http://127.0.0.1:5001/mcp/ | — | — | Autenticado internamente mediante token |
 | Chatbot (API / Docs) | http://localhost:8000/docs | — | — | Sin autenticación |
+
+> [!NOTE]
+> **Credenciales en entornos locales / demostración rápida:**
+> Las contraseñas no son valores fijos en el código, sino que reflejan lo que definas en tu `.env`. En entornos de desarrollo o aula es habitual emplear valores mnemotécnicos como `INFLUXDB_ADMIN_PASSWORD=adminadmin`, `NODE_RED_ADMIN_PASSWORD=admin` y `GRAFANA_DEFAULT_PASSWORD=admin`.
 
 Para detener la plataforma conservando los datos:
 
@@ -234,26 +251,30 @@ docker compose run --rm sbd-notebook
 
 ## Grafana: usuarios, roles y alertas
 
-Los usuarios, los equipos y la página de inicio de cada equipo se crean al arrancar mediante `grafana/provisioning/access-control/setup-access.sh`.
+Los usuarios, los equipos y la página de inicio de cada equipo se aprovisionan automáticamente al arrancar mediante el script `grafana/provisioning/access-control/setup-access.sh`.
 
-Por defecto (según [.env](.env) con `INFLUXDB_ADMIN_PASSWORD=admin` y `GRAFANA_DEFAULT_PASSWORD=admin`), las credenciales de acceso son:
+La contraseña de cada usuario se genera combinando la clave base **`GRAFANA_DEFAULT_PASSWORD`** (definida en `.env`) con el sufijo identificador de su rol:
 
-| Equipo | Usuario | Contraseña | Rol / Permisos | Página de inicio |
-|---|---|---|---|---|
-| **Super Admin** | `admin` | `admin` | Admin (Control total) | Principal |
-| **IT** | `it_admin1` | `adminit1` | Admin | Principal |
-| **IT** | `it_admin2` | `adminit2` | Editor (Crear y editar paneles) | Principal |
-| **IT** | `it_admin3` | `adminit3` | Editor (Crear y editar paneles) | Principal |
-| **Dirección** | `directora` | `admindir` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
-| **Dirección** | `ceo` | `adminceo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
-| **Dirección** | `coo` | `admincoo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
-| **Dirección** | `cfo` | `admincfo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
-| **Análisis** | `analista1` | `admina1` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista2` | `admina2` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista3` | `admina3` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista4` | `admina4` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista5` | `admina5` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista6` | `admina6` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+$$\text{Contraseña} = \text{GRAFANA\_DEFAULT\_PASSWORD} + \text{sufijo}$$
+
+Si en tu fichero `.env` configuras `GRAFANA_DEFAULT_PASSWORD=admin` (y contraseña de admin `admin`), las credenciales coincidirán exactamente con los valores de ejemplo de la columna derecha:
+
+| Equipo | Usuario | Contraseña (Regla / Variable en `.env`) | Ejemplo si `base=admin` | Rol / Permisos | Página de inicio |
+|---|---|---|---|---|---|
+| **Super Admin** | `admin` | `${GF_SECURITY_ADMIN_PASSWORD}` o `${INFLUXDB_ADMIN_PASSWORD}` | `admin` | Admin (Control total) | Principal |
+| **IT** | `it_admin1` | `${GRAFANA_DEFAULT_PASSWORD}it1` | `adminit1` | Admin | Principal |
+| **IT** | `it_admin2` | `${GRAFANA_DEFAULT_PASSWORD}it2` | `adminit2` | Editor (Crear y editar paneles) | Principal |
+| **IT** | `it_admin3` | `${GRAFANA_DEFAULT_PASSWORD}it3` | `adminit3` | Editor (Crear y editar paneles) | Principal |
+| **Dirección** | `directora` | `${GRAFANA_DEFAULT_PASSWORD}dir` | `admindir` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
+| **Dirección** | `ceo` | `${GRAFANA_DEFAULT_PASSWORD}ceo` | `adminceo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
+| **Dirección** | `coo` | `${GRAFANA_DEFAULT_PASSWORD}coo` | `admincoo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
+| **Dirección** | `cfo` | `${GRAFANA_DEFAULT_PASSWORD}cfo` | `admincfo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
+| **Análisis** | `analista1` | `${GRAFANA_DEFAULT_PASSWORD}a1` | `admina1` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista2` | `${GRAFANA_DEFAULT_PASSWORD}a2` | `admina2` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista3` | `${GRAFANA_DEFAULT_PASSWORD}a3` | `admina3` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista4` | `${GRAFANA_DEFAULT_PASSWORD}a4` | `admina4` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista5` | `${GRAFANA_DEFAULT_PASSWORD}a5` | `admina5` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
+| **Análisis** | `analista6` | `${GRAFANA_DEFAULT_PASSWORD}a6` | `admina6` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
 
 > [!IMPORTANT]
 > **Resolución de problemas de acceso en Grafana:**
