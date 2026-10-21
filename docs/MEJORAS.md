@@ -631,4 +631,11 @@ Ya no queda ninguna marca de pendiente entre corchetes en `docs/*.md`, `README.m
 | Qué se ha cambiado | Dónde | Por qué |
 |---|---|---|
 | Se elimina el diagnóstico inicial de la fase 0. Todo lo que señalaba está resuelto o documentado como limitación en este fichero. | `docs/DIAGNOSTICO.md` | Era un documento de trabajo con pendientes ya cerrados |
+| Se elimina `data/clean/trafico_accesos_bilbao.csv`. | `data/clean/` | No lo lee nada: los aforos quedaron fuera del análisis (decisión 16) |
+| Se elimina `data/clean/inventario_calidad.csv` y las líneas de `limpiar_calidad_aire()` que lo generaban; la función devuelve ahora 3 valores. | `data/clean/`; `ingesta/descargar_y_limpiar.py` | No lo leía nadie y sus horas esperadas (42.096, contadas hasta la última fecha descargada) no cuadraban con la completitud del notebook (41.615 hasta el 30/09/2026) |
+| Se elimina `docs/infraestructura-explicada.md`. | `docs/` | Ningún documento lo enlazaba; repetía el organigrama, `alertas.md` y `permisos-grafana.md`, y tenía un apartado de preguntas de clase |
+| Se elimina `presentacion/.gitignore`. | `presentacion/` | Solo ignoraba `.vercel` y `.env*`; `.env*` ya está en el `.gitignore` raíz |
+| La tabla «Estructura» del README enlaza los READMEs de `mcp/`, `chatbot/` y `presentacion/`. | `README.md` | Ningún documento los enlazaba |
+
+Comprobado después de la limpieza: el notebook se ejecuta entero sin errores y con las mismas salidas, `resultados.json` no cambia y `scripts_check/verificar_cifras.py` da 7 de 7 documentos.
 
