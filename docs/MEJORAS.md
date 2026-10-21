@@ -523,7 +523,7 @@ Están los 57 IDs de `CORRECCIONES.md`. 55 están resueltos; EV-11 y EV-12 sigue
 | SBD-03 a SBD-10 | Resueltos | 1, 2, 3 |
 | SBD-11 | Resuelto | 3 |
 | SBD-12 a SBD-15 | Resueltos | 2, 3 |
-| SBD-16 | Resuelto. El equipo debe confirmar que el reparto de la sección 8 del informe es el real (decisión 7) | 3 |
+| SBD-16 | Resuelto. El equipo ha confirmado que el reparto de la sección 8 del informe es el real (decisión 7) | 3, 6 |
 | MIA-01 a MIA-27 | Resueltos | 2, 4 |
 | MIA-28 | Resuelto | 4, 6 |
 | MIA-29 | Resuelto | 4 |
@@ -532,7 +532,16 @@ Están los 57 IDs de `CORRECCIONES.md`. 55 están resueltos; EV-11 y EV-12 sigue
 - **EV-11** («revisar», InfluxDB). Corresponde a la fase 5, que no se ha hecho. Sigue pendiente quitar el field string `fecha_original` de `aire_demo` (`nodered/flows.json` y organigrama) y comprobar que `docs/organigrama-datos.md` coincide 1:1 con lo que escriben `flows.json` y `carga_historica.py`. Lo único hecho es que el README ya pone la carga del bucket `aire` como paso obligatorio con su comando.
 - **EV-12** («Falta comprobar alertas y permisos por organización, equipo y usuario»). También es de la fase 5. La alerta «> 40 µg/m³ límite EU» sigue evaluándose sobre valores horarios, aunque 40 es el límite de la media anual, y no existen `docs/alertas.md` ni `docs/permisos-grafana.md`. Por eso el README no describe las alertas.
 
-### Pendiente en la presentación (fuera de los puntos 3 a 6)
-- La diapositiva 8 enlaza `assets/veredicto.mp4`, que el punto 1 de esta fase manda eliminar y que tiene cifras antiguas.
-- La diapositiva 10 dice «NO₂ por encima de 25, 40 y 200 µg/m³»: hay que cambiarla cuando se corrijan las alertas (fase 5).
-- La gráfica de la diapositiva 6 es un dibujo SVG con valores fijos, no la figura del notebook; los recuentos de la diapositiva 13 (commits y ramas) no se han revisado.
+### Ajustes antes del merge (revisión del equipo)
+
+| ID | Qué se ha cambiado | Dónde | Por qué |
+|---|---|---|---|
+| MIA-29, EV-07 | Una frase del MIA mostraba el código en vez de las cifras: «entre {min(horas_200)} y {max(horas_200)}». Faltaba la `f` de un f-string. Ahora dice «entre 2022 y 2026». Se ha revisado el resto de `generar_mia.py` y `generar_informe.py` y no hay más textos con llaves sin evaluar. Se regeneran el `.md`, el `.docx` y el `.pdf` del MIA (sigue en 7 páginas); el texto del PDF del MIA y el del informe SBD no tienen ninguna llave. | `docs/generar_mia.py` (apartado 2, cadena de avisos); `docs/propuesta-modelo-ia.md`, `docs/MIA_Haizen_Lab.docx` y `.pdf` | El documento impreso enseñaba código al cliente |
+| EV-07 | Se quita la diapositiva del vídeo `veredicto.mp4`, que tenía cifras antiguas. La presentación pasa de 14 a 13 diapositivas; Grafana pasa a la diapositiva 9. | `presentacion/index.html`; `presentacion/README.md` | El vídeo no salía de `resultados.json` |
+| EV-07 | La gráfica de la diapositiva 6 era un dibujo con valores fijos. Se sustituye por la figura de P1 del notebook (`docs/img/p1_evolucion_mensual_no2.png`), copiada en `presentacion/assets/` porque el servidor de la presentación solo publica esa carpeta. Si se vuelve a ejecutar el notebook, hay que volver a copiarla. | `presentacion/index.html` (diapositiva 6); `presentacion/assets/p1_evolucion_mensual_no2.png` | Una sola fuente para la gráfica |
+| — | Se quita el recuento de commits de la diapositiva «Cómo trabajamos». | `presentacion/index.html` | Era una cifra que cambia con cada commit |
+| — | «5 contenedores» pasa a 7: `docker compose up -d --build` levanta 6 contenedores permanentes y `influxdb_setup`, que crea los buckets y los tokens y se cierra. | `presentacion/index.html` (diapositivas 1 y 8) | No coincidía con `docker-compose.yml` |
+| SBD-16 | El equipo confirma que el reparto de tareas de la sección 8 del informe es el real. Pasa a resuelto. | Este fichero | Confirmación del equipo |
+
+### Pendiente en la presentación
+- La diapositiva 9 dice «NO₂ por encima de 25, 40 y 200 µg/m³»: se cambia en la fase 5, cuando se corrijan las alertas.
