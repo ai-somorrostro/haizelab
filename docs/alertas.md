@@ -29,25 +29,49 @@ Las reglas están en `grafana/provisioning/alerting/alerting.yaml` y Grafana las
 
 **Regla quitada.** Había una regla «NO₂ — Superación límite EU (> 40 µg/m³)» que comparaba la media de la última hora con 40 µg/m³. Era incorrecta: 40 es el límite de la media anual. Se borra con `deleteRules` en el mismo fichero, también en instalaciones que ya la tenían.
 
-## Dónde se ven las alertas
+## Dónde se ven las alertas y a quién llegan
 
-En la demo no hay servidor de correo configurado: las alertas se ven en Grafana, en *Alerting → Alert rules*, con su estado por estación (*Normal*, *Pending*, *Firing* o *No data*). Para recibirlas por correo hay que configurar el SMTP en el `.env`: `GF_SMTP_ENABLED=true`, `GF_SMTP_HOST`, `GF_SMTP_USER`, `GF_SMTP_PASSWORD` y `GF_SMTP_FROM_ADDRESS` (ejemplo en `.env.example`), poner la dirección de destino en `ALERT_EMAIL_TO` y reiniciar Grafana con `docker compose up -d grafana`.
-
-## Destinatario
+- **En Grafana:** siempre, en *Alerting → Alert rules*, con su estado por estación (*Normal*, *Pending*, *Firing* o *No data*).
+- **Por correo:** Grafana envía cada alerta al punto de contacto `haizelab-ops`, de tipo correo, si el SMTP está configurado en el `.env`.
 
 | Elemento | Valor |
 |---|---|
 | Punto de contacto | `haizelab-ops`, de tipo correo |
-| Dirección | Variable `ALERT_EMAIL_TO` del `.env` (en `.env.example`: `alertas@example.com`) |
+| Dirección de destino | Variable `ALERT_EMAIL_TO` del `.env` (en `.env.example`: `alertas@example.com`) |
 | Agrupación | Por nombre de alerta y gravedad. `critical`: primer envío a los 10 s y repetición cada 15 min. `warning`: primer envío a los 30 s y repetición cada hora. |
-| Envío real | Solo si el SMTP está configurado (`GF_SMTP_ENABLED=true` y el resto de variables `GF_SMTP_*`). Sin SMTP, las alertas se ven en Grafana pero no se envía ningún correo. |
+
+## Cómo se configura el correo
+
+Las direcciones y la contraseña van **solo en el `.env`**, que no se sube al repositorio. `docker-compose.yml` las pasa al contenedor de Grafana, y `alerting.yaml` toma la dirección de destino de `ALERT_EMAIL_TO`.
+
+1. Copiar a `.env` el bloque «Alertas por correo» de `.env.example` y rellenarlo:
+
+   | Variable | Qué es | Ejemplo |
+   |---|---|---|
+   | `ALERT_EMAIL_TO` | Dirección que recibe las alertas (varias, separadas por `;`) | `alertas@example.com` |
+   | `GF_SMTP_ENABLED` | `true` para enviar correos | `true` |
+   | `GF_SMTP_HOST` | Servidor SMTP y puerto de la cuenta que envía | `smtp.gmail.com:587` |
+   | `GF_SMTP_USER` | Usuario de esa cuenta | `avisos@example.com` |
+   | `GF_SMTP_PASSWORD` | Contraseña de esa cuenta; con Gmail, una contraseña de aplicación de 16 caracteres | — |
+   | `GF_SMTP_FROM_ADDRESS` | Dirección que aparece como remitente | `avisos@example.com` |
+   | `GF_SMTP_FROM_NAME` | Nombre del remitente (opcional) | `HaizeLab Alerting` |
+
+2. Aplicar los cambios a Grafana (vuelve a crear el contenedor con el `.env` nuevo):
+   ```bash
+   docker compose up -d grafana
+   ```
+3. Mandar un correo de prueba: en Grafana, como `admin` o `it_admin1`, *Alerting → Contact points → haizelab-ops → Test*. Por API, la misma prueba es `POST /api/alertmanager/grafana/config/api/v1/receivers/test` con la configuración del punto de contacto.
+
+Si `GF_SMTP_ENABLED` es `false` o faltan datos, las alertas siguen evaluándose y se ven en Grafana, pero no se envía ningún correo.
+
+**Prueba hecha el 21/10/2026:** con el SMTP del `.env` local, la prueba del punto de contacto por API devolvió estado `ok` (Grafana dio el correo por enviado). Que llegue al buzón se comprueba en la cuenta de destino.
 
 ## Cómo comprobarlo
 
 1. Entrar en Grafana como `it_admin1` y abrir *Alerting → Alert rules*. Deben aparecer las 3 reglas en la carpeta **HaizeLab Alertas** y ninguna de 40 µg/m³.
 2. Abrir cada regla y comprobar umbral, `for` y evaluación con la tabla de arriba.
 3. Pulsar *Preview* en las reglas de NO₂: sale una fila por estación con su valor.
-4. En *Alerting → Contact points*, `haizelab-ops` tiene la dirección de `ALERT_EMAIL_TO`.
+4. En *Alerting → Contact points*, `haizelab-ops` tiene la dirección de `ALERT_EMAIL_TO`; el botón *Test* manda un correo de prueba.
 5. Por API, con el usuario administrador: `curl -u admin:<contraseña> http://localhost:3000/api/v1/provisioning/alert-rules`.
 
 ## Fuentes
