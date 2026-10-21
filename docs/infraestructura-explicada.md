@@ -107,7 +107,7 @@ Para ver los datos no quería tener que crear paneles a mano cada vez que se rei
 
 - He configurado un archivo YAML para que Grafana añada InfluxDB como origen de datos automáticamente al arrancar.
 - El cuadro de mando (`grafana/dashboards/haizelab-overview.json`) define de forma declarativa todos los paneles:
-  - **Calidad del aire**: Unos relojes con colores tipo semáforo (verde < 25, amarillo 25-40, rojo > 40 µg/m³ según las normas europeas) y la gráfica temporal comparando dentro vs fuera de la ZBE.
+  - **Calidad del aire**: Unos relojes con colores tipo semáforo (verde < 25, amarillo 25-40, rojo > 40 µg/m³; son colores de referencia: 40 es el límite de la media anual y el límite horario es 200 µg/m³) y la gráfica temporal comparando dentro vs fuera de la ZBE.
   - **Clima**: Gráfica de temperatura y humedad, y otra de viento y lluvia.
 - El acceso a Grafana en `localhost:3000` está protegido y autenticado mediante control de acceso basado en roles (RBAC): la cúpula directiva (`directora`, `ceo`, `coo`, `cfo`) y los equipos de `Análisis` e `IT` disponen de credenciales individuales y permisos de carpeta segregados (`Dirección` y `Análisis`).
 
@@ -126,7 +126,7 @@ No todo fue coser y cantar a la primera; estos fueron los problemas principales 
 3. **El triángulo rojo en el nodo de InfluxDB en Node-RED**:
    - Node-RED mostraba una advertencia de validación en el nodo de salida porque la librería esperaba obligatoriamente los campos `protocol: http` y un nombre de base de datos por defecto. Se los configuré en el JSON y la advertencia desapareció.
 4. **Error en InfluxDB `unsupported input type for mean aggregate: string`**:
-   - Al mirar en el Data Explorer de InfluxDB, salía este fallo. La razón es que InfluxDB intenta calcular la media (`mean()`) de los campos seleccionados, y habíamos marcado el campo `fecha_original` (que es texto, ej. "2022-01-01"). Al desmarcar ese y marcar `no2` (que sí es un número flotante), la gráfica funcionó perfecta.
+   - Al mirar en el Data Explorer de InfluxDB, salía este fallo. La razón es que InfluxDB intenta calcular la media (`mean()`) de los campos seleccionados, y habíamos marcado el campo `fecha_original` (que es texto, ej. "2022-01-01"). Al desmarcar ese y marcar `no2` (que sí es un número flotante), la gráfica funcionó perfecta. Después se quitó el campo `fecha_original`: `aire_demo` solo guarda `no2`.
 5. **Permisos y shells en Linux/Windows**:
    - En Windows los ficheros a veces se guardaban con saltos de línea CRLF, lo que rompía los scripts bash dentro de Alpine (`/bin/sh^M: not found`). Lo dejé blindado con `.gitattributes` para que siempre se guarden en formato LF de Linux.
 
