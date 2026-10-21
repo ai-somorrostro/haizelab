@@ -36,3 +36,8 @@ data/clean/calidad_aire_limpio.csv
 
 # --- Guía de estudio interna (no se versiona) ---
 docs/GUIA_ESTUDIO.md
+
+# --- Configuración local de clientes MCP y vídeos (no se versionan) ---
+opencode.json
+.agents/
+*.mp4
