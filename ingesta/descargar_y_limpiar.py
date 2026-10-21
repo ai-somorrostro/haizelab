@@ -695,6 +695,23 @@ def guardar_comprobacion_crudo_limpio(df_auditoria, df_meteo_limpio):
     return f_salida
 
 
+def guardar_demo_aire():
+    """
+    Guarda en ingesta/no2_demo_reducido.csv el NO2 horario de las 4 estaciones que reproduce
+    Node-RED en el bucket aire_demo. Sale del dato limpio (data/clean/calidad_aire_limpio.csv),
+    así que la demo muestra los mismos valores que el análisis. Se ordena por la hora GMT,
+    que es única (en hora de Madrid la 02:00 del cambio de hora de octubre se repite).
+    """
+    estaciones_demo = ["Mazarredo", "Mª Díaz de Haro", "Europa", "Arraiz"]
+    df = pd.read_csv(DIR_DATA_CLEAN / "calidad_aire_limpio.csv", usecols=["ts_gmt", "estacion", "zona", "no2"])
+    df = df[df["estacion"].isin(estaciones_demo)].dropna(subset=["no2"])
+    df = df.sort_values(["ts_gmt", "estacion"])
+    f_salida = DIR_RAIZ / "ingesta" / "no2_demo_reducido.csv"
+    df[["ts_gmt", "estacion", "zona", "no2"]].to_csv(f_salida, index=False)
+    print(f"[OK] Guardado el NO2 de la demo en ingesta/{f_salida.name} ({len(df):,} filas)")
+    return f_salida
+
+
 def limpiar_calendario():
     """
     Lee y valida el calendario oficial ZBE con festivos.
@@ -797,6 +814,7 @@ def ejecutar_pipeline_completo():
     _, _, _, df_auditoria = limpiar_calidad_aire()
     df_meteo = limpiar_meteorologia()
     guardar_comprobacion_crudo_limpio(df_auditoria, df_meteo)
+    guardar_demo_aire()
     limpiar_calendario()
     df_int = integrar_datasets()
     print("\n" + "=" * 70)
