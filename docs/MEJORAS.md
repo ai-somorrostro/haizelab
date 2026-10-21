@@ -440,3 +440,110 @@ No cambia ninguna cifra de `resultados.json`. Solo cambia el texto de `docs/gene
 Para que el informe SBD siga en 4 páginas de cuerpo con la frase nueva, se cambia el reparto de anchos de la tabla de fuentes y la figura 1 se imprime a 14 cm de ancho en vez de 15. No cambia ningún texto ni ninguna cifra del informe.
 
 El chatbot se actualiza en la fase 6.
+
+---
+
+## Fase 6 · Limpieza y revisión final (puntos 3 a 6)
+
+No se ha vuelto a ejecutar el notebook: `resultados/resultados.json` no cambia. Lo que cambia es que el README, la presentación y el chatbot dejan de llevar cifras antiguas y pasan a tomarlas de ese fichero.
+
+### MIA-28
+- **Comentario:** «Checklist de verificación» → «?».
+- **Qué se ha cambiado:** no quedaba ninguna sección «Checklist de verificación» en los documentos; se quitaron en las fases 3 y 4. Se quitan las dos referencias a la rúbrica que quedaban: «(Rúbrica BDA)» en un título del organigrama y «requisito PIA» en un comentario de `docker-compose.yml`.
+- **Dónde:** `docs/organigrama-datos.md` (sección «Evidencias visuales y capturas de pantalla»); `docker-compose.yml` (cabecera).
+- **Por qué:** los documentos no deben hablar de la rúbrica ni del curso.
+
+### EV-07 (README y presentación)
+- **Comentario:** «verificar que las cifras de calidad y cobertura del informe coinciden con las obtenidas al ejecutar el código».
+- **Qué se ha cambiado:**
+  - README reescrito en versión breve: qué es, resultados, arquitectura, arranque paso a paso, estructura y autores. La tabla de resultados (P1-P5 y modelo de IA) tiene una frase «Qué significa» por pregunta y se ha rellenado desde `resultados.json` con un script, sin teclear cifras.
+  - La carga del histórico en el bucket `aire` aparece como paso obligatorio del arranque, con el comando exacto (decisión 6 del equipo).
+  - Se quitan del README el p-valor, la regresión −1,74, los aforos de San Mamés, el correo personal de la tabla de variables y la referencia al curso.
+  - Presentación: se actualizan las cifras de las diapositivas 2, 3, 5, 6, 7 y 12 y las respuestas de reserva del asistente (ver tabla de abajo). Se quitan «2 km²» y «27 cámaras», que tampoco están en el informe ni en el MIA por no tener fuente verificada.
+- **Dónde:** `README.md`; `presentacion/index.html`.
+- **Por qué:** el README y la presentación tenían las cifras de antes de las fases 1-4.
+
+### EV-06 (chatbot)
+- **Comentario:** «Falta justificar en profundidad Gradient Boosting. La validación, la estimación de la incertidumbre y SHAP requieren explicación precisa. La comparación con DiD necesita desarrollar sus limitaciones.»
+- **Qué se ha cambiado:**
+  - El chatbot decía que el modelo elegido era Gradient Boosting, con −2,87 µg/m³ (−11,6 %), y que «ambos modelos convergen». Ahora dice lo mismo que el MIA: Random Forest, −0,49 µg/m³ (de −0,86 a −0,12), el placebo con ZBE ficticia y que el tamaño exacto depende del método.
+  - `chatbot/main.py` ya no lleva ninguna cifra: lee `resultados/resultados.json` al arrancar y genera los textos con f-strings. Si el fichero no está, lo dice en vez de inventar cifras. `docker-compose.yml` monta `resultados/` en solo lectura en el contenedor.
+  - Se elimina `chatbot/knowledge_base.json`: el código no lo usaba y solo tenía cifras antiguas (calma 28,10 → 24,35, ±0,24, benceno, aforos).
+  - Se quita la «validación triple de placebos»: solo se citan la fecha falsa y el SO₂, que están hechos.
+- **Dónde:** `chatbot/main.py` (bloques «Cifras del análisis y prompt de razonamiento» y «Fallback Local de Contingencia»); `chatbot/Dockerfile`; `chatbot/README.md`; `docker-compose.yml` (servicio `chatbot`).
+- **Por qué:** el chatbot contradecía al MIA y al informe.
+
+### EV-02 (presentación y chatbot)
+- **Comentario:** «DiD no es IA. La automatización de tareas no es una técnica de IA.»
+- **Qué se ha cambiado:** en la diapositiva 12 («La propuesta de IA»), diferencias en diferencias lleva la etiqueta «estadística, no IA» y el modelo elegido pasa a Random Forest. El chatbot y la respuesta de reserva de la presentación dicen que Node-RED es automatización, no IA.
+- **Dónde:** `presentacion/index.html` (diapositiva 12 y `CONOCIMIENTO_FALLBACK`); `chatbot/main.py`.
+- **Por qué:** la presentación seguía poniendo DiD y Gradient Boosting como dos modelos de IA.
+
+### MIA-01 y MIA-04 (README y chatbot)
+- **Comentarios:** cabecera del curso tachada · «ocho puntos del enunciado» → «??».
+- **Qué se ha cambiado:** se quitan «Reto 0», «HERE WE GO» y «Centro de Formación Somorrostro» del README y del chatbot.
+- **Dónde:** `README.md`; `chatbot/main.py`; `chatbot/README.md`.
+- **Por qué:** son textos que ve el cliente.
+
+### Cifras que cambian en el README, la presentación y el chatbot
+
+| Cifra | Antes | Ahora (`resultados.json`) |
+|---|---|---|
+| NO₂ dentro después de la ZBE | 21,90 | 21,91 |
+| Margen del efecto neto | ±0,24; IC −1,87 a −1,39 y «p < 0,001» | Intervalo del 95 %: de −2,38 a −0,94 |
+| Efecto neto fuera de horario | −0,86 | −0,85 |
+| Comprobación con el tiempo atmosférico | Regresión −1,74 | Efecto neto en calma −1,23 (de −2,05 a −0,42) |
+| Calma dentro (chatbot) | 28,10 → 24,35 (−13,4 %) | Efecto neto en calma −1,23 |
+| Modelo de IA | Gradient Boosting, −2,87 (−11,6 %) | Random Forest, −0,49 (de −0,86 a −0,12); MAE 8,14 frente a 10,50 sin IA |
+| Horas por estación / filas | 41.700 / 332.776 | 41.615 / 332.619 |
+| Caída bruta en la diapositiva 3 | −14,1 % dentro, −10,8 % fuera | −3,59 y −1,96 µg/m³ (el % de fuera no está en `resultados.json`) |
+| Tráfico San Mamés | −10,1 % (2024) | Se quita: no entra en el análisis (decisión 16) |
+| Cuarta prueba de la diapositiva 7 | Tráfico | Fase 2 frente a fase 1: −0,52 (de −1,72 a 0,74) |
+
+### Estado de todas las correcciones
+
+Están los 57 IDs de `CORRECCIONES.md`. 55 están resueltos; EV-11 y EV-12 siguen pendientes.
+
+| ID | Estado | Fase |
+|---|---|---|
+| EV-01 | Resuelto | 4 |
+| EV-02 | Resuelto | 4, 6 |
+| EV-03 | Resuelto. El indicador de horas de trabajo manual está definido, pero sin cifra: «A medir en la puesta en marcha» | 4 |
+| EV-04 | Resuelto. La causa de la bajada de Europa (−26,8 %) queda `[PENDIENTE DE VERIFICAR POR EL EQUIPO]` (decisión 5) | 4 |
+| EV-05 | Resuelto | 4 |
+| EV-06 | Resuelto | 4, 6 |
+| EV-07 | Resuelto | 1, 2, 3, 6 |
+| EV-08 | Resuelto | 1, 2 |
+| EV-09 | Resuelto | 2 |
+| EV-10 | Resuelto en la parte de crudo frente a limpio | 1 |
+| **EV-11** | **Pendiente** (ver abajo) | 5, no hecha |
+| **EV-12** | **Pendiente** (ver abajo) | 5, no hecha |
+| SBD-01 | Resuelto | 3 |
+| SBD-02 | Resuelto. La fuente oficial de los festivos queda `[PENDIENTE DE VERIFICAR]` | 2, 3, 4 |
+| SBD-03 a SBD-10 | Resueltos | 1, 2, 3 |
+| SBD-11 | Resuelto | 3 |
+| SBD-12 a SBD-15 | Resueltos | 2, 3 |
+| SBD-16 | Resuelto. El equipo ha confirmado que el reparto de la sección 8 del informe es el real (decisión 7) | 3, 6 |
+| MIA-01 a MIA-27 | Resueltos | 2, 4 |
+| MIA-28 | Resuelto | 4, 6 |
+| MIA-29 | Resuelto | 4 |
+
+### No resueltas y por qué
+- **EV-11** («revisar», InfluxDB). Corresponde a la fase 5, que no se ha hecho. Sigue pendiente quitar el field string `fecha_original` de `aire_demo` (`nodered/flows.json` y organigrama) y comprobar que `docs/organigrama-datos.md` coincide 1:1 con lo que escriben `flows.json` y `carga_historica.py`. Lo único hecho es que el README ya pone la carga del bucket `aire` como paso obligatorio con su comando.
+- **EV-12** («Falta comprobar alertas y permisos por organización, equipo y usuario»). También es de la fase 5. La alerta «> 40 µg/m³ límite EU» sigue evaluándose sobre valores horarios, aunque 40 es el límite de la media anual, y no existen `docs/alertas.md` ni `docs/permisos-grafana.md`. Por eso el README no describe las alertas.
+
+### Ajustes antes del merge (revisión del equipo)
+
+| ID | Qué se ha cambiado | Dónde | Por qué |
+|---|---|---|---|
+| MIA-29, EV-07 | Una frase del MIA mostraba el código en vez de las cifras: «entre {min(horas_200)} y {max(horas_200)}». Faltaba la `f` de un f-string. Ahora dice «entre 2022 y 2026». Se ha revisado el resto de `generar_mia.py` y `generar_informe.py` y no hay más textos con llaves sin evaluar. Se regeneran el `.md`, el `.docx` y el `.pdf` del MIA (sigue en 7 páginas); el texto del PDF del MIA y el del informe SBD no tienen ninguna llave. | `docs/generar_mia.py` (apartado 2, cadena de avisos); `docs/propuesta-modelo-ia.md`, `docs/MIA_Haizen_Lab.docx` y `.pdf` | El documento impreso enseñaba código al cliente |
+| EV-07 | Se quita la diapositiva del vídeo `veredicto.mp4`, que tenía cifras antiguas. La presentación pasa de 14 a 13 diapositivas; Grafana pasa a la diapositiva 9. | `presentacion/index.html`; `presentacion/README.md` | El vídeo no salía de `resultados.json` |
+| EV-07 | La gráfica de la diapositiva 6 era un dibujo con valores fijos. Se sustituye por la figura de P1 del notebook (`docs/img/p1_evolucion_mensual_no2.png`), copiada en `presentacion/assets/` porque el servidor de la presentación solo publica esa carpeta. Si se vuelve a ejecutar el notebook, hay que volver a copiarla. | `presentacion/index.html` (diapositiva 6); `presentacion/assets/p1_evolucion_mensual_no2.png` | Una sola fuente para la gráfica |
+| — | Se quita el recuento de commits de la diapositiva «Cómo trabajamos». | `presentacion/index.html` | Era una cifra que cambia con cada commit |
+| — | Se quita «21 ramas integradas en develop». | `presentacion/index.html` (diapositiva 12) | El recuento no se había comprobado |
+| — | «1 comando para levantarlo» pasa a «2 comandos»: `docker compose up -d --build` y la carga del histórico (`docker compose run --rm carga-historica`). La ventana de comandos de la diapositiva incluye también la carga. | `presentacion/index.html` (diapositiva 12) | Coherente con el README, donde la carga del histórico es un paso obligatorio |
+| — | «5 contenedores» pasa a 7: `docker compose up -d --build` levanta 6 contenedores permanentes y `influxdb_setup`, que crea los buckets y los tokens y se cierra. | `presentacion/index.html` (diapositivas 1 y 8) | No coincidía con `docker-compose.yml` |
+| SBD-16 | El equipo confirma que el reparto de tareas de la sección 8 del informe es el real. Pasa a resuelto. | Este fichero | Confirmación del equipo |
+
+### Pendiente en la presentación
+- La diapositiva 9 dice «NO₂ por encima de 25, 40 y 200 µg/m³»: se cambia en la fase 5, cuando se corrijan las alertas.

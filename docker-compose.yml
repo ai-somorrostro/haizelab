@@ -7,7 +7,7 @@
 #   influxdb_setup — Contenedor de inicialización: crea buckets y 4 tokens de acceso
 #   nodered        — Ingesta en tiempo real (clima, tráfico, demo NO₂ en :1880)
 #   grafana        — Dashboards analíticos y control de acceso por roles en :3000
-#   influx-mcp     — Servidor MCP para consultas de IA (requisito PIA en :5001)
+#   influx-mcp     — Servidor MCP de solo lectura (:5001)
 #   chatbot        — Asistente explicable en FastAPI en :8000
 #   presentacion   — Web interactiva de diapositivas en :8080
 #
@@ -203,6 +203,7 @@ services:
       MCP_SERVER_URL: http://influx-mcp:5001/mcp/
     volumes:
       - influxdb_tokens:/tokens:ro
+      - ./resultados:/resultados:ro
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
       interval: 20s

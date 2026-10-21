@@ -1,383 +1,119 @@
 # HaizeLab
 
-Evaluación del efecto de la Zona de Bajas Emisiones (ZBE) de Bilbao sobre la concentración de NO₂, con datos horarios de 2022 a 2026, y plataforma de monitorización en tiempo real construida con Node-RED, InfluxDB y Grafana.
+Evaluación del efecto de la Zona de Bajas Emisiones (ZBE) de Bilbao sobre el NO₂, para el Ayuntamiento de Bilbao. La pregunta que hay que responder es si conviene **ampliar, mantener o ajustar la ZBE**.
 
-Proyecto del Reto 0 "HERE WE GO" del Centro de Formación Somorrostro, curso de especialización en Inteligencia Artificial y Big Data.
+## Qué es
 
-## Contenido
+Dos partes que comparten los mismos datos:
 
-- [Resultado](#resultado)
-- [Arquitectura](#arquitectura)
-- [Puesta en marcha](#puesta-en-marcha)
-- [Carga del histórico](#carga-del-histórico)
-- [Pipeline analítico](#pipeline-analítico)
-- [Grafana: usuarios, roles y alertas](#grafana-usuarios-roles-y-alertas)
-- [Servidor MCP](#servidor-mcp)
-- [Asistente inteligente (Chatbot)](#asistente-inteligente-chatbot)
-- [Presentación web](#presentación-web)
-- [Estructura del repositorio](#estructura-del-repositorio)
-- [Documentación](#documentación)
-- [Flujo de trabajo](#flujo-de-trabajo)
-- [Equipo](#equipo)
+- **Análisis** (`notebooks/zbe_bilbao.ipynb`): responde cinco preguntas con los datos horarios de NO₂ y SO₂ de 8 estaciones, del 01/01/2022 al 30/09/2026 (332.619 horas-estación). Compara dos estaciones de dentro de la ZBE con cinco de fuera.
+- **Plataforma de seguimiento**: Node-RED recoge datos de forma periódica, InfluxDB los guarda y Grafana los muestra en paneles con alertas y permisos por equipo.
 
-## Resultado
+## Resultados
 
-La pregunta del cliente es si la ZBE ha reducido el NO₂ en el centro más de lo que ha bajado en el resto del área metropolitana. Se responde con un diseño de diferencias en diferencias (DiD): dos estaciones dentro del perímetro frente a cinco estaciones de control fuera, antes y después del 15 de junio de 2024.
+Todas las cifras salen de `resultados/resultados.json`, que el notebook escribe cada vez que se ejecuta.
 
-| Indicador | Antes | Después | Variación |
-|---|---:|---:|---:|
-| NO₂ dentro de la ZBE (Mazarredo y Mª Díaz de Haro) | 25,50 µg/m³ | 21,90 µg/m³ | -3,59 µg/m³ (-14,1 %) |
-| NO₂ en las estaciones de control (Gran Bilbao) | 18,25 µg/m³ | 16,29 µg/m³ | -1,96 µg/m³ (-10,8 %) |
-| **Efecto neto atribuible a la ZBE (DiD)** | | | **-1,63 µg/m³ (-6,4 %)** |
+- **Efecto neto** = lo que bajó el NO₂ dentro de la ZBE menos lo que bajó fuera. Lo que también bajó fuera (tiempo atmosférico, coches más nuevos) no se atribuye a la ZBE. Es el método de diferencias en diferencias, un método estadístico, no inteligencia artificial.
+- **Intervalo del 95 %**: margen de error del efecto, calculado sorteando semanas (bootstrap por bloques semanales). Si no incluye el cero, el efecto no se explica por el azar.
 
-El estimador DiD tiene un intervalo de confianza al 95 % de -1,87 a -1,39 µg/m³ (p < 0,001). Tres comprobaciones lo acompañan:
-
-| Comprobación | Resultado | Qué descarta |
+| Pregunta | Resultado (µg/m³) | Qué significa |
 |---|---|---|
-| Regresión con controles de meteorología y mes | -1,74 µg/m³ | Que el efecto se deba a un periodo posterior más ventoso o lluvioso |
-| Horas de calma (viento inferior a 2 m/s), dentro de la ZBE | De 28,10 a 25,47 µg/m³ en la fase 1 (-9,4 %) y a 23,56 µg/m³ en la fase 2 (-16,2 %) | Que la mejora dependa de la ventilación |
-| Placebo con SO₂, que no procede del tráfico | DiD de +0,33 µg/m³ | Que cualquier contaminante baje más dentro que fuera |
+| P1. ¿Bajó el NO₂ dentro más que fuera? | Dentro: 25,50 → 21,91 (−3,59). Fuera: 18,25 → 16,29 (−1,96). Efecto neto: **−1,63** (de −2,38 a −0,94) | Dentro bajó 1,63 µg/m³ más que fuera y el intervalo no incluye el cero: esa bajada propia de dentro no se explica por el azar. |
+| P2. ¿Se concentra en el horario de la ZBE? | En horario ZBE: **−2,93** (de −3,82 a −2,06). Fuera de horario: −0,85 (de −1,56 a −0,19) | La bajada propia de dentro es mayor cuando la ZBE está activa, como cabe esperar si se debe a ella. |
+| P3. ¿Se mantiene con viento en calma (< 2 m/s)? | Efecto neto en calma: **−1,23** (de −2,05 a −0,42) | Con poco viento la bajada se mantiene: no se explica porque después de la ZBE haya hecho más viento. |
+| P4. ¿Baja también el SO₂, que no viene del tráfico? | Efecto neto del SO₂: **0,33** (de −0,01 a 0,66) | El SO₂ no baja más dentro que fuera: el método no encuentra una bajada donde la ZBE no debería actuar. |
+| P5. ¿Qué aportó la fase 2? | Fase 1 frente a antes: −1,29 (de −2,43 a −0,13). Fase 2 frente a fase 1: **−0,52** (de −1,72 a 0,74) | La bajada propia de dentro llegó sobre todo con la fase 1; la fase 2 no muestra una bajada adicional que se distinga de cero. |
 
-El aforo del acceso de San Mamés pasó de 50.127 vehículos al día en 2023 a 45.052 en 2024 (-10,1 %) y repuntó a 48.543 en 2025, un 3,2 % por debajo de 2023.
+**Modelo de IA (anexo del notebook).** Random Forest se equivoca de media 8,14 µg/m³ por hora en un periodo que no vio al entrenar (el modelo base sin IA, 10,50). Con él, el efecto de la ZBE es **−0,49** (de −0,86 a −0,12). Con una ZBE ficticia el 15/06/2023 sale 0,33 (de −0,23 a 0,96): incluye el cero, pero se aleja de él una cantidad del mismo orden que el efecto. Qué significa: los dos métodos dicen que dentro bajó algo más que fuera, pero el tamaño exacto depende del método y se da con cautela.
 
-La conclusión es un efecto confirmado pero moderado: algo más de la mitad de la bajada observada en el centro se habría producido igualmente, porque también bajó fuera. Limitaciones que hay que tener presentes al leer las cifras:
+**Limitaciones:** solo hay 2 estaciones dentro de la ZBE; el control es desigual (Europa baja un 26,8 %, más que las de dentro); las estaciones miden la concentración de NO₂ en el aire, no lo que emiten los coches.
 
-- Solo hay dos estaciones oficiales dentro del perímetro.
-- Se miden concentraciones en el aire, no emisiones de los vehículos.
-- Coinciden otros cambios en el mismo periodo, como la renovación del parque móvil.
-
-El desarrollo completo está en el [informe para el cliente](docs/informe-cliente-sbd.md) y en el [notebook](notebooks/zbe_bilbao.ipynb). Las cifras de esta sección salen de la ejecución de ese notebook sobre 332.776 registros horarios de ocho estaciones.
-
-### Modelos utilizados: Gradient Boosting (Propuesta MIA) y Diferencias en Diferencias (Contraste SBD)
-
-Para garantizar la máxima solidez, el proyecto articula dos enfoques metodológicos que están **implementados y ejecutados** en el [notebook](notebooks/zbe_bilbao.ipynb):
-
-1. **Gradient Boosting (Modelo de IA Elegido en MIA):** Un modelo de Machine Learning (`HistGradientBoostingRegressor`) que captura interacciones meteorológicas no lineales complejas (velocidad y ángulo de viento, lluvia, temperatura, estacionalidad y hora). Entrenado con los datos previos (2022–junio 2024), predice el contrafactual de lo que habría ocurrido en el centro sin ZBE. Estima una reducción neta de **-2,87 µg/m³ (-11,6 %)**. La justificación técnica formal se detalla en la [Propuesta de modelo de IA](docs/propuesta-modelo-ia.md), y su ejecución práctica está en las celdas 18 y 19 del notebook.
-2. **Diferencias en Diferencias (DiD - Contraste Econométrico en SBD):** Modelo causal cuasiexperimental de referencia que compara las dos estaciones interiores frente a cinco estaciones metropolitanas de control, aislando un impacto neto atribuible de **-1,63 µg/m³ (-6,4 %)** (p < 0,001). Actúa como contraste de robustez para validar que ambas aproximaciones (Machine Learning y Econometría) convergen en la misma conclusión.
+El desarrollo está en el [informe para el cliente](docs/informe-cliente-sbd.md) y en la [propuesta de modelo de IA](docs/propuesta-modelo-ia.md).
 
 ## Arquitectura
 
-<picture>
-  <img src="docs/img/arquitectura_haizelab.png" alt="Arquitectura de HaizeLab: las fuentes abiertas entran por Node-RED y por una carga por lotes, se almacenan en InfluxDB y se consultan en solo lectura desde Grafana y el servidor MCP" width="100%">
-</picture>
+![Arquitectura de HaizeLab: las fuentes entran por Node-RED y por una carga por lotes, se guardan en InfluxDB y se consultan en solo lectura desde Grafana y el servidor MCP](docs/img/arquitectura_haizelab.png)
 
-Las flechas siguen el sentido del dato. Cada flujo de Node-RED escribe en su propio bucket y ningún servicio de consumo puede escribir. Junto a cada bucket aparece su retención.
+| Servicio | Puerto | Función |
+|---|---:|---|
+| `influxdb` | 8086 | Base de datos de series temporales (InfluxDB 2.9) |
+| `influxdb_setup` | — | Se ejecuta una vez: crea los buckets y un token por servicio con el permiso mínimo |
+| `nodered` | 1880 | Automatización: consulta las fuentes y escribe en InfluxDB (meteorología cada 15 min, tráfico cada 5 min, demo de NO₂ cada 5 s) |
+| `grafana` | 3000 | Paneles, alertas y permisos por equipo (Grafana 11.2) |
+| `influx-mcp` | 5001 | Servidor MCP de solo lectura sobre InfluxDB |
+| `chatbot` | 8000 | Asistente que responde con las cifras de `resultados.json` |
+| `presentacion` | 8080 | Presentación web |
+| `sbd-pipeline`, `sbd-notebook`, `carga-historica` | — | Tareas por lotes (perfil `pipeline`): descarga y limpieza, notebook y carga del histórico en InfluxDB |
 
-### Servicios
+Los puertos solo escuchan en `127.0.0.1`. Ningún token se guarda en el repositorio. El detalle de buckets, tags y fields está en el [organigrama de datos](docs/organigrama-datos.md).
 
-Todo se levanta con Docker Compose. Los puertos se publican solo en `127.0.0.1`.
-
-| Servicio | Imagen | Puerto | Función |
-|---|---|---:|---|
-| `influxdb` | `influxdb:2.9.1` | 8086 | Base de datos de series temporales |
-| `influxdb_setup` | `influxdb:2.9.1` | | Contenedor efímero que crea los buckets y los tokens en el primer arranque |
-| `nodered` | `nodered/node-red:5.0.7` con `node-red-contrib-influxdb` 0.7.0 | 1880 | Ingesta continua de meteorología, tráfico y demo de NO₂ |
-| `grafana` | `grafana/grafana:11.2.0` | 3000 | Dashboards, alertas y control de acceso |
-| `influx-mcp` | `python:3.12-slim` con `influxdb-mcp` | 5001 | Servidor MCP de solo lectura (requisito PIA) |
-| `chatbot` | `python:3.11-slim` con FastAPI | 8000 | Asistente inteligente explicable con base de conocimiento local |
-| `presentacion` | `nginx:alpine` | 8080 | Diapositivas interactivas con dashboards embebidos |
-
-### Buckets
-
-| Bucket | Measurement | Retención | Quién escribe |
-|---|---|---|---|
-| `aire` | `contaminantes` | Sin límite | Carga por lotes con pandas |
-| `meteo` | `clima` | Sin límite | Node-RED cada 15 minutos y carga por lotes del histórico |
-| `trafico` | `estado` | 30 días | Node-RED cada 5 minutos |
-| `aire_demo` | `contaminantes` | 7 días | Node-RED cada 5 segundos, reproduciendo el histórico |
-
-El detalle de tags y fields está en el [organigrama de datos](docs/organigrama-datos.md).
-
-### Tokens
-
-El script [`influxdb/init-influxdb.sh`](influxdb/init-influxdb.sh), ejecutado por el contenedor `influxdb_setup`, genera automáticamente los cuatro tokens con el principio de mínimo privilegio y los deposita en el volumen compartido `influxdb_tokens`. **No es necesario crear ningún token a mano en la interfaz de InfluxDB**, ya que los servicios los consumen directamente del volumen en solo lectura. Ningún token se guarda en el repositorio.
-
-| Token | Permiso | Lo usa |
-|---|---|---|
-| `nodered-write` | Escritura en `meteo`, `trafico` y `aire_demo` | Node-RED |
-| `batch-write` | Escritura en `aire` y `meteo` | `ingesta/carga_historica.py` |
-| `read-all` | Lectura de los cuatro buckets | Grafana |
-| `mcp-read-only` | Lectura de los cuatro buckets | Servidor MCP |
-
-## Puesta en marcha
+## Arranque paso a paso
 
 Requisito: Docker con Compose v2.
 
-**1. Clonar el repositorio y crear el fichero de entorno.** En una terminal:
-
-```bash
-git clone https://github.com/ai-somorrostro/haizelab.git
-cd haizelab
-cp .env.example .env
-```
-
-**2. Configurar `.env`**. Copia la plantilla y edita las variables. El fichero `.env` está en `.gitignore` y **nunca** debe subirse al repositorio:
-
-```bash
-cp .env.example .env
-```
-
-En `.env.example`, las credenciales vienen con valores de plantilla (`cambia_esta_...`). Debes sustituir las **cinco variables obligatorias** por contraseñas seguras (o por credenciales simples para pruebas locales / aula):
-
-##### Variables obligatorias (5)
-
-| Variable | Para qué sirve | Requisitos / Formato |
-|---|---|---|
-| `INFLUXDB_ADMIN_PASSWORD` | Contraseña del administrador de InfluxDB (y de Grafana si no se define `GF_SECURITY_ADMIN_PASSWORD`) | Mínimo 8 caracteres (requisito de InfluxDB) |
-| `INFLUXDB_ADMIN_TOKEN` | Token de administración de InfluxDB (usado solo internamente por `influxdb_setup`) | Cadena alfanumérica segura (ej. `openssl rand -hex 32`) |
-| `NODE_RED_CREDENTIAL_SECRET` | Clave con la que Node-RED cifra sus credenciales en `flows.json` | Cadena alfanumérica segura (ej. `openssl rand -hex 32`) |
-| `NODE_RED_ADMIN_PASSWORD` | Contraseña del editor web de Node-RED (usuario `admin`) | Contraseña del administrador de Node-RED |
-| `GRAFANA_DEFAULT_PASSWORD` | Contraseña base para los usuarios aprovisionados de Grafana | Cada rol recibe esta base + sufijo (ej. `${GRAFANA_DEFAULT_PASSWORD}it1`) |
-
-##### Variables opcionales (Alertas por correo e IA en la nube)
-
-| Variable | Para qué sirve | Valor por defecto / Ejemplo |
-|---|---|---|
-| `ALERT_EMAIL_TO` | Correo destinatario que recibirá las notificaciones de alertas de Grafana | `alfred.ciuca-andrei06@somo.eus` |
-| `GF_SMTP_*` | Configuración del servidor SMTP emisor para que Grafana envíe correos | Ver detalle en `.env.example` (requiere contraseña de aplicación) |
-| `GEMINI_API_KEY` | Clave gratuita de Google Gemini para activar el razonamiento con IA del chatbot | Opcional (si no se define, opera en modo local con `knowledge_base.json`) |
-
-Para generar un valor aleatorio seguro:
-
-```bash
-openssl rand -hex 32
-```
-
-**3. Levantar la plataforma.**
-
-```bash
-docker compose up -d --build
-```
-
-Durante el primer arranque, el contenedor efímero `haizelab_influxdb_setup` ejecuta automáticamente [`influxdb/init-influxdb.sh`](influxdb/init-influxdb.sh), creando los buckets adicionales (`meteo`, `trafico`, `aire_demo`) y aprovisionando los cuatro tokens con sus permisos mínimos.
-
-> **Nota:** Si en algún momento necesitas verificar o regenerar los buckets y tokens manualmente (por ejemplo, tras modificar retenciones en `.env` sin reiniciar los volúmenes), puedes invocar el script directamente con:
-> ```bash
-> docker compose run --rm influxdb_setup
-> ```
-
-**4. Comprobar el estado.**
-
-```bash
-docker compose ps -a
-```
-
-`haizelab_influxdb_setup` debe aparecer como `Exited (0)` y el resto de contenedores como `healthy`.
-
-| Servicio | Dirección | Usuario | Contraseña | Notas |
-|---|---|---|---|---|
-| Presentación interactiva | http://localhost:8080 | — | — | Sin autenticación |
-| Grafana | http://localhost:3000 | `admin` *(o ver tabla RBAC)* | Definida en `.env` (`GF_SECURITY_ADMIN_PASSWORD` o `INFLUXDB_ADMIN_PASSWORD`) | Ver detalle de contraseñas por rol abajo |
-| Node-RED | http://localhost:1880 | `admin` *(o `NODE_RED_ADMIN_USER`)* | Definida en `.env` (`NODE_RED_ADMIN_PASSWORD`) | Editor visual de flujos de ingesta |
-| InfluxDB | http://localhost:8086 | `admin` *(o `INFLUXDB_ADMIN_USER`)* | Definida en `.env` (`INFLUXDB_ADMIN_PASSWORD`) | Organización: `haizenlab` (`INFLUXDB_ORG`) |
-| Servidor MCP | http://127.0.0.1:5001/mcp/ | — | — | Autenticado internamente mediante token |
-| Chatbot (API / Docs) | http://localhost:8000/docs | — | — | Sin autenticación |
-
-> [!NOTE]
-> **Credenciales en entornos locales / demostración rápida:**
-> Las contraseñas no son valores fijos en el código, sino que reflejan lo que definas en tu `.env`. En entornos de desarrollo o aula es habitual emplear valores mnemotécnicos como `INFLUXDB_ADMIN_PASSWORD=adminadmin`, `NODE_RED_ADMIN_PASSWORD=admin` y `GRAFANA_DEFAULT_PASSWORD=admin`.
-
-Para detener la plataforma conservando los datos:
-
-```bash
-docker compose down
-```
-
-Para detenerla borrando también los datos y los tokens:
-
-```bash
-docker compose down -v
-```
-
-## Carga del histórico
-
-Tras el primer arranque, `aire_demo`, `meteo` y `trafico` empiezan a recibir datos por Node-RED. El bucket `aire`, con el histórico oficial de NO₂, se rellena una vez con el script de carga, que se ejecuta en un contenedor y no requiere instalar nada en el host.
-
-**1. Validar sin escribir.** La plataforma debe estar levantada (`docker compose ps -a` con `influxdb` en `healthy`).
-
-```bash
-docker compose run --rm carga-historica --dry-run
-```
-
-**2. Cargar.**
-
-```bash
-docker compose run --rm carga-historica
-```
-
-El contenedor usa automáticamente el token `batch-write` generado por `init-influxdb.sh` y recurre al de administración si no lo encuentra. Para cargar un solo bucket: `docker compose run --rm carga-historica --bucket aire`.
-
-<details>
-<summary>Alternativa: ejecutar desde el host con entorno virtual</summary>
-
-En Debian/Ubuntu recientes `pip` no permite instalar paquetes en el Python del sistema (PEP 668), por eso la carga se ejecuta desde el host en su propio entorno virtual.
-
-```bash
-sudo apt install python3-full python3-venv   # solo la primera vez
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python ingesta/carga_historica.py --bucket all --dry-run
-python ingesta/carga_historica.py --bucket all
-```
-
-El directorio `.venv/` ya está en `.gitignore`. El entorno hay que activarlo con `source .venv/bin/activate` en cada terminal nueva.
-
-Si `pip install` falla con tu versión de Python (por ejemplo, 3.14), crea el entorno con Python 3.12:
-
-```bash
-pipx install uv
-uv venv --python 3.12 .venv
-source .venv/bin/activate
-uv pip install -r requirements.txt
-```
-
-</details>
-
-## Pipeline analítico
-
-Hay un solo pipeline. `ingesta/descargar_y_limpiar.py` descarga los datos de Open Data Euskadi y Open-Meteo, los limpia y los cruza; `notebooks/zbe_bilbao.ipynb` hace el análisis, guarda las figuras en `docs/img/` y todas las cifras en `resultados/resultados.json`.
-
-| Código | Datos | Salida |
-|---|---|---|
-| `ingesta/descargar_y_limpiar.py` y `notebooks/zbe_bilbao.ipynb` | `data/raw/` (crudo, no versionado) y `data/clean/` (limpio) | `docs/img/` y `resultados/resultados.json` |
-
-Para reproducirlo:
-
-```bash
-docker compose run --rm sbd-pipeline
-docker compose run --rm sbd-notebook
-```
-
-## Grafana: usuarios, roles y alertas
-
-Los usuarios, los equipos y la página de inicio de cada equipo se aprovisionan automáticamente al arrancar mediante el script `grafana/provisioning/access-control/setup-access.sh`.
-
-La contraseña de cada usuario se genera combinando la clave base **`GRAFANA_DEFAULT_PASSWORD`** (definida en `.env`) con el sufijo identificador de su rol:
-
-$$\text{Contraseña} = \text{GRAFANA\_DEFAULT\_PASSWORD} + \text{sufijo}$$
-
-Si en tu fichero `.env` configuras `GRAFANA_DEFAULT_PASSWORD=admin` (y contraseña de admin `admin`), las credenciales coincidirán exactamente con los valores de ejemplo de la columna derecha:
-
-| Equipo | Usuario | Contraseña (Regla / Variable en `.env`) | Ejemplo si `base=admin` | Rol / Permisos | Página de inicio |
-|---|---|---|---|---|---|
-| **Super Admin** | `admin` | `${GF_SECURITY_ADMIN_PASSWORD}` o `${INFLUXDB_ADMIN_PASSWORD}` | `admin` | Admin (Control total) | Principal |
-| **IT** | `it_admin1` | `${GRAFANA_DEFAULT_PASSWORD}it1` | `adminit1` | Admin | Principal |
-| **IT** | `it_admin2` | `${GRAFANA_DEFAULT_PASSWORD}it2` | `adminit2` | Editor (Crear y editar paneles) | Principal |
-| **IT** | `it_admin3` | `${GRAFANA_DEFAULT_PASSWORD}it3` | `adminit3` | Editor (Crear y editar paneles) | Principal |
-| **Dirección** | `directora` | `${GRAFANA_DEFAULT_PASSWORD}dir` | `admindir` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
-| **Dirección** | `ceo` | `${GRAFANA_DEFAULT_PASSWORD}ceo` | `adminceo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
-| **Dirección** | `coo` | `${GRAFANA_DEFAULT_PASSWORD}coo` | `admincoo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
-| **Dirección** | `cfo` | `${GRAFANA_DEFAULT_PASSWORD}cfo` | `admincfo` | Viewer (Solo lectura) | Monitor ZBE en tiempo real (`haizelab-overview`) |
-| **Análisis** | `analista1` | `${GRAFANA_DEFAULT_PASSWORD}a1` | `admina1` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista2` | `${GRAFANA_DEFAULT_PASSWORD}a2` | `admina2` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista3` | `${GRAFANA_DEFAULT_PASSWORD}a3` | `admina3` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista4` | `${GRAFANA_DEFAULT_PASSWORD}a4` | `admina4` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista5` | `${GRAFANA_DEFAULT_PASSWORD}a5` | `admina5` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-| **Análisis** | `analista6` | `${GRAFANA_DEFAULT_PASSWORD}a6` | `admina6` | Viewer (Solo lectura) | Panel de análisis ZBE (`haizelab-analisis`) |
-
-> [!IMPORTANT]
-> **Resolución de problemas de acceso en Grafana:**
-> - Inicia sesión siempre con el **nombre de usuario** (ej. `admin`, `directora`, `it_admin1`, `analista1`), **no** con el correo electrónico.
-> - Si falla la contraseña o el usuario en Grafana (`Login failed: Invalid username or password`), ejecuta el siguiente comando en la terminal para restablecer la contraseña a `admin`:
-> ```bash
-> docker exec -it haizelab_grafana grafana-cli admin reset-admin-password admin
-> ```
-> *(O bien desde el directorio del proyecto con Docker Compose: `docker compose exec grafana grafana-cli admin reset-admin-password admin`)*.
-
-Las alertas se aprovisionan desde `grafana/provisioning/alerting/alerting.yaml`:
-
-| Alerta | Umbral | Referencia |
-|---|---|---|
-| NO₂, aviso | Más de 25 µg/m³ | Guía de la OMS de 2021 |
-| NO₂, superación | Más de 40 µg/m³ | Límite anual de la UE |
-| NO₂, pico horario | Más de 200 µg/m³ | Límite horario de la UE |
-| Tráfico, congestión | Ocupación media superior al 35 % | Criterio propio |
-
-## Servidor MCP
-
-El servicio `influx-mcp` expone InfluxDB a clientes compatibles con Model Context Protocol en `http://127.0.0.1:5001/mcp/`, con un token que solo permite leer. Ofrece cuatro herramientas: `test_connection`, `list_buckets`, `list_measurements` y `execute_flux_query`.
-
-La configuración de los clientes OpenCode y Antigravity ya está en `opencode.json` y `.agents/mcp_config.json`. La instalación, la verificación y la resolución de problemas están en [mcp/README.md](mcp/README.md).
-
-## Asistente inteligente (Chatbot)
-
-El servicio `chatbot` (`http://localhost:8000`) proporciona una API en FastAPI diseñada para responder consultas técnicas sobre el estudio de la ZBE de Bilbao, métricas DiD, tráfico, clima y arquitectura.
-
-### Modalidades de funcionamiento:
-
-1. **Modo Offline (Por defecto):**
-   * No requiere ninguna clave ni configuración adicional.
-   * Responde de forma instantánea y determinista utilizando los datos oficiales de `knowledge_base.json`.
-   * Garantiza que el asistente siempre funcione en cualquier equipo sin internet.
-
-2. **Modo Razonamiento con IA en vivo (Opcional):**
-   * Si quieres que el asistente genere lenguaje natural dinámico, razone hipótesis (*«¿Por qué el SO₂ no bajó?»*) y argumente los porqués:
-     1. Obtén una clave API gratuita en [Google AI Studio](https://aistudio.google.com/) *(se genera en 10 segundos con tu cuenta de Gmail, gratis y sin tarjeta)*.
-     2. Añádela a tu archivo `.env`:
-        ```env
-        GEMINI_API_KEY=AIzaSy_tu_clave_aqui
-        ```
-     3. Reinicia el contenedor del chatbot:
-        ```bash
-        docker compose up -d chatbot
-        ```
-
-La documentación interactiva de la API está disponible en `http://localhost:8000/docs`.
-
-## Presentación web
-
-La presentación es una aplicación web interactiva que se levanta automáticamente con Docker Compose en el puerto 8080.
-
-Al acceder a **`http://localhost:8080`**, se cargan las diapositivas con:
-* Integración en directo del dashboard de **Grafana** (`:3000`).
-* Monitorización de **Node-RED** (`:1880`) e **InfluxDB** (`:8086`).
-* Widget interactivo del **Chatbot Assistant** (`:8000`).
-
-Todo funciona en red local (`localhost`), de forma 100% autónoma y sin dependencias de túneles externos ni servicios de terceros.
-
-## Estructura del repositorio
+1. **Clonar y crear el fichero de entorno.**
+   ```bash
+   git clone https://github.com/ai-somorrostro/haizelab.git
+   cd haizelab
+   cp .env.example .env
+   ```
+2. **Rellenar `.env`.** Cambiar los valores `cambia_...` de `INFLUXDB_ADMIN_PASSWORD` (mínimo 8 caracteres), `INFLUXDB_ADMIN_TOKEN`, `NODE_RED_CREDENTIAL_SECRET`, `NODE_RED_ADMIN_PASSWORD` y `GRAFANA_DEFAULT_PASSWORD`. Para generar un valor aleatorio: `openssl rand -hex 32`. `.env` no se sube nunca al repositorio.
+3. **Levantar la plataforma.**
+   ```bash
+   docker compose up -d --build
+   docker compose ps -a
+   ```
+   `haizelab_influxdb_setup` debe quedar como `Exited (0)` y el resto como `healthy`.
+4. **Cargar el histórico de calidad del aire (obligatorio).** Node-RED rellena `meteo`, `trafico` y `aire_demo`, pero el bucket `aire` solo se llena con este paso:
+   ```bash
+   docker compose run --rm carga-historica --dry-run   # comprueba sin escribir
+   docker compose run --rm carga-historica
+   ```
+5. **Abrir los servicios.**
+
+   | Servicio | Dirección | Usuario |
+   |---|---|---|
+   | Grafana | http://localhost:3000 | `admin` (contraseña `INFLUXDB_ADMIN_PASSWORD`) o un usuario de equipo |
+   | Node-RED | http://localhost:1880 | `admin` (contraseña `NODE_RED_ADMIN_PASSWORD`) |
+   | InfluxDB | http://localhost:8086 | `admin` (contraseña `INFLUXDB_ADMIN_PASSWORD`) |
+   | Presentación | http://localhost:8080 | — |
+   | Chatbot | http://localhost:8000/docs | — |
+
+   Los usuarios de Grafana los crea `grafana/provisioning/access-control/setup-access.sh`. Su contraseña es `GRAFANA_DEFAULT_PASSWORD` seguida de un sufijo:
+
+   | Equipo | Usuarios | Sufijo | Rol |
+   |---|---|---|---|
+   | Dirección | `directora`, `ceo`, `coo`, `cfo` | `dir`, `ceo`, `coo`, `cfo` | Viewer |
+   | Análisis | `analista1` … `analista6` | `a1` … `a6` | Viewer |
+   | IT | `it_admin1`, `it_admin2`, `it_admin3` | `it1`, `it2`, `it3` | Admin (`it_admin1`) y Editor |
+
+6. **Repetir el análisis (opcional).** El notebook solo lee `data/clean/` y vuelve a escribir `resultados/resultados.json` y las figuras de `docs/img/`:
+   ```bash
+   docker compose run --rm sbd-notebook
+   ```
+   `docker compose run --rm sbd-pipeline` vuelve a descargar y limpiar los datos desde las fuentes oficiales. El análisis llega hasta el 30/09/2026; Grafana puede mostrar datos posteriores.
+
+Para parar: `docker compose down` (conserva los datos) o `docker compose down -v` (borra datos y tokens).
+
+## Estructura
 
 | Ruta | Contenido |
 |---|---|
-| `docker-compose.yml` | Orquestación de los 7 servicios de la plataforma |
-| `.env.example` | Plantilla de credenciales y variables de entorno |
-| `influxdb/` | Script de inicialización de buckets y tokens de mínimo privilegio |
-| `nodered/` | Dockerfile y flujos de ingesta continua (`flows.json`) |
-| `grafana/` | Dashboards, alertas, mapa de la ZBE y aprovisionamiento de roles |
-| `mcp/` | Servidor MCP para consultas a InfluxDB (requisito PIA) |
-| `chatbot/` | Microservicio FastAPI y base de conocimiento local |
-| `presentacion/` | Web de diapositivas interactivas servida por Nginx (:8080) |
-| `notebooks/` | Notebook oficial del análisis exploratorio y causal (SBD) |
-| `ingesta/` | Scripts de ingesta y carga histórica por lotes a InfluxDB |
-| `data/` | Datasets limpios del análisis |
-| `resultados/` | Cifras del análisis (`resultados.json`), generadas por el notebook |
-| `docs/` | Entregables oficiales de SBD, MIA y BDA |
+| `ingesta/` | `descargar_y_limpiar.py` (descarga, limpieza y cruce) y `carga_historica.py` (carga en InfluxDB) |
+| `data/clean/` | Datos limpios que lee el notebook |
+| `notebooks/zbe_bilbao.ipynb` | Análisis P1-P5 y anexo del modelo de IA |
+| `resultados/resultados.json` | Única fuente de las cifras de los documentos |
+| `docs/` | Informe para el cliente, propuesta de modelo de IA, organigrama de datos, infraestructura y registro de mejoras (`MEJORAS.md`). `generar_informe.py` y `generar_mia.py` crean los documentos a partir de `resultados.json` |
+| `influxdb/`, `nodered/`, `grafana/`, `mcp/` | Configuración de cada servicio |
+| `chatbot/`, `presentacion/` | Asistente y presentación web |
+| `docker-compose.yml`, `.env.example` | Arranque de todos los servicios y plantilla de variables |
 
-## Documentación
+## Autores
 
-| Documento | Módulo | Contenido |
+| Persona | Rol | Área |
 |---|---|---|
-| [Informe para el cliente](docs/informe-cliente-sbd.md) | Sistemas de Big Data | Preguntas de negocio, fuentes, resultados, conclusiones y recomendaciones |
-| [Propuesta de modelo de IA](docs/propuesta-modelo-ia.md) | Modelos de IA | Alternativas consideradas, modelo elegido, impacto y riesgos |
-| [Infraestructura explicada](docs/infraestructura-explicada.md) | Big Data Aplicado | InfluxDB, Node-RED, Grafana y gestión de tokens |
-| [Organigrama de datos](docs/organigrama-datos.md) | Big Data Aplicado | Buckets, measurements, tags y fields |
-| [Servidor MCP](mcp/README.md) | Programación de IA | Instalación, clientes y verificación del protocolo MCP |
-| [Asistente inteligente](chatbot/README.md) | Programación de IA / Modelos de IA | API FastAPI, base de conocimiento local y modo offline |
+| Alfred Gabriel | Product Owner | Relación con el cliente y desarrollo |
+| Iñigo Guzmán | Lead Data Engineer | Datos e infraestructura |
+| Kerman Latorre | Scrum Master | Análisis y modelado |
 
-El informe para el cliente se genera con `python docs/generar_informe.py` a partir de `resultados/resultados.json`; la versión de referencia es `docs/informe-cliente-sbd.md`. Para crear el `.docx` y el `.pdf` hace falta Windows con Microsoft Word instalado (con `--solo-md` genera solo el Markdown en cualquier sistema).
-
-## Flujo de trabajo
-
-- La rama de integración es `develop`.
-- Cada tarea se desarrolla en una rama `feature/nombre-corto`.
-- Los cambios llegan a `develop` por pull request revisada por otra persona del equipo.
-- Los secretos viven en `.env`, que no se versiona. En el repositorio solo está `.env.example`.
-
-## Equipo
-
-| Persona | Rol | Responsabilidades clave |
-|---|---|---|
-| Alfred Gabriel | Product Owner | Sistemas de Big Data & Modelado (pipeline 332k filas, econometría DiD, validación) |
-| Iñigo Guzmán | Lead Data Engineer | Big Data Aplicado (Docker, InfluxDB buckets/tokens, Node-RED streaming, Grafana RBAC) |
-| Kerman Latorre | Scrum Master | Modelos de IA & Protocolos (Servidor MCP, integración de herramientas IA, metodología ágil) |
+El trabajo se integra en `develop` mediante pull requests revisadas por otro miembro del equipo.

@@ -172,7 +172,7 @@ p("**Avisos de contaminación: la cadena completa.** Un aviso no lo da solo un m
   "Madrid para el NO₂ [6] sigue este esquema: fija niveles de preaviso, aviso y alerta (200, 250 y 400 µg/m³ superados en "
   "varias estaciones de una zona durante horas seguidas) y solo aplica sus escenarios de medidas cuando la previsión "
   "meteorológica de AEMET es desfavorable. Allí la previsión es meteorológica; un modelo de IA como el del caso [4] permitiría "
-  "prever directamente el NO₂. Solo el primer paso puede ser IA; el segundo y el tercero son reglas. En Bilbao no hubo ninguna hora por encima de 200 µg/m³ entre {min(horas_200)} y {max(horas_200)} (máximo horario: "
+  f"prever directamente el NO₂. Solo el primer paso puede ser IA; el segundo y el tercero son reglas. En Bilbao no hubo ninguna hora por encima de 200 µg/m³ entre {min(horas_200)} y {max(horas_200)} (máximo horario: "
   f"{es(m['no2_max_horario'], 0)} µg/m³), así que este aviso no se habría activado nunca. Tiene menos relación con la decisión "
   "sobre la ZBE que la evaluación del efecto, que es lo que se propone.")
 

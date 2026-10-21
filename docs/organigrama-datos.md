@@ -172,7 +172,7 @@ from(bucket: "aire")
 
 ---
 
-## Evidencias Visuales y Capturas de Pantalla (Rúbrica BDA)
+## Evidencias visuales y capturas de pantalla
 
 ### 1. InfluxDB 2 — Data Explorer y Estructura de Buckets
 Visualización de los cuatro buckets aprovisionados (`aire`, `meteo`, `trafico`, `aire_demo`) y consulta Flux de verificación de series temporales:
