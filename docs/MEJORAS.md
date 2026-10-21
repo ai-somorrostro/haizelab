@@ -55,7 +55,7 @@ Las cifras citadas salen de `resultados/resultados.json` (ejecución del noteboo
 
 ## Errores encontrados y corregidos en la fase 1
 
-Estos errores no venían en las correcciones; se encontraron en el diagnóstico (`docs/DIAGNOSTICO.md`). El equipo decidió corregirlos aunque cambien cifras ya presentadas.
+Estos errores no venían en las correcciones; se encontraron en el diagnóstico inicial de la fase 0 (un documento de trabajo que ya se ha retirado del repositorio; su contenido está resuelto en este fichero). El equipo decidió corregirlos aunque cambien cifras ya presentadas.
 
 | Error | Qué pasaba | Corrección | Dónde |
 |---|---|---|---|
@@ -620,7 +620,15 @@ Rama `fix/bda-revision`. `resultados/resultados.json` no cambia: el notebook se 
 |---|---|---|---|
 | SBD-02 | Fuente de los festivos: en vez de `PENDIENTE DE VERIFICAR`, se dice de dónde salen de verdad: una lista de festivos de Bilbao escrita en `ingesta/descargar_y_limpiar.py`, no contrastada con un calendario oficial. En el código, la variable `festivos_oficiales` pasa a `festivos_bilbao` y los comentarios dejan de llamarla «oficial». | Informe SBD, tabla de fuentes (sección 3); notebook, sección 3; `ingesta/descargar_y_limpiar.py` | No se puede afirmar una fuente oficial que no se ha comprobado |
 | EV-04 | Estación de Europa: en vez de `PENDIENTE DE VERIFICAR POR EL EQUIPO`, «No hemos comprobado si la estación de Europa tuvo cambios propios (obras, traslado o sensor); su bajada (−26,8 %), mayor que la de las estaciones de dentro, se trata como una limitación del grupo de control». La cifra sale de `resultados.json` (`estaciones_no2.Europa.var_post_vs_previo_pct`). | Informe SBD, recomendaciones (sección 6); MIA, tabla de riesgos (sección 8); notebook, sección 8 | El equipo decide tratarlo como limitación en vez de dejarlo pendiente |
-| — | Nota al principio del diagnóstico: es el diagnóstico inicial (fase 0) y el estado final de cada corrección está en este fichero. | `docs/DIAGNOSTICO.md` | El diagnóstico tiene pendientes que ya están resueltos |
+| — | Nota al principio del diagnóstico: era el diagnóstico inicial (fase 0) y el estado final de cada corrección está en este fichero. Después, el diagnóstico se retira del repositorio (ver «Limpieza del repositorio»). | Diagnóstico de la fase 0 | El diagnóstico tenía pendientes que ya están resueltos |
 
-Ya no queda ninguna marca de pendiente entre corchetes en `docs/*.md`, `README.md` ni `presentacion/index.html`, salvo en `docs/DIAGNOSTICO.md`, que es el diagnóstico inicial.
+Ya no queda ninguna marca de pendiente entre corchetes en `docs/*.md`, `README.md` ni `presentacion/index.html`.
+
+---
+
+## Limpieza del repositorio (rama `fix/limpieza-repo`)
+
+| Qué se ha cambiado | Dónde | Por qué |
+|---|---|---|
+| Se elimina el diagnóstico inicial de la fase 0. Todo lo que señalaba está resuelto o documentado como limitación en este fichero. | `docs/DIAGNOSTICO.md` | Era un documento de trabajo con pendientes ya cerrados |
 
