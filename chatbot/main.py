@@ -89,7 +89,7 @@ En el proyecto se utilizan y contrastan dos familias metodológicas, ambas imple
    - **Gradient Boosting** (`HistGradientBoostingRegressor`): Elegido formalmente en el entregable de MIA (`docs/propuesta-modelo-ia.md`) y ejecutado en el notebook (celdas 18 y 19).
    - Justificación: Modela la física no lineal del NO2 ante variables meteorológicas (velocidad y dirección de viento, lluvia, temperatura, humedad) y calendario.
    - Funcionamiento: Se entrena exclusivamente con datos pre-ZBE (2022 a junio 2024) y predice la serie horaria contrafactual (lo que habría ocurrido sin la ZBE).
-   - Resultado: Reducción neta atribuible de **-2,87 µg/m³ (-11,6%)** en el periodo post-ZBE. Se audita mediante explicabilidad SHAP.
+   - Resultado: Reducción neta atribuible de **-2,87 µg/m³ (-11,6%)** en el periodo post-ZBE.
 2. Contraste de Robustez Metodológica (Módulo SBD / Econometría Causal):
    - **Diferencias en Diferencias (Diff-in-Diff / DiD)**: Modelo cuasiexperimental sobre 41.700 horas en 8 estaciones oficiales.
    - Resultado Neto Atribuible: Reducción neta de **-1,63 µg/m³ (-6,4%)** en NO2 (IC 95%: -1,87 a -1,39 µg/m³, p < 0,001).
@@ -279,7 +279,7 @@ RESPUESTAS_LOCALES = {
         "Se seleccionó formalmente **Gradient Boosting** (`HistGradientBoostingRegressor`) como el modelo central de Machine Learning "
         "para estimar el contrafactual de NO₂. Modela de forma no lineal la interacción entre meteorología (viento, lluvia, temperatura, humedad) "
         "y calendario. **Está implementado y ejecutado en el notebook** (`notebooks/zbe_bilbao.ipynb`, celdas 18 y 19), donde entrenado en pre-ZBE "
-        "predice el NO₂ post-ZBE y arroja una reducción neta de **-2,87 µg/m³ (-11,6%)**, auditado con explicabilidad SHAP.\n\n"
+        "predice el NO₂ post-ZBE y arroja una reducción neta de **-2,87 µg/m³ (-11,6%)**.\n\n"
         "2. **Contraste de Robustez Metodológica (Módulo SBD / Econometría Causal):**\n"
         "Se utiliza **Diferencias en Diferencias (Diff-in-Diff / DiD)** con 41.700 horas en 8 estaciones oficiales frente al control metropolitano, "
         "arrojando una reducción neta atribuible de **-1,63 µg/m³ (-6,4%)** (IC 95%: -1,87 a -1,39 µg/m³, p < 0,001).\n\n"
