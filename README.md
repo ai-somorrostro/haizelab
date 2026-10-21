@@ -66,7 +66,7 @@ Requisito: Docker con Compose v2.
    `haizelab_influxdb_setup` debe quedar como `Exited (0)` y el resto como `healthy`.
 4. **Cargar el histórico de calidad del aire (obligatorio).** Node-RED rellena `meteo`, `trafico` y `aire_demo`, pero el bucket `aire` solo se llena con este paso:
    ```bash
-   docker compose run --rm carga-historica --dry-run   # comprueba sin escribir
+   docker compose run --rm --build carga-historica --dry-run   # construye la imagen y comprueba sin escribir
    docker compose run --rm carga-historica
    ```
 5. **Abrir los servicios.**
@@ -89,9 +89,9 @@ Requisito: Docker con Compose v2.
 
 6. **Repetir el análisis (opcional).** El notebook solo lee `data/clean/` y vuelve a escribir `resultados/resultados.json` y las figuras de `docs/img/`:
    ```bash
-   docker compose run --rm sbd-notebook
+   docker compose run --rm --build sbd-notebook
    ```
-   `docker compose run --rm sbd-pipeline` vuelve a descargar y limpiar los datos desde las fuentes oficiales. El análisis llega hasta el 30/09/2026; Grafana puede mostrar datos posteriores.
+   `docker compose run --rm --build sbd-pipeline` vuelve a descargar y limpiar los datos desde las fuentes oficiales. El análisis llega hasta el 30/09/2026; Grafana puede mostrar datos posteriores.
 
 Para parar: `docker compose down` (conserva los datos) o `docker compose down -v` (borra datos y tokens).
 
