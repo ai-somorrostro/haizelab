@@ -104,6 +104,12 @@ influx-mcp:
     INFLUXDB_TOKEN: ${INFLUXDB_MCP_TOKEN:-} # vacio -> entrypoint carga desde /tokens/tokens.env
   volumes:
     - influxdb_tokens:/tokens:ro
+  healthcheck:
+    test: ["CMD-SHELL", "python -c \"import urllib.request,json; r=urllib.request.Request('http://127.0.0.1:5001/mcp/', data=json.dumps({'jsonrpc':'2.0','method':'ping','id':1}).encode(), headers={'Content-Type':'application/json','Accept':'application/json, text/event-stream'}); urllib.request.urlopen(r)\""]
+    interval: 15s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
 ```
 
 > `mcp[cli]==1.9.0` está fijado a propósito: sin fijar, `mcp 2.x` elimina
