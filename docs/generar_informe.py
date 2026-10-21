@@ -106,7 +106,7 @@ h("3. Datos: fuentes, tipos y calidad")
 tabla(["Fuente", "Quién la publica", "Formato y frecuencia", "Variables usadas", "Pregunta"], [
     ["Calidad del aire", "Gobierno Vasco (Open Data Euskadi)", "CSV; datos horarios por estación, según los propios ficheros descargados", "NO₂ y SO₂ (µg/m³), 8 estaciones", "P1-P5"],
     ["Meteorología", "Open-Meteo (modelo meteorológico, no una estación)", "JSON de una API; horaria", "Velocidad del viento", "P3"],
-    ["Calendario", "Elaboración propia: fases y festivos de Bilbao [PENDIENTE DE VERIFICAR la fuente de los festivos]", "CSV; diaria", "Laborable, fase de la ZBE", "P2, P5"],
+    ["Calendario", "Elaboración propia: fases de la ZBE y lista de festivos de Bilbao escrita en ingesta/descargar_y_limpiar.py (no contrastada con un calendario oficial)", "CSV; diaria", "Laborable, fase de la ZBE", "P2, P5"],
 ], [3, 5, 5, 3, 2])
 p("**Tipos de datos.** Cada fila es una estación en una hora, con datos numéricos (NO₂, SO₂, viento), categóricos (estación, "
   "grupo, fase), lógicos (laborable, en horario ZBE) y de fecha y hora.")
@@ -192,9 +192,10 @@ ul(
     f"cuando la ZBE está activa ({es(p2['efecto_neto_en_horario_zbe'])}).",
     f"**No ampliar todavía con medidas como la de la fase 2:** añadió {es(f2['efecto_neto'])} µg/m³, dentro del margen de error. "
     "Repetir el cálculo cuando la fase 2 tenga más datos.",
-    f"**Ajustar la medición antes de ampliar:** solo hay {n_dentro} estaciones dentro y el control es desigual ({control_min} baja un "
-    f"{es(abs(est[control_min]['var_post_vs_previo_pct']), 1)} %, más que las de dentro). Comprobar si esa estación tuvo cambios propios, "
-    "como obras, traslado o cambio de sensor [PENDIENTE DE VERIFICAR POR EL EQUIPO], y valorar más puntos de medida dentro de la ZBE.",
+    f"**Ajustar la medición antes de ampliar:** solo hay {n_dentro} estaciones dentro y el control es desigual. No hemos comprobado si "
+    f"la estación de {control_min} tuvo cambios propios (obras, traslado o sensor); su bajada "
+    f"({es(est[control_min]['var_post_vs_previo_pct'], 1)} %), mayor que la de las estaciones de dentro, se trata como una limitación "
+    "del grupo de control. Conviene valorar más puntos de medida dentro de la ZBE.",
 )
 p(f"**Limitaciones:** pocas estaciones ({n_dentro} dentro y {n_fuera} de control); antes de la ZBE dentro y fuera no iban del todo en "
   "paralelo; las estaciones miden la concentración de NO₂ en el aire, no lo que emiten los coches.")

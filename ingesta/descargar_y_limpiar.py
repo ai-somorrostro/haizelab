@@ -16,7 +16,7 @@ Fuentes:
   2. Meteorología: Open-Meteo Historical API (Coordenadas Bilbao: 43.2630 N, -2.9350 W).
      Variables: temperatura, humedad relativa, precipitación, velocidad del viento, dirección del viento.
   3. Calendario ZBE: Fases ZBE (Fase 1: 15/06/2024, Fase 2: 16/06/2025), horario (L-V 7:00-20:00)
-     y festivos oficiales de Bilbao / Bizkaia / Euskadi.
+     y festivos de Bilbao (lista escrita en este script, no contrastada con un calendario oficial).
   4. Tráfico: GeoJSON en tiempo real de Bilbao Open Data (Ayuntamiento de Bilbao).
 
 Problemas de calidad tratados y contabilizados:
@@ -243,7 +243,8 @@ def descargar_meteorologia(forzar=False):
 
 def generar_calendario_zbe_festivos(forzar=False):
     """
-    Genera el calendario oficial de Bilbao de 2022 a 2026 con festivos locales,
+    Genera el calendario de Bilbao de 2022 a 2026 con los festivos de la lista de abajo
+    (escrita a mano, no contrastada con un calendario oficial),
     fases de la ZBE y definición de días laborables.
     """
     crear_estructura_directorios()
@@ -251,7 +252,7 @@ def generar_calendario_zbe_festivos(forzar=False):
     if f_salida.exists() and not forzar:
         return f_salida
 
-    festivos_oficiales = {
+    festivos_bilbao = {
         # 2022
         "2022-01-01": "Año Nuevo",
         "2022-01-06": "Epifanía del Señor",
@@ -327,8 +328,8 @@ def generar_calendario_zbe_festivos(forzar=False):
     for f in fechas:
         f_str = f.strftime("%Y-%m-%d")
         es_fin_de_semana = f.weekday() >= 5
-        es_festivo = f_str in festivos_oficiales
-        nombre_festivo = festivos_oficiales.get(f_str, "")
+        es_festivo = f_str in festivos_bilbao
+        nombre_festivo = festivos_bilbao.get(f_str, "")
         es_laborable = (not es_fin_de_semana) and (not es_festivo)
 
         if f < FECHA_FASE1:
@@ -714,7 +715,7 @@ def guardar_demo_aire():
 
 def limpiar_calendario():
     """
-    Lee y valida el calendario oficial ZBE con festivos.
+    Lee y valida el calendario de la ZBE con festivos.
     """
     f_crudo = DIR_DATA_RAW / "calendario" / "calendario_zbe_festivos.csv"
     if not f_crudo.exists():

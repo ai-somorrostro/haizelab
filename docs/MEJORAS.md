@@ -118,7 +118,7 @@ Las cifras salen de `resultados/resultados.json` (ejecución del notebook en la 
 
 ### SBD-02
 - **Comentario:** nombres de las fuentes subrayados.
-- **Qué se ha cambiado:** tabla con quién publica cada fuente, el formato, el periodo, la frecuencia, las variables usadas y para qué pregunta. La fuente oficial de cada festivo queda como `[PENDIENTE DE VERIFICAR]`.
+- **Qué se ha cambiado:** tabla con quién publica cada fuente, el formato, el periodo, la frecuencia, las variables usadas y para qué pregunta. La fuente oficial de cada festivo queda marcada como pendiente de verificar (se cierra en la sección «Cierre de pendientes», SBD-02).
 - **Dónde:** notebook, sección 3.
 - **Por qué:** era una lista de nombres sin datos de cada fuente.
 
@@ -329,7 +329,7 @@ Las cifras salen de `resultados/resultados.json`, bloque `modelo_ia` (ejecución
 ### EV-01, EV-02 y EV-03
 - **Comentarios:** aplicaciones sin sentido («¿cómo se resuelve "lanzar avisos"? ¿solo con modelos de predicción?») y sin casos reales · contrafactual sin explicar, familias como enumeración, «DiD no es IA. La automatización de tareas no es una técnica de IA» · «no se proponen elementos medibles».
 - **Qué se ha cambiado:**
-  - Cinco casos reales, con su fuente al final ([1]-[5]) y su relación con nuestro problema. Quedan como `[PENDIENTE DE VERIFICAR]` la página oficial de Google Project Green Light y la versión vigente del protocolo de Madrid, porque sus webs no se pudieron consultar.
+  - Cinco casos reales, con su fuente al final ([1]-[5]) y su relación con nuestro problema. Quedan marcadas como pendientes de verificar la página oficial de Google Project Green Light y la versión vigente del protocolo de Madrid, porque sus webs no se pudieron consultar (se resuelven en los ajustes del MIA, fuentes [5] y [6]).
   - Avisos: la cadena predicción (IA) → umbral (regla) → aviso (regla). Con nuestros datos no hubo ninguna hora por encima de 200 µg/m³, así que se dice que esta aplicación tiene menos relación con la decisión.
   - Familias en una tabla: qué son, un ejemplo ligado a los casos y si se usan aquí. La automatización (Node-RED) y DiD salen de las familias y se dice que no son IA.
   - Tabla de 5 indicadores medibles: trabajo manual, tiempo hasta el panel, error del modelo, horas > 200 µg/m³ y efecto. El trabajo manual queda `[A COMPLETAR POR EL EQUIPO]` porque no se ha medido.
@@ -431,11 +431,11 @@ No cambia ninguna cifra de `resultados.json`. Solo cambia el texto de `docs/gene
 |---|---|---|---|
 | EV-06, MIA-24 | Se explica en llano por qué el modelo da menos que DiD (−0,49 frente a −1,63): DiD resta medias y no descuenta el tiempo atmosférico, y el modelo sí. Se mantiene que los intervalos no se solapan y que el tamaño exacto es incierto. | MIA, sección 5 («Por qué el modelo da menos») y fila «Que el resultado dependa del método» de la tabla de riesgos (sección 8) | El documento daba las dos cifras, pero no explicaba la diferencia |
 | EV-06, MIA-19 | Frase explícita: Random Forest empata en la práctica con Gradient Boosting (0,01 µg/m³ de diferencia) y se eligió por la regla fijada de antemano, el menor MAE en validación. | MIA, sección 5 | Para no presentar como clara una ventaja que no lo es |
-| EV-01 | Fuente [5]: la página de la ciudad de Boston, que participa en Project Green Light. Recoge las cifras del programa: hasta un 30 % menos de paradas y hasta un 10 % menos de emisiones en los cruces. | MIA, sección 2 y «Fuentes» | Sustituye el `[PENDIENTE DE VERIFICAR]` |
-| EV-01 | Fuente [6]: texto oficial del protocolo de NO₂ de Madrid (2015). Se ha leído y confirma tres cosas: los niveles de preaviso, aviso y alerta (200, 250 y 400 µg/m³ superados en varias estaciones de una zona durante horas seguidas); que los escenarios se aplican solo con previsión meteorológica desfavorable; y que esa previsión sale de las predicciones oficiales de AEMET. El documento aclara que en Madrid la previsión es meteorológica, no un modelo de IA del NO₂. | MIA, sección 2 (cadena de avisos) y «Fuentes» | Sustituye el `[PENDIENTE DE VERIFICAR]` |
+| EV-01 | Fuente [5]: la página de la ciudad de Boston, que participa en Project Green Light. Recoge las cifras del programa: hasta un 30 % menos de paradas y hasta un 10 % menos de emisiones en los cruces. | MIA, sección 2 y «Fuentes» | Sustituye la marca de pendiente de verificar |
+| EV-01 | Fuente [6]: texto oficial del protocolo de NO₂ de Madrid (2015). Se ha leído y confirma tres cosas: los niveles de preaviso, aviso y alerta (200, 250 y 400 µg/m³ superados en varias estaciones de una zona durante horas seguidas); que los escenarios se aplican solo con previsión meteorológica desfavorable; y que esa previsión sale de las predicciones oficiales de AEMET. El documento aclara que en Madrid la previsión es meteorológica, no un modelo de IA del NO₂. | MIA, sección 2 (cadena de avisos) y «Fuentes» | Sustituye la marca de pendiente de verificar |
 | EV-03 | Indicador de horas de trabajo manual definido (qué se mide y cómo), con el valor «A medir en la puesta en marcha». No se da ninguna cifra porque no se ha medido. | MIA, sección 7 | Sustituye el `[A COMPLETAR POR EL EQUIPO]` |
 
-| EV-03, SBD-02 | Ya no se afirma cada cuánto actualiza su web el Gobierno Vasco. Donde se hablaba de la frecuencia de la calidad del aire pone «datos horarios por estación, según los propios ficheros descargados». En el MIA sustituye al `[PENDIENTE DE VERIFICAR]`. En el informe SBD sustituye a «CSV anual; horaria», que se podía leer como una publicación anual. En el notebook sustituye a «Horaria». | MIA, sección 7 (indicador «Tiempo hasta tener el panel actualizado»); informe SBD, tabla de fuentes (sección 3); notebook, sección 3 (celda de texto, sin cambio de cifras) | Es lo único que se puede comprobar con los ficheros que tenemos |
+| EV-03, SBD-02 | Ya no se afirma cada cuánto actualiza su web el Gobierno Vasco. Donde se hablaba de la frecuencia de la calidad del aire pone «datos horarios por estación, según los propios ficheros descargados». En el MIA sustituye a la marca de pendiente de verificar. En el informe SBD sustituye a «CSV anual; horaria», que se podía leer como una publicación anual. En el notebook sustituye a «Horaria». | MIA, sección 7 (indicador «Tiempo hasta tener el panel actualizado»); informe SBD, tabla de fuentes (sección 3); notebook, sección 3 (celda de texto, sin cambio de cifras) | Es lo único que se puede comprobar con los ficheros que tenemos |
 
 Para que el informe SBD siga en 4 páginas de cuerpo con la frase nueva, se cambia el reparto de anchos de la tabla de fuentes y la figura 1 se imprime a 14 cm de ancho en vez de 15. No cambia ningún texto ni ninguna cifra del informe.
 
@@ -509,7 +509,7 @@ Están los 57 IDs de `CORRECCIONES.md`. Tras la fase 5 están resueltos los 57 (
 | EV-01 | Resuelto | 4 |
 | EV-02 | Resuelto | 4, 6 |
 | EV-03 | Resuelto. El indicador de horas de trabajo manual está definido, pero sin cifra: «A medir en la puesta en marcha» | 4 |
-| EV-04 | Resuelto. La causa de la bajada de Europa (−26,8 %) queda `[PENDIENTE DE VERIFICAR POR EL EQUIPO]` (decisión 5) | 4 |
+| EV-04 | Resuelto. No se ha comprobado si Europa tuvo cambios propios; su bajada (−26,8 %) se trata como una limitación del grupo de control (decisión 5) | 4, cierre |
 | EV-05 | Resuelto | 4 |
 | EV-06 | Resuelto | 4, 6 |
 | EV-07 | Resuelto | 1, 2, 3, 6 |
@@ -519,7 +519,7 @@ Están los 57 IDs de `CORRECCIONES.md`. Tras la fase 5 están resueltos los 57 (
 | EV-11 | Resuelto | 5 |
 | EV-12 | Resuelto | 5 |
 | SBD-01 | Resuelto | 3 |
-| SBD-02 | Resuelto. La fuente oficial de los festivos queda `[PENDIENTE DE VERIFICAR]` | 2, 3, 4 |
+| SBD-02 | Resuelto. Los festivos salen de una lista escrita en `ingesta/descargar_y_limpiar.py`, no contrastada con un calendario oficial, y así se dice | 2, 3, 4, cierre |
 | SBD-03 a SBD-10 | Resueltos | 1, 2, 3 |
 | SBD-11 | Resuelto | 3 |
 | SBD-12 a SBD-15 | Resueltos | 2, 3 |
@@ -609,3 +609,18 @@ Rama `fix/bda-revision`. `resultados/resultados.json` no cambia: el notebook se 
 | EV-12 | La guía diaria de NO₂ (25 µg/m³) se cita con la fuente oficial: resumen ejecutivo de las guías de calidad del aire de la OMS de 2021, tabla 0.1, consultado en el repositorio de la OMS. La tabla aclara que es un percentil 99 (3-4 días al año por encima), lo que confirma que la regla es solo un aviso preventivo. | `docs/alertas.md` («Límites de referencia» y «Fuentes») | La cifra tenía que salir de una fuente verificada |
 | — | Se eliminan de `docs/img/` las 7 imágenes que no usa ningún documento, el notebook ni la presentación (se ha buscado cada nombre con su ruta): `arquitectura_haizelab_claro.png`, `arquitectura_tiempo_real.png`, `github_pr1_merge.png`, `grafana_relojes_no2.jpg`, `grafana_trafico_81tramos_antiguo.jpg`, `no2_mensual_dentro_vs_fuera.png` y `nodered_flujo_aire_demo.png`. La presentación usa sus propias copias de `presentacion/assets/`. | `docs/img/` | Fase 6, punto 1: quitar lo que no se usa |
 | EV-12 | Las alertas siguen enviándose por correo. `docker-compose.yml` ya pasaba a Grafana las variables SMTP y `ALERT_EMAIL_TO` desde el `.env`. `.env.example` las tiene ahora activas, con valores de ejemplo de `example.com` y una línea que explica cada una; `GF_SMTP_ENABLED=false` por defecto para que una copia nueva no intente enviar. `docs/alertas.md` explica cómo se configura y se prueba el correo. Prueba del punto de contacto por la API de Grafana con el `.env` local: estado `ok`. No hay ninguna dirección real en el repositorio. | `.env.example`; `docs/alertas.md` («Cómo se configura el correo») | El equipo decide mantener el aviso por correo; sustituye a la nota anterior de que la demo no enviaba correos |
+
+---
+
+## Cierre de pendientes (rama `fix/cierre-pendientes`)
+
+`resultados/resultados.json` no cambia. Se vuelven a ejecutar el notebook y los dos generadores: el informe SBD sigue con portada y 4 páginas de cuerpo (5 en total) y el MIA con 7.
+
+| ID | Qué se ha cambiado | Dónde | Por qué |
+|---|---|---|---|
+| SBD-02 | Fuente de los festivos: en vez de `PENDIENTE DE VERIFICAR`, se dice de dónde salen de verdad: una lista de festivos de Bilbao escrita en `ingesta/descargar_y_limpiar.py`, no contrastada con un calendario oficial. En el código, la variable `festivos_oficiales` pasa a `festivos_bilbao` y los comentarios dejan de llamarla «oficial». | Informe SBD, tabla de fuentes (sección 3); notebook, sección 3; `ingesta/descargar_y_limpiar.py` | No se puede afirmar una fuente oficial que no se ha comprobado |
+| EV-04 | Estación de Europa: en vez de `PENDIENTE DE VERIFICAR POR EL EQUIPO`, «No hemos comprobado si la estación de Europa tuvo cambios propios (obras, traslado o sensor); su bajada (−26,8 %), mayor que la de las estaciones de dentro, se trata como una limitación del grupo de control». La cifra sale de `resultados.json` (`estaciones_no2.Europa.var_post_vs_previo_pct`). | Informe SBD, recomendaciones (sección 6); MIA, tabla de riesgos (sección 8); notebook, sección 8 | El equipo decide tratarlo como limitación en vez de dejarlo pendiente |
+| — | Nota al principio del diagnóstico: es el diagnóstico inicial (fase 0) y el estado final de cada corrección está en este fichero. | `docs/DIAGNOSTICO.md` | El diagnóstico tiene pendientes que ya están resueltos |
+
+Ya no queda ninguna marca de pendiente entre corchetes en `docs/*.md`, `README.md` ni `presentacion/index.html`, salvo en `docs/DIAGNOSTICO.md`, que es el diagnóstico inicial.
+

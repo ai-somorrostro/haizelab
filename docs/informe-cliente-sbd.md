@@ -30,7 +30,7 @@ La ZBE de Bilbao restringe la entrada de vehículos de lunes a viernes laborable
 |---|---|---|---|---|
 | Calidad del aire | Gobierno Vasco (Open Data Euskadi) | CSV; datos horarios por estación, según los propios ficheros descargados | NO<sub>2</sub> y SO<sub>2</sub> (µg/m³), 8 estaciones | P1-P5 |
 | Meteorología | Open-Meteo (modelo meteorológico, no una estación) | JSON de una API; horaria | Velocidad del viento | P3 |
-| Calendario | Elaboración propia: fases y festivos de Bilbao [PENDIENTE DE VERIFICAR la fuente de los festivos] | CSV; diaria | Laborable, fase de la ZBE | P2, P5 |
+| Calendario | Elaboración propia: fases de la ZBE y lista de festivos de Bilbao escrita en ingesta/descargar_y_limpiar.py (no contrastada con un calendario oficial) | CSV; diaria | Laborable, fase de la ZBE | P2, P5 |
 
 **Tipos de datos.** Cada fila es una estación en una hora, con datos numéricos (NO<sub>2</sub>, SO<sub>2</sub>, viento), categóricos (estación, grupo, fase), lógicos (laborable, en horario ZBE) y de fecha y hora.
 
@@ -100,7 +100,7 @@ La ZBE de Bilbao restringe la entrada de vehículos de lunes a viernes laborable
 
 - **Mantener la ZBE con su horario actual:** el efecto neto (−1,63 µg/m³) es distinto de cero y mayor cuando la ZBE está activa (−2,93).
 - **No ampliar todavía con medidas como la de la fase 2:** añadió −0,52 µg/m³, dentro del margen de error. Repetir el cálculo cuando la fase 2 tenga más datos.
-- **Ajustar la medición antes de ampliar:** solo hay 2 estaciones dentro y el control es desigual (Europa baja un 26,8 %, más que las de dentro). Comprobar si esa estación tuvo cambios propios, como obras, traslado o cambio de sensor [PENDIENTE DE VERIFICAR POR EL EQUIPO], y valorar más puntos de medida dentro de la ZBE.
+- **Ajustar la medición antes de ampliar:** solo hay 2 estaciones dentro y el control es desigual. No hemos comprobado si la estación de Europa tuvo cambios propios (obras, traslado o sensor); su bajada (−26,8 %), mayor que la de las estaciones de dentro, se trata como una limitación del grupo de control. Conviene valorar más puntos de medida dentro de la ZBE.
 
 **Limitaciones:** pocas estaciones (2 dentro y 5 de control); antes de la ZBE dentro y fuera no iban del todo en paralelo; las estaciones miden la concentración de NO<sub>2</sub> en el aire, no lo que emiten los coches.
 

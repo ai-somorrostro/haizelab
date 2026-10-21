@@ -300,8 +300,9 @@ tabla(["Riesgo", "Comprobación", "Resultado"], [
      f"{el}: {es(met[el]['mae_ent'])} frente a {es(met[el]['mae_val'])}. Memoriza parte del entrenamiento; por eso se elige "
      "por el error en validación, que sigue siendo el menor."],
     ["Que el control no sea comparable", "Tendencia antes de la ZBE y bajada por estación.",
-     f"2022→2023: {es(cambio_previo_dentro, signo=True)} dentro, {es(cambio_previo_fuera, signo=True)} fuera. {control_min} baja un "
-     f"{es(abs(est[control_min]['var_post_vs_previo_pct']), 1)} %, más que las de dentro; causa [PENDIENTE DE VERIFICAR POR EL EQUIPO]."],
+     f"2022→2023: {es(cambio_previo_dentro, signo=True)} dentro, {es(cambio_previo_fuera, signo=True)} fuera. No hemos comprobado si "
+     f"la estación de {control_min} tuvo cambios propios (obras, traslado o sensor); su bajada "
+     f"({es(est[control_min]['var_post_vs_previo_pct'], 1)} %), mayor que la de las de dentro, se trata como una limitación del grupo de control."],
     ["Que el resultado dependa del método", "Comparar con la resta de medias (DiD) del informe de análisis.",
      f"Modelo {es(ef['efecto_neto'])}; DiD {es(p1['efecto_neto_did'])} (de {es(p1['ic95_inf'])} a {es(p1['ic95_sup'])}). Los dos "
      "bajan, pero sus intervalos no se solapan: el tamaño exacto es incierto. La diferencia viene de que el modelo descuenta "
