@@ -423,3 +423,20 @@ Las cifras salen de `resultados/resultados.json`, bloque `modelo_ia` (ejecución
 | Efecto del modelo en el notebook | −2,77 µg/m³ (solo dentro, sin intervalo) | −0,49 (de −0,86 a −0,12), dentro − fuera | Se resta lo que pasó fuera |
 
 El chatbot (`chatbot/main.py` y `knowledge_base.json`) aún cita el −2,87 del modelo antiguo. Solo se le quita SHAP en esta fase; sus cifras se actualizan en la fase 6 (punto 4).
+
+### Ajustes tras la revisión del equipo (rama `fix/mia-ajustes`)
+No cambia ninguna cifra de `resultados.json`. Solo cambia el texto de `docs/generar_mia.py` y se regeneran el `.md`, el `.docx` y el `.pdf`.
+
+| ID | Qué se ha cambiado | Dónde | Por qué |
+|---|---|---|---|
+| EV-06, MIA-24 | Se explica en llano por qué el modelo da menos que DiD (−0,49 frente a −1,63): DiD resta medias y no descuenta el tiempo atmosférico, y el modelo sí. Se mantiene que los intervalos no se solapan y que el tamaño exacto es incierto. | MIA, sección 5 («Por qué el modelo da menos») y fila «Que el resultado dependa del método» de la tabla de riesgos (sección 8) | El documento daba las dos cifras, pero no explicaba la diferencia |
+| EV-06, MIA-19 | Frase explícita: Random Forest empata en la práctica con Gradient Boosting (0,01 µg/m³ de diferencia) y se eligió por la regla fijada de antemano, el menor MAE en validación. | MIA, sección 5 | Para no presentar como clara una ventaja que no lo es |
+| EV-01 | Fuente [5]: la página de la ciudad de Boston, que participa en Project Green Light. Recoge las cifras del programa: hasta un 30 % menos de paradas y hasta un 10 % menos de emisiones en los cruces. | MIA, sección 2 y «Fuentes» | Sustituye el `[PENDIENTE DE VERIFICAR]` |
+| EV-01 | Fuente [6]: texto oficial del protocolo de NO₂ de Madrid (2015). Se ha leído y confirma tres cosas: los niveles de preaviso, aviso y alerta (200, 250 y 400 µg/m³ superados en varias estaciones de una zona durante horas seguidas); que los escenarios se aplican solo con previsión meteorológica desfavorable; y que esa previsión sale de las predicciones oficiales de AEMET. El documento aclara que en Madrid la previsión es meteorológica, no un modelo de IA del NO₂. | MIA, sección 2 (cadena de avisos) y «Fuentes» | Sustituye el `[PENDIENTE DE VERIFICAR]` |
+| EV-03 | Indicador de horas de trabajo manual definido (qué se mide y cómo), con el valor «A medir en la puesta en marcha». No se da ninguna cifra porque no se ha medido. | MIA, sección 7 | Sustituye el `[A COMPLETAR POR EL EQUIPO]` |
+
+| EV-03, SBD-02 | Ya no se afirma cada cuánto actualiza su web el Gobierno Vasco. Donde se hablaba de la frecuencia de la calidad del aire pone «datos horarios por estación, según los propios ficheros descargados». En el MIA sustituye al `[PENDIENTE DE VERIFICAR]`. En el informe SBD sustituye a «CSV anual; horaria», que se podía leer como una publicación anual. En el notebook sustituye a «Horaria». | MIA, sección 7 (indicador «Tiempo hasta tener el panel actualizado»); informe SBD, tabla de fuentes (sección 3); notebook, sección 3 (celda de texto, sin cambio de cifras) | Es lo único que se puede comprobar con los ficheros que tenemos |
+
+Para que el informe SBD siga en 4 páginas de cuerpo con la frase nueva, se cambia el reparto de anchos de la tabla de fuentes y la figura 1 se imprime a 14 cm de ancho en vez de 15. No cambia ningún texto ni ninguna cifra del informe.
+
+El chatbot se actualiza en la fase 6.

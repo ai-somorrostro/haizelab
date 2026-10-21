@@ -28,7 +28,7 @@ La ZBE de Bilbao restringe la entrada de vehículos de lunes a viernes laborable
 
 | Fuente | Quién la publica | Formato y frecuencia | Variables usadas | Pregunta |
 |---|---|---|---|---|
-| Calidad del aire | Gobierno Vasco (Open Data Euskadi) | CSV anual; horaria | NO<sub>2</sub> y SO<sub>2</sub> (µg/m³), 8 estaciones | P1-P5 |
+| Calidad del aire | Gobierno Vasco (Open Data Euskadi) | CSV; datos horarios por estación, según los propios ficheros descargados | NO<sub>2</sub> y SO<sub>2</sub> (µg/m³), 8 estaciones | P1-P5 |
 | Meteorología | Open-Meteo (modelo meteorológico, no una estación) | JSON de una API; horaria | Velocidad del viento | P3 |
 | Calendario | Elaboración propia: fases y festivos de Bilbao [PENDIENTE DE VERIFICAR la fuente de los festivos] | CSV; diaria | Laborable, fase de la ZBE | P2, P5 |
 
