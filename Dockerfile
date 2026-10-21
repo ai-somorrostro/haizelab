@@ -1,5 +1,5 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
-FROM python:3.11-slim AS base
+FROM python:3.11.17-slim AS base
 
 LABEL maintainer="haizelab"
 LABEL description="Analisis Multivariable ZBE Bilbao"

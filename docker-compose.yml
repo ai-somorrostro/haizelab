@@ -199,7 +199,7 @@ services:
 
   # ── Presentación Web Interactiva (Nginx estático) ───────────────────────────
   presentacion:
-    image: nginx:alpine
+    image: nginx:1.31.7-alpine
     container_name: haizelab_presentacion
     restart: unless-stopped
     ports:
