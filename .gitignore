@@ -1,12 +1,4 @@
-# --- Datos crudos originales (excluidos para mantener el repo ligero) ---
-data/raw/
-
-# --- Datasets descomprimidos de gran tamaño (> 50 MB) ---
-# Se utiliza en su lugar la versión comprimida .zip (< 10 MB, compatible con GitHub)
-data/clean/dataset_integrado_zbe.csv
-data/clean/calidad_aire_limpio.csv
-
-# --- Python / Entornos virtuales ---
+# --- Python ---
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -14,24 +6,30 @@ __pycache__/
 venv/
 env/
 
+# --- Node.js ---
+node_modules/
+
+# --- Variables de entorno (todas las variantes) ---
+.env
+.env.*
+!.env.example
+
 # --- IDE / Sistema Operativo ---
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+*:Zone.Identifier
 
-# --- Infraestructura: variables de entorno y credenciales ---
-.env
-nodered/credentials.json
 # --- Archivos temporales de Office / Word ---
 ~$*.docx
 ~$*.xlsx
 
-# --- PDFs explicativos locales who/how (no pushear a GitHub) ---
-docs/HaizeLab_Project_Explained_Who_and_How.pdf
-docs/HaizeLab_Proyecto_Explicado_Quienes_y_Como.pdf
+# --- Infraestructura ---
+nodered/credentials.json
 
-# --- Guía de defensa interna del equipo (material de estudio privado) ---
-GUIA_DEFENSA*
-*_DEFENSA*
-
+# --- Datos crudos originales (repo ligero) ---
+data/raw/
+# Datasets descomprimidos > 50 MB (usar el .zip < 10 MB)
+data/clean/dataset_integrado_zbe.csv
+data/clean/calidad_aire_limpio.csv
