@@ -58,9 +58,9 @@ Un sistema de IA de aprendizaje supervisado aprende una relación a partir de ej
 | ZBE de Londres (ULEZ) [2] | Random Forest para quitar el efecto del tiempo y ciudades de control. La ULEZ de 2019 bajó el NO<sub>2</sub> un 19,6 % en las estaciones de tráfico del centro a los tres meses; la ampliación de 2023 no mostró cambio detectable. | Misma pregunta que la nuestra, incluida la de si una fase nueva añade algo. |
 | Madrid Central [3] | Regresión polinómica y redes neuronales sobre el NO<sub>2</sub> para evaluar la zona de bajas emisiones. | ZBE española y mismo contaminante. |
 | Previsión europea de calidad del aire (CAMS) [4] | Random Forest y Gradient Boosting corrigen la previsión del NO<sub>2</sub>, el ozono y las partículas en cada estación. | Primer paso de un sistema de avisos (ver abajo). |
-| Semáforos (Google, Project Green Light) [5] | Aprende de datos de tráfico y recomienda tiempos de semáforo para reducir paradas y emisiones en los cruces. | Movilidad urbana; no se usa en este proyecto porque no gestionamos semáforos. |
+| Semáforos (Google, Project Green Light) [5] | Modela el tráfico con IA y datos de Google Maps y recomienda tiempos de semáforo. Boston, ciudad participante, cita los primeros resultados del programa: hasta un 30 % menos de paradas y hasta un 10 % menos de emisiones en los cruces. | Movilidad urbana; no se usa en este proyecto porque no gestionamos semáforos. |
 
-**Avisos de contaminación: la cadena completa.** Un aviso no lo da solo un modelo de predicción. Son tres pasos: (1) **predicción:** un modelo de IA, como el del caso [4], predice el NO<sub>2</sub> de las próximas horas en cada estación; (2) **umbral:** una regla fija compara la predicción con un límite (por ejemplo, 200 µg/m³ en una hora); (3) **aviso:** si se supera, se informa a la población y, si un protocolo lo prevé, se aplican medidas. Madrid tiene un protocolo de este tipo con niveles de preaviso, aviso y alerta [6]. Solo el primer paso es IA; el segundo y el tercero son reglas. En Bilbao no hubo ninguna hora por encima de 200 µg/m³ entre 2022 y 2026 (máximo horario: 168 µg/m³), así que este aviso no se habría activado nunca. Tiene menos relación con la decisión sobre la ZBE que la evaluación del efecto, que es lo que se propone.
+**Avisos de contaminación: la cadena completa.** Un aviso no lo da solo un modelo de predicción. Son tres pasos: (1) **predicción:** un modelo de IA, como el del caso [4], predice el NO<sub>2</sub> de las próximas horas en cada estación; (2) **umbral:** una regla fija compara la predicción con un límite (por ejemplo, 200 µg/m³ en una hora); (3) **aviso:** si se supera, se informa a la población y, si un protocolo lo prevé, se aplican medidas. El protocolo de Madrid para el NO<sub>2</sub> [6] sigue este esquema: fija niveles de preaviso, aviso y alerta (200, 250 y 400 µg/m³ superados en varias estaciones de una zona durante horas seguidas) y solo aplica sus escenarios de medidas cuando la previsión meteorológica de AEMET es desfavorable. Allí la previsión es meteorológica; un modelo de IA como el del caso [4] permitiría prever directamente el NO<sub>2</sub>. Solo el primer paso puede ser IA; el segundo y el tercero son reglas. En Bilbao no hubo ninguna hora por encima de 200 µg/m³ entre {min(horas_200)} y {max(horas_200)} (máximo horario: 168 µg/m³), así que este aviso no se habría activado nunca. Tiene menos relación con la decisión sobre la ZBE que la evaluación del efecto, que es lo que se propone.
 
 ## 3. Familias de IA
 
@@ -97,7 +97,7 @@ Mismas variables para todos: tiempo atmosférico (temperatura, humedad, lluvia, 
 
 ## 5. Modelo elegido y resultado
 
-**Random Forest**, porque tiene el menor error en validación (8,14 µg/m³), un 22,5 % menos que la base. Gradient Boosting queda a 0,01 µg/m³: casi empatan, y se elige por el criterio fijado de antemano (menor MAE en validación). Cada árbol hace preguntas como «¿viento de menos de 2 m/s?», «¿entre las 7 y las 9?», «¿laborable?», y al final da el NO<sub>2</sub> medio de las horas de entrenamiento que cumplen lo mismo.
+**Random Forest**, porque tiene el menor error en validación (8,14 µg/m³), un 22,5 % menos que la base. En la práctica empata con Gradient Boosting: la diferencia es de 0,01 µg/m³. Se eligió Random Forest por la regla fijada de antemano: el menor MAE en validación. Cada árbol hace preguntas como «¿viento de menos de 2 m/s?», «¿entre las 7 y las 9?», «¿laborable?», y al final da el NO<sub>2</sub> medio de las horas de entrenamiento que cumplen lo mismo.
 
 **Por qué hace falta un modelo no lineal.** Una relación es lineal si cada m/s de viento de más baja el NO<sub>2</sub> siempre lo mismo. En nuestros datos no es así:
 
@@ -116,7 +116,7 @@ Entre 0-1 y 1-2 m/s el NO<sub>2</sub> sube 0,83 µg/m³ y al pasar de 2-3 a 3-4 
 - Diferencia = NO<sub>2</sub> observado − NO<sub>2</sub> predicho, y efecto = diferencia media dentro − diferencia media fuera. Se resta la de fuera porque el modelo no conoce la renovación de coches ni otros cambios de toda la comarca, que aparecen también fuera.
 - Intervalo del 95 %: se agrupan las horas por semanas y se repite el cálculo sorteando semanas (bootstrap). Si el intervalo incluye el cero, el resultado es **no concluyente**.
 
-**Resultado:** diferencia dentro −2,21, fuera −1,73; efecto = −2,21 − (−1,73) = **−0,49 µg/m³** (de −0,86 a −0,12; −1,9 % del nivel de antes). *Qué significa:* descontado el tiempo atmosférico y lo que pasó fuera, el NO<sub>2</sub> bajó dentro algo más que fuera. El efecto es pequeño: menor que el que da la comparación de medias del informe de análisis (−1,63). Se puede medir aunque el error por hora sea de 8,14 porque es la media de 134.753 horas-estación, y los errores hacia arriba y hacia abajo se compensan.
+**Resultado:** diferencia dentro −2,21, fuera −1,73; efecto = −2,21 − (−1,73) = **−0,49 µg/m³** (de −0,86 a −0,12; −1,9 % del nivel de antes). *Qué significa:* descontado el tiempo atmosférico y lo que pasó fuera, el NO<sub>2</sub> bajó dentro algo más que fuera. El efecto es pequeño: menor que el que da la comparación de medias del informe de análisis (DiD, −1,63). **Por qué el modelo da menos:** DiD resta medias y no descuenta el tiempo atmosférico; el modelo predice cada hora con el tiempo que hizo de verdad y sí lo descuenta. La parte de la bajada que DiD atribuye a la ZBE y el modelo no es la que el modelo explica con el tiempo atmosférico. Se puede medir aunque el error por hora sea de 8,14 porque es la media de 134.753 horas-estación, y los errores hacia arriba y hacia abajo se compensan.
 
 ## 6. Cómo funciona la solución
 
@@ -130,7 +130,7 @@ Cada flecha es un paso automático: los datos los descarga y limpia un script, e
 
 | Indicador | Cómo se mide | Valor |
 |---|---|---|
-| Horas de trabajo manual para actualizar el análisis | Cronometrar una actualización completa a mano y con el notebook. | Antes: [A COMPLETAR POR EL EQUIPO]. Ahora: un comando; tiempo [A COMPLETAR POR EL EQUIPO]. |
+| Horas de trabajo manual para actualizar el análisis | Horas de una persona para actualizar el análisis con datos nuevos: a mano (descargar, limpiar y calcular) frente a con el notebook (un comando). Se cronometran las dos formas. | A medir en la puesta en marcha. |
 | Tiempo hasta tener el panel actualizado | Frecuencia de ingesta de Node-RED en InfluxDB. | Tiempo atmosférico cada 15 min y tráfico cada 5 min. Calidad del aire oficial: según publique el Gobierno Vasco [PENDIENTE DE VERIFICAR]. |
 | Error del modelo | MAE en validación cada vez que se reentrena. | 8,14 µg/m³ (base sin IA: 10,50). Debe seguir por debajo de la base. |
 | Horas al año por encima de 200 µg/m³ | Contar horas-estación con NO<sub>2</sub> > 200. | 0 en todos los años de 2022 a 2026; máximo horario 168 µg/m³. |
@@ -162,7 +162,7 @@ Se refieren a la solución propuesta: el modelo más la comparación con las est
 | Que baje todo el aire, no solo el del tráfico | SO<sub>2</sub>, que no viene del tráfico. | +0,33 (de −0,01 a +0,66): no baja. |
 | Sobreajuste | MAE en entrenamiento frente a validación. | Random Forest: 4,77 frente a 8,14. Memoriza parte del entrenamiento; por eso se elige por el error en validación, que sigue siendo el menor. |
 | Que el control no sea comparable | Tendencia antes de la ZBE y bajada por estación. | 2022→2023: +0,10 dentro, −1,14 fuera. Europa baja un 26,8 %, más que las de dentro; causa [PENDIENTE DE VERIFICAR POR EL EQUIPO]. |
-| Que el resultado dependa del método | Comparar con la resta de medias (DiD) del informe de análisis. | Modelo −0,49; DiD −1,63 (de −2,38 a −0,94). Los dos bajan, pero sus intervalos no se solapan: el tamaño exacto es incierto. |
+| Que el resultado dependa del método | Comparar con la resta de medias (DiD) del informe de análisis. | Modelo −0,49; DiD −1,63 (de −2,38 a −0,94). Los dos bajan, pero sus intervalos no se solapan: el tamaño exacto es incierto. La diferencia viene de que el modelo descuenta el tiempo atmosférico y DiD no. |
 
 **Por qué DiD no es el modelo principal.** DiD solo resta medias: no descuenta el tiempo hora a hora. Si después de la ZBE hubiera hecho más viento en el centro que fuera, lo contaría como efecto de la ZBE. Se mantiene como comprobación porque es simple y no depende de ningún modelo: si los dos métodos dan una bajada, la dirección del resultado no depende del método elegido.
 
@@ -178,6 +178,6 @@ Se refieren a la solución propuesta: el modelo más la comparación con las est
 - [2] Tong, C., Dai, Y., Cole, M., Elliott, R. J. R., Bartington, S. E., Liu, B. y Shi, Z. (2025). Further improvement in London's air quality demands more than the Ultra Low Emission Zone policy. *npj Clean Air*, 1, 29. doi:10.1038/s44407-025-00030-9.
 - [3] Toutouh, J., Lebrusán, I. y Nesmachnow, S. (2020). Computational Intelligence for Evaluating the Air Quality in the Center of Madrid, Spain. En *Optimization and Learning (OLA 2020)*, Communications in Computer and Information Science, vol. 1173. Springer.
 - [4] Bertrand, J.-M., Meleux, F., Ung, A., Descombes, G. y Colette, A. (2023). Technical note: Improving the European air quality forecast of the Copernicus Atmosphere Monitoring Service using machine learning techniques. *Atmospheric Chemistry and Physics*, 23, 5317-5333.
-- [5] Google Research. Project Green Light. [PENDIENTE DE VERIFICAR: página oficial y cifras de resultados].
-- [6] Ayuntamiento de Madrid. Protocolo de actuación para episodios de contaminación por dióxido de nitrógeno. [PENDIENTE DE VERIFICAR: versión vigente y modelo de predicción que usa].
+- [5] Ciudad de Boston. Project Green Light: Saving You Time On The Road. https://www.boston.gov/node/16372851
+- [6] Ayuntamiento de Madrid (2015). Protocolo de medidas a adoptar durante episodios de alta contaminación por dióxido de nitrógeno en la ciudad de Madrid. https://www.madrid.es/UnidadWeb/UGNormativas/Normativa/2015/ficheros/AnexoProtocoloContaminacion.pdf
 - Directiva 2008/50/CE del Parlamento Europeo y del Consejo, relativa a la calidad del aire ambiente y a una atmósfera más limpia en Europa.

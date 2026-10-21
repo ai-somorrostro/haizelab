@@ -161,15 +161,18 @@ tabla(["Caso", "Qué hace la IA", "Relación con este proyecto"], [
      "Random Forest y Gradient Boosting corrigen la previsión del NO₂, el ozono y las partículas en cada estación.",
      "Primer paso de un sistema de avisos (ver abajo)."],
     ["Semáforos (Google, Project Green Light) [5]",
-     "Aprende de datos de tráfico y recomienda tiempos de semáforo para reducir paradas y emisiones en los cruces.",
+     "Modela el tráfico con IA y datos de Google Maps y recomienda tiempos de semáforo. Boston, ciudad participante, "
+     "cita los primeros resultados del programa: hasta un 30 % menos de paradas y hasta un 10 % menos de emisiones en los cruces.",
      "Movilidad urbana; no se usa en este proyecto porque no gestionamos semáforos."],
 ], [4, 8, 6])
 p("**Avisos de contaminación: la cadena completa.** Un aviso no lo da solo un modelo de predicción. Son tres pasos: "
   "(1) **predicción:** un modelo de IA, como el del caso [4], predice el NO₂ de las próximas horas en cada estación; "
   "(2) **umbral:** una regla fija compara la predicción con un límite (por ejemplo, 200 µg/m³ en una hora); "
-  "(3) **aviso:** si se supera, se informa a la población y, si un protocolo lo prevé, se aplican medidas. Madrid tiene un "
-  "protocolo de este tipo con niveles de preaviso, aviso y alerta [6]. Solo el primer paso es IA; el segundo y el tercero son "
-  f"reglas. En Bilbao no hubo ninguna hora por encima de 200 µg/m³ entre {min(horas_200)} y {max(horas_200)} (máximo horario: "
+  "(3) **aviso:** si se supera, se informa a la población y, si un protocolo lo prevé, se aplican medidas. El protocolo de "
+  "Madrid para el NO₂ [6] sigue este esquema: fija niveles de preaviso, aviso y alerta (200, 250 y 400 µg/m³ superados en "
+  "varias estaciones de una zona durante horas seguidas) y solo aplica sus escenarios de medidas cuando la previsión "
+  "meteorológica de AEMET es desfavorable. Allí la previsión es meteorológica; un modelo de IA como el del caso [4] permitiría "
+  "prever directamente el NO₂. Solo el primer paso puede ser IA; el segundo y el tercero son reglas. En Bilbao no hubo ninguna hora por encima de 200 µg/m³ entre {min(horas_200)} y {max(horas_200)} (máximo horario: "
   f"{es(m['no2_max_horario'], 0)} µg/m³), así que este aviso no se habría activado nunca. Tiene menos relación con la decisión "
   "sobre la ZBE que la evaluación del efecto, que es lo que se propone.")
 
@@ -217,8 +220,8 @@ ul("**SARIMAX:** predice una serie a partir de sus propios valores pasados, y el
 # 5 ---------------------------------------------------------------------------
 h("5. Modelo elegido y resultado")
 p(f"**{el}**, porque tiene el menor error en validación ({es(met[el]['mae_val'])} µg/m³), un {es(m['mejora_mae_frente_base_pct'], 1)} % "
-  f"menos que la base. {otro} queda a {es(met[otro]['mae_val'] - met[el]['mae_val'])} µg/m³: casi empatan, y se elige por el "
-  "criterio fijado de antemano (menor MAE en validación). Cada árbol hace preguntas como «¿viento de menos de 2 m/s?», "
+  f"menos que la base. En la práctica empata con {otro}: la diferencia es de {es(met[otro]['mae_val'] - met[el]['mae_val'])} µg/m³. "
+  f"Se eligió {el} por la regla fijada de antemano: el menor MAE en validación. Cada árbol hace preguntas como «¿viento de menos de 2 m/s?», "
   "«¿entre las 7 y las 9?», «¿laborable?», y al final da el NO₂ medio de las horas de entrenamiento que cumplen lo mismo.")
 p("**Por qué hace falta un modelo no lineal.** Una relación es lineal si cada m/s de viento de más baja el NO₂ siempre lo mismo. "
   "En nuestros datos no es así:")
@@ -238,7 +241,9 @@ p(f"**Resultado:** diferencia dentro {es(ef['diferencia_dentro'])}, fuera {es(ef
   f"{es(ef['diferencia_dentro'])} − ({es(ef['diferencia_fuera'])}) = **{es(ef['efecto_neto'])} µg/m³** (de {es(ef['ic95_inf'])} a "
   f"{es(ef['ic95_sup'])}; {es(ef['efecto_neto'] / p1['dentro_pre'] * 100, 1)} % del nivel de antes). *Qué significa:* descontado el "
   "tiempo atmosférico y lo que pasó fuera, el NO₂ bajó dentro algo más que fuera. El efecto es pequeño: menor que el que da la "
-  f"comparación de medias del informe de análisis ({es(p1['efecto_neto_did'])}). Se puede medir aunque el error por hora sea de "
+  f"comparación de medias del informe de análisis (DiD, {es(p1['efecto_neto_did'])}). **Por qué el modelo da menos:** DiD resta "
+  "medias y no descuenta el tiempo atmosférico; el modelo predice cada hora con el tiempo que hizo de verdad y sí lo descuenta. "
+  "La parte de la bajada que DiD atribuye a la ZBE y el modelo no es la que el modelo explica con el tiempo atmosférico. Se puede medir aunque el error por hora sea de "
   f"{es(met[el]['mae_val'])} porque es la media de {es(ef['horas_despues'], 0)} horas-estación, y los errores hacia arriba y "
   "hacia abajo se compensan.")
 
@@ -256,8 +261,10 @@ p("Cada flecha es un paso automático: los datos los descarga y limpia un script
 # 7 ---------------------------------------------------------------------------
 h("7. Impacto: indicadores medibles")
 tabla(["Indicador", "Cómo se mide", "Valor"], [
-    ["Horas de trabajo manual para actualizar el análisis", "Cronometrar una actualización completa a mano y con el notebook.",
-     "Antes: [A COMPLETAR POR EL EQUIPO]. Ahora: un comando; tiempo [A COMPLETAR POR EL EQUIPO]."],
+    ["Horas de trabajo manual para actualizar el análisis",
+     "Horas de una persona para actualizar el análisis con datos nuevos: a mano (descargar, limpiar y calcular) frente a con "
+     "el notebook (un comando). Se cronometran las dos formas.",
+     "A medir en la puesta en marcha."],
     ["Tiempo hasta tener el panel actualizado", "Frecuencia de ingesta de Node-RED en InfluxDB.",
      f"Tiempo atmosférico cada {min_meteo} min y tráfico cada {min_trafico} min. Calidad del aire oficial: según publique el "
      "Gobierno Vasco [PENDIENTE DE VERIFICAR]."],
@@ -298,7 +305,8 @@ tabla(["Riesgo", "Comprobación", "Resultado"], [
      f"{es(abs(est[control_min]['var_post_vs_previo_pct']), 1)} %, más que las de dentro; causa [PENDIENTE DE VERIFICAR POR EL EQUIPO]."],
     ["Que el resultado dependa del método", "Comparar con la resta de medias (DiD) del informe de análisis.",
      f"Modelo {es(ef['efecto_neto'])}; DiD {es(p1['efecto_neto_did'])} (de {es(p1['ic95_inf'])} a {es(p1['ic95_sup'])}). Los dos "
-     "bajan, pero sus intervalos no se solapan: el tamaño exacto es incierto."],
+     "bajan, pero sus intervalos no se solapan: el tamaño exacto es incierto. La diferencia viene de que el modelo descuenta "
+     "el tiempo atmosférico y DiD no."],
 ], [4, 6, 8])
 p("**Por qué DiD no es el modelo principal.** DiD solo resta medias: no descuenta el tiempo hora a hora. Si después de la ZBE "
   "hubiera hecho más viento en el centro que fuera, lo contaría como efecto de la ZBE. Se mantiene como comprobación porque es "
@@ -321,9 +329,10 @@ ul("[1] Grange, S. K. y Carslaw, D. C. (2019). Using meteorological normalisatio
    "[4] Bertrand, J.-M., Meleux, F., Ung, A., Descombes, G. y Colette, A. (2023). Technical note: Improving the European air "
    "quality forecast of the Copernicus Atmosphere Monitoring Service using machine learning techniques. *Atmospheric Chemistry "
    "and Physics*, 23, 5317-5333.",
-   "[5] Google Research. Project Green Light. [PENDIENTE DE VERIFICAR: página oficial y cifras de resultados].",
-   "[6] Ayuntamiento de Madrid. Protocolo de actuación para episodios de contaminación por dióxido de nitrógeno. "
-   "[PENDIENTE DE VERIFICAR: versión vigente y modelo de predicción que usa].",
+   "[5] Ciudad de Boston. Project Green Light: Saving You Time On The Road. https://www.boston.gov/node/16372851",
+   "[6] Ayuntamiento de Madrid (2015). Protocolo de medidas a adoptar durante episodios de alta contaminación por dióxido de "
+   "nitrógeno en la ciudad de Madrid. "
+   "https://www.madrid.es/UnidadWeb/UGNormativas/Normativa/2015/ficheros/AnexoProtocoloContaminacion.pdf",
    "Directiva 2008/50/CE del Parlamento Europeo y del Consejo, relativa a la calidad del aire ambiente y a una atmósfera más "
    "limpia en Europa.")
 
