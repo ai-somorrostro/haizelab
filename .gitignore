@@ -33,3 +33,6 @@ data/raw/
 # Datasets descomprimidos > 50 MB (usar el .zip < 10 MB)
 data/clean/dataset_integrado_zbe.csv
 data/clean/calidad_aire_limpio.csv
+
+# --- Guía de estudio interna (no se versiona) ---
+docs/GUIA_ESTUDIO.md
