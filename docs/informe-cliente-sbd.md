@@ -36,7 +36,7 @@ La ZBE de Bilbao restringe la entrada de vehículos de lunes a viernes laborable
 
 - **Filas:** 336.480 crudas, sin fechas no válidas ni repetidas. Se estudian 332.619, hasta el 30/09/2026, para que las cifras no cambien cuando se publican datos nuevos (Grafana puede mostrar datos posteriores).
 - **Formato:** 199.004 celdas con coma decimal y 14.020 filas con hora 24:00 (pasa a las 00:00 del día siguiente).
-- **Negativos:** 71 valores de NO<sub>2</sub> (0,021 %) pasan a **NaN** (celda vacía). Un 0 bajaría la media sin motivo y borrar la fila perdería los demás datos de esa hora.
+- **Negativos:** 71 valores de NO<sub>2</sub> (0,021 %) pasan a **NaN** (*Not a Number*): celda sin dato, como cuando el sensor de Europa no midió; las medias no la cuentan. Un 0 diría que el aire estaba limpio y bajaría la media; borrar la fila perdería los demás datos de esa hora (SO<sub>2</sub>, viento).
 - **Unidades y hora:** el viento llega en km/h (media 8,85) y se pasa a m/s dividiendo entre 3,6 (media 2,46). La hora llega en GMT y se pasa a la de Madrid, que es la del horario de la ZBE.
 - **Completitud** = horas con dato válido de NO<sub>2</sub> ÷ horas que debería haber: 96,66 % en total, de 91,98 % (Mª Díaz de Haro) a 99,07 % (Erandio). Meteorología: 100 %.
 - **Integración:** a cada medición se le une el calendario (por fecha) y el viento (por hora): 332.619 filas antes y 332.619 después, 0 repetidas.
@@ -44,10 +44,10 @@ La ZBE de Bilbao restringe la entrada de vehículos de lunes a viernes laborable
 ## 4. Método
 
 - **Dentro (tratamiento):** Mazarredo y Mª Díaz de Haro, dentro de la ZBE.
-- **Fuera (control):** Europa, Barakaldo, Basauri, Erandio y Castrejana. Mismo tiempo atmosférico y mismo tipo de coches que el centro, pero sin ZBE: muestran lo que habría bajado el NO<sub>2</sub> sin ella.
+- **Fuera (control):** Europa, Barakaldo, Basauri, Erandio y Castrejana. Mismo tiempo atmosférico y tipo de coches que el centro, pero sin ZBE: muestran lo que habría bajado el NO<sub>2</sub> sin ella.
 - **Fondo:** Arraiz, en un monte lejos del tráfico (8,73 µg/m³ antes de la ZBE, frente a 18,25 en el control). No se parece a una estación urbana, así que no entra en el control.
 
-**Antes:** 01/01/2022 – 14/06/2024. **Después:** 15/06/2024 – 30/09/2026 (fase 1 hasta el 15/06/2025). **Caída bruta** = media después − media antes. **Efecto neto** = caída bruta dentro − caída bruta fuera (método de diferencias en diferencias, estadístico). Mirar solo dentro mezclaría la ZBE con lo que habría bajado igualmente; restar lo que bajó fuera lo separa.
+**Antes:** 01/01/2022 – 14/06/2024. **Después:** 15/06/2024 – 30/09/2026 (fase 1 hasta el 15/06/2025). **Caída bruta** = media después − media antes. **Efecto neto** = caída bruta dentro − caída bruta fuera (método de diferencias en diferencias, estadístico).
 
 **Margen de error.** Dos horas seguidas se parecen (mismo atasco, misma falta de viento) y no son datos independientes. Por eso se agrupa por semanas y se repite el cálculo 2.000 veces sorteando semanas (bootstrap). El **intervalo del 95 %** recoge el 95 % central de los resultados; si no incluye el cero, la bajada no se explica por el azar.
 
@@ -66,7 +66,7 @@ La ZBE de Bilbao restringe la entrada de vehículos de lunes a viernes laborable
 
 ## 5. Resultados
 
-**P1. ¿Bajó el NO<sub>2</sub> dentro más que fuera?** Dentro: 25,50 → 21,91 µg/m³ (−3,59). Fuera: 18,25 → 16,29 (−1,96). Efecto neto: −3,59 − (−1,96) = **−1,63 µg/m³** (−6,4 % del nivel de antes; intervalo de −2,38 a −0,94). *Qué significa:* de la bajada de 3,59 dentro, 1,96 se vio también fuera; la parte propia de dentro, 1,63, es la que se asocia a la ZBE. Es una estimación aproximada: de 2022 a 2023 el NO<sub>2</sub> cambió +0,10 dentro y −1,14 fuera, así que antes de la ZBE no iban del todo en paralelo.
+**P1. ¿Bajó el NO<sub>2</sub> dentro más que fuera?** Dentro: 25,50 → 21,91 µg/m³ (−3,59). Fuera: 18,25 → 16,29 (−1,96). Efecto neto: −3,59 − (−1,96) = **−1,63 µg/m³** (−6,4 % del nivel de antes; intervalo de −2,38 a −0,94). *Qué significa:* de la bajada de 3,59 dentro, 1,96 se vio también fuera; la parte propia de dentro, 1,63, se asocia a la ZBE. Es una estimación aproximada: de 2022 a 2023 el NO<sub>2</sub> cambió +0,10 dentro y −1,14 fuera, así que antes de la ZBE no iban del todo en paralelo.
 
 ![Figura 1. La distancia entre la línea roja y la azul se reduce después de la fase 1.](img/p1_evolucion_mensual_no2.png)
 
