@@ -103,9 +103,11 @@ Para parar: `docker compose down` (conserva los datos) o `docker compose down -v
 | `data/clean/` | Datos limpios que lee el notebook |
 | `notebooks/zbe_bilbao.ipynb` | Análisis P1-P5 y anexo del modelo de IA |
 | `resultados/resultados.json` | Única fuente de las cifras de los documentos |
-| `docs/` | Informe para el cliente, propuesta de modelo de IA, organigrama de datos, alertas (`alertas.md`), permisos de Grafana (`permisos-grafana.md`), infraestructura y registro de mejoras (`MEJORAS.md`). `generar_informe.py` y `generar_mia.py` crean los documentos a partir de `resultados.json` |
-| `influxdb/`, `nodered/`, `grafana/`, `mcp/` | Configuración de cada servicio |
-| `chatbot/`, `presentacion/` | Asistente y presentación web |
+| `docs/` | Informe para el cliente, propuesta de modelo de IA, organigrama de datos, alertas (`alertas.md`), permisos de Grafana (`permisos-grafana.md`) y registro de mejoras (`MEJORAS.md`). `generar_informe.py` y `generar_mia.py` crean los documentos a partir de `resultados.json` |
+| `influxdb/`, `nodered/`, `grafana/` | Configuración de cada servicio |
+| `mcp/` | Servidor MCP de solo lectura. Instalación, clientes y pruebas: [mcp/README.md](mcp/README.md) |
+| `chatbot/` | Asistente que responde con las cifras de `resultados.json`. Modos y uso: [chatbot/README.md](chatbot/README.md) |
+| `presentacion/` | Presentación web. Controles y Grafana en directo: [presentacion/README.md](presentacion/README.md) |
 | `scripts_check/verificar_cifras.py` | Comprueba que las cifras del README, el informe, el MIA, la presentación, el chatbot y Grafana salen de `resultados.json` |
 | `docker-compose.yml`, `.env.example` | Arranque de todos los servicios y plantilla de variables |
 
