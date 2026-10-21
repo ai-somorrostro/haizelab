@@ -49,6 +49,7 @@ groups:
                   |> filter(fn: (r) => r["_field"] == "no2")
                   |> group(columns: ["estacion"])
                   |> max()
+                  |> keep(columns: ["_time", "_value", "estacion"])
               intervalMs: 60000
               maxDataPoints: 43200
           - refId: B
@@ -107,6 +108,8 @@ groups:
                   |> sort(columns: ["_time"])
                   |> tail(n: 24)
                   |> mean()
+                  |> map(fn: (r) => ({r with _time: now()}))
+                  |> keep(columns: ["_time", "_value", "estacion"])
               intervalMs: 60000
               maxDataPoints: 43200
           - refId: B
