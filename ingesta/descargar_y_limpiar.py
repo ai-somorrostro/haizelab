@@ -432,7 +432,7 @@ def limpiar_calidad_aire():
       3. Huecos y valores ausentes -> contabilización y preservación NaN.
       4. GMT vs Hora local -> conversión a hora oficial Europe/Madrid.
       5. Valores negativos o imposibles -> sustitución por NaN (<0).
-      6. Periodos sin datos -> inventario temporal por estación.
+      6. Periodos sin datos -> se dejan como NaN; la completitud por estación la calcula el notebook (apartado 4.2).
 
     Devuelve también una tabla de auditoría por estación (filas crudas, filas eliminadas
     y motivo, media de NO2 en crudo y en limpio) para comparar crudo y limpio.
@@ -567,24 +567,6 @@ def limpiar_calidad_aire():
     df_aire_limpio.to_csv(f_salida, index=False)
     print(f"[OK] Guardado calidad de aire limpia en data/clean/{f_salida.name} ({len(df_aire_limpio):,} filas)")
 
-    # Guardar inventario de auditoría de calidad
-    filas_inv = []
-    for est, g in df_aire_limpio.groupby("estacion"):
-        esperadas = int((g.ts_gmt.max() - g.ts_gmt.min()) / pd.Timedelta(hours=1)) + 1
-        filas_inv.append({
-            "estacion": est,
-            "zona": g.zona.iloc[0],
-            "filas": len(g),
-            "horas_esperadas": esperadas,
-            "horas_faltantes": max(esperadas - len(g), 0),
-            "desde": g.ts_local.min().strftime("%Y-%m-%d %H:%M"),
-            "hasta": g.ts_local.max().strftime("%Y-%m-%d %H:%M"),
-            "pct_nulos_no2": round(g["no2"].isna().mean() * 100, 2),
-            "pct_nulos_pm10": round(g["pm10"].isna().mean() * 100, 2),
-        })
-    inv_df = pd.DataFrame(filas_inv)
-    inv_df.to_csv(DIR_DATA_CLEAN / "inventario_calidad.csv", index=False)
-
     # Resumen de problemas
     print("\nRESUMEN DE AUDITORÍA DE CALIDAD:")
     print(f"  - Total filas brutas leídas: {filas_totales_cargadas:,}")
@@ -593,7 +575,7 @@ def limpiar_calidad_aire():
     print(f"  - Valores negativos convertidos a NaN por contaminante: {conteo_problemas['valores_negativos_por_contaminante']}")
     print(f"  - Valores ausentes (NaN) por contaminante: {conteo_problemas['valores_ausentes_por_contaminante']}")
 
-    return df_aire_limpio, conteo_problemas, inv_df, df_auditoria
+    return df_aire_limpio, conteo_problemas, df_auditoria
 
 
 def limpiar_meteorologia():
@@ -812,7 +794,7 @@ def integrar_datasets(fecha_fin=None):
 def ejecutar_pipeline_completo():
     """Ejecuta de principio a fin la adquisición, limpieza e integración."""
     descargar_todos_los_datos()
-    _, _, _, df_auditoria = limpiar_calidad_aire()
+    _, _, df_auditoria = limpiar_calidad_aire()
     df_meteo = limpiar_meteorologia()
     guardar_comprobacion_crudo_limpio(df_auditoria, df_meteo)
     guardar_demo_aire()
