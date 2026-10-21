@@ -79,7 +79,8 @@ def cargar_env() -> dict:
 
 def ts_a_nanosegundos(serie: pd.Series) -> pd.Series:
     """Convierte una serie de timestamps en hora GMT a nanosegundos Unix (entero)."""
-    return pd.to_datetime(serie, utc=True).astype("int64")
+    # pandas 3 lee las fechas en microsegundos: sin as_unit("ns") InfluxDB las colocaría en 1970.
+    return pd.to_datetime(serie, utc=True).dt.as_unit("ns").astype("int64")
 
 
 def escribir_batch(cfg: dict, bucket: str, lineas: list[str], dry_run: bool) -> None:
