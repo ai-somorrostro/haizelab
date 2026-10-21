@@ -170,6 +170,12 @@ services:
       MCP_LISTEN_PORT: 5001
     volumes:
       - influxdb_tokens:/tokens:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,json; r=urllib.request.Request('http://127.0.0.1:5001/mcp/', data=json.dumps({'jsonrpc':'2.0','method':'ping','id':1}).encode(), headers={'Content-Type':'application/json','Accept':'application/json, text/event-stream'}); urllib.request.urlopen(r)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   # ── Chatbot Assistant (FastAPI Local) ───────────────────────────────────────
   chatbot:
@@ -179,6 +185,13 @@ services:
     image: haizelab_chatbot:latest
     container_name: haizelab_chatbot
     restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      influxdb_setup:
+        condition: service_completed_successfully
+      influx-mcp:
+        condition: service_healthy
     ports:
       - "127.0.0.1:8000:8000"
     environment:
