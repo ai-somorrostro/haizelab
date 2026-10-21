@@ -79,7 +79,7 @@ Requisito: Docker con Compose v2.
    | Presentación | http://localhost:8080 | — |
    | Chatbot | http://localhost:8000/docs | — |
 
-   Los usuarios de Grafana los crea `grafana/provisioning/access-control/setup-access.sh`. Su contraseña es `GRAFANA_DEFAULT_PASSWORD` seguida de un sufijo:
+   Los usuarios de Grafana los crea `grafana/provisioning/access-control/setup-access.sh`. Qué ve y qué edita cada uno: [permisos-grafana.md](docs/permisos-grafana.md); las alertas, en [alertas.md](docs/alertas.md). Su contraseña es `GRAFANA_DEFAULT_PASSWORD` seguida de un sufijo:
 
    | Equipo | Usuarios | Sufijo | Rol |
    |---|---|---|---|
@@ -103,9 +103,10 @@ Para parar: `docker compose down` (conserva los datos) o `docker compose down -v
 | `data/clean/` | Datos limpios que lee el notebook |
 | `notebooks/zbe_bilbao.ipynb` | Análisis P1-P5 y anexo del modelo de IA |
 | `resultados/resultados.json` | Única fuente de las cifras de los documentos |
-| `docs/` | Informe para el cliente, propuesta de modelo de IA, organigrama de datos, infraestructura y registro de mejoras (`MEJORAS.md`). `generar_informe.py` y `generar_mia.py` crean los documentos a partir de `resultados.json` |
+| `docs/` | Informe para el cliente, propuesta de modelo de IA, organigrama de datos, alertas (`alertas.md`), permisos de Grafana (`permisos-grafana.md`), infraestructura y registro de mejoras (`MEJORAS.md`). `generar_informe.py` y `generar_mia.py` crean los documentos a partir de `resultados.json` |
 | `influxdb/`, `nodered/`, `grafana/`, `mcp/` | Configuración de cada servicio |
 | `chatbot/`, `presentacion/` | Asistente y presentación web |
+| `scripts_check/verificar_cifras.py` | Comprueba que las cifras del README, el informe, el MIA, la presentación, el chatbot y Grafana salen de `resultados.json` |
 | `docker-compose.yml`, `.env.example` | Arranque de todos los servicios y plantilla de variables |
 
 ## Autores
