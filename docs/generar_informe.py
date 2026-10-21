@@ -115,8 +115,9 @@ ul(
     f"hasta el {fecha(per['fecha_fin'])}, para que las cifras no cambien cuando se publican datos nuevos (Grafana puede mostrar datos posteriores).",
     f"**Formato:** {es(cal['celdas_coma_decimal_corregidas'], 0)} celdas con coma decimal y {es(cal['filas_hora_24_corregidas'], 0)} filas con hora "
     "24:00 (pasa a las 00:00 del día siguiente).",
-    f"**Negativos:** {cal['no2_negativos_a_nan']} valores de NO₂ ({es(cal['no2_negativos_pct'], 3)} %) pasan a **NaN** (celda vacía). "
-    "Un 0 bajaría la media sin motivo y borrar la fila perdería los demás datos de esa hora.",
+    f"**Negativos:** {cal['no2_negativos_a_nan']} valores de NO₂ ({es(cal['no2_negativos_pct'], 3)} %) pasan a **NaN** (*Not a Number*): "
+    "celda sin dato, como cuando el sensor de Europa no midió; las medias no la cuentan. Un 0 diría que el aire "
+    "estaba limpio y bajaría la media; borrar la fila perdería los demás datos de esa hora (SO₂, viento).",
     f"**Unidades y hora:** el viento llega en {vie['unidad_crudo']} (media {es(vie['media_crudo_kmh'])}) y se pasa a m/s dividiendo entre "
     f"3,6 (media {es(vie['media_limpio_ms'])}). La hora llega en GMT y se pasa a la de Madrid, que es la del horario de la ZBE.",
     f"**Completitud** = horas con dato válido de NO₂ ÷ horas que debería haber: {es(cal['completitud_no2_total_pct'])} % en total, "
@@ -128,15 +129,14 @@ ul(
 h("4. Método")
 ul(
     "**Dentro (tratamiento):** Mazarredo y Mª Díaz de Haro, dentro de la ZBE.",
-    "**Fuera (control):** Europa, Barakaldo, Basauri, Erandio y Castrejana. Mismo tiempo atmosférico y mismo tipo de coches que el "
+    "**Fuera (control):** Europa, Barakaldo, Basauri, Erandio y Castrejana. Mismo tiempo atmosférico y tipo de coches que el "
     "centro, pero sin ZBE: muestran lo que habría bajado el NO₂ sin ella.",
     f"**Fondo:** Arraiz, en un monte lejos del tráfico ({es(est['Arraiz']['previo'])} µg/m³ antes de la ZBE, frente a "
     f"{es(p1['fuera_pre'])} en el control). No se parece a una estación urbana, así que no entra en el control.",
 )
 p(f"**Antes:** {fecha(per['fecha_inicio'])} – 14/06/2024. **Después:** {fecha(per['fecha_fase1'])} – {fecha(per['fecha_fin'])} "
   f"(fase 1 hasta el 15/06/2025). **Caída bruta** = media después − media antes. **Efecto neto** = caída bruta dentro − caída bruta "
-  "fuera (método de diferencias en diferencias, estadístico). Mirar solo dentro mezclaría la ZBE con lo que habría bajado igualmente; "
-  "restar lo que bajó fuera lo separa.")
+  "fuera (método de diferencias en diferencias, estadístico).")
 p(f"**Margen de error.** Dos horas seguidas se parecen (mismo atasco, misma falta de viento) y no son datos independientes. Por eso se "
   f"agrupa por semanas y se repite el cálculo {es(p1['repeticiones_bootstrap'], 0)} veces sorteando semanas (bootstrap). El **intervalo "
   "del 95 %** recoge el 95 % central de los resultados; si no incluye el cero, la bajada no se explica por el azar.")
@@ -154,7 +154,7 @@ p(f"**P1. ¿Bajó el NO₂ dentro más que fuera?** Dentro: {es(p1['dentro_pre']
   f"Efecto neto: {es(p1['caida_bruta_dentro'])} − ({es(p1['caida_bruta_fuera'])}) = **{es(p1['efecto_neto_did'])} µg/m³** "
   f"({es(p1['efecto_neto_did_pct'], 1)} % del nivel de antes; {intervalo(p1['ic95_inf'], p1['ic95_sup'])}). "
   f"*Qué significa:* de la bajada de {es(abs(p1['caida_bruta_dentro']))} dentro, {es(abs(p1['caida_bruta_fuera']))} se vio también "
-  f"fuera; la parte propia de dentro, {es(abs(p1['efecto_neto_did']))}, es la que se asocia a la ZBE. Es una estimación aproximada: "
+  f"fuera; la parte propia de dentro, {es(abs(p1['efecto_neto_did']))}, se asocia a la ZBE. Es una estimación aproximada: "
   f"de 2022 a 2023 el NO₂ cambió {es(cambio_previo_dentro, signo=True)} dentro y {es(cambio_previo_fuera, signo=True)} fuera, "
   "así que antes de la ZBE no iban del todo en paralelo.")
 img("img/p1_evolucion_mensual_no2.png", "Figura 1. La distancia entre la línea roja y la azul se reduce después de la fase 1.", 14)
