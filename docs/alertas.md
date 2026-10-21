@@ -8,7 +8,7 @@ Las reglas están en `grafana/provisioning/alerting/alerting.yaml` y Grafana las
 |---|---|---|
 | 200 µg/m³ | Límite **horario** de la UE (Directiva 2008/50/CE) | Alerta: un solo valor horario por encima ya es una superación. |
 | 40 µg/m³ | Límite de la **media anual** de la UE (Directiva 2008/50/CE) | No es una alerta. Una hora por encima de 40 no incumple nada; solo se puede comparar con la media de un año entero. |
-| 25 µg/m³ | Guía **diaria** (24 horas) de la OMS (WHO global air quality guidelines, 2021) | Aviso preventivo con la media de las últimas 24 horas. No es un límite legal. |
+| 25 µg/m³ | Nivel de la guía **diaria** (24 horas) de la OMS [1] | Aviso preventivo con la media de las últimas 24 horas. No es un límite legal, y la propia guía admite 3-4 días al año por encima (es un percentil 99). |
 
 ## Reglas
 
@@ -29,6 +29,10 @@ Las reglas están en `grafana/provisioning/alerting/alerting.yaml` y Grafana las
 
 **Regla quitada.** Había una regla «NO₂ — Superación límite EU (> 40 µg/m³)» que comparaba la media de la última hora con 40 µg/m³. Era incorrecta: 40 es el límite de la media anual. Se borra con `deleteRules` en el mismo fichero, también en instalaciones que ya la tenían.
 
+## Dónde se ven las alertas
+
+En la demo no hay servidor de correo configurado: las alertas se ven en Grafana, en *Alerting → Alert rules*, con su estado por estación (*Normal*, *Pending*, *Firing* o *No data*). Para recibirlas por correo hay que configurar el SMTP en el `.env`: `GF_SMTP_ENABLED=true`, `GF_SMTP_HOST`, `GF_SMTP_USER`, `GF_SMTP_PASSWORD` y `GF_SMTP_FROM_ADDRESS` (ejemplo en `.env.example`), poner la dirección de destino en `ALERT_EMAIL_TO` y reiniciar Grafana con `docker compose up -d grafana`.
+
 ## Destinatario
 
 | Elemento | Valor |
@@ -45,3 +49,8 @@ Las reglas están en `grafana/provisioning/alerting/alerting.yaml` y Grafana las
 3. Pulsar *Preview* en las reglas de NO₂: sale una fila por estación con su valor.
 4. En *Alerting → Contact points*, `haizelab-ops` tiene la dirección de `ALERT_EMAIL_TO`.
 5. Por API, con el usuario administrador: `curl -u admin:<contraseña> http://localhost:3000/api/v1/provisioning/alert-rules`.
+
+## Fuentes
+
+- Directiva 2008/50/CE del Parlamento Europeo y del Consejo, relativa a la calidad del aire ambiente y a una atmósfera más limpia en Europa (límites de NO₂: 200 µg/m³ en una hora y 40 µg/m³ de media anual).
+- [1] Organización Mundial de la Salud (2021). *WHO global air quality guidelines: particulate matter (PM2.5 and PM10), ozone, nitrogen dioxide, sulfur dioxide and carbon monoxide. Executive summary*. Ginebra: OMS. ISBN 978-92-4-003443-3. Tabla 0.1: NO₂, 25 µg/m³ en 24 horas (percentil 99, es decir, 3-4 días al año por encima) y 10 µg/m³ de media anual. Publicación completa: https://www.who.int/publications/i/item/9789240034228 (ISBN 978-92-4-003422-8).
