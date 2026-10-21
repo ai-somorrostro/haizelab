@@ -1,5 +1,7 @@
 # Diagnóstico del repositorio (fase 0)
 
+> **Diagnóstico inicial (fase 0).** Los pendientes que aparecen aquí se resolvieron o se documentaron como limitación; el estado final de cada corrección está en [docs/MEJORAS.md](MEJORAS.md).
+
 Fecha: 20/10/2026 · Rama: `fix/diagnostico` · Base: `develop` en `87085d8`.
 
 Este documento no cambia código, datos ni documentos. Solo describe lo que hay y propone qué hacer.
