@@ -287,3 +287,139 @@ Formato: portada y 4 páginas de cuerpo en A4, en Arial 11 (títulos en Arial 12
 - Se quitan cifras sin fuente verificada: «27 cámaras», «2 km²», «Abando», los aforos de San Mamés y las dos referencias bibliográficas.
 - La sección de herramientas explica por qué InfluxDB y no SQL Server, y deja claro que Node-RED es automatización, no IA.
 - El notebook dice en una frase que el análisis llega hasta el 30/09/2026 y que Grafana puede mostrar datos posteriores (decisión 11). El informe lo dice en la sección 3.
+
+---
+
+## Fase 4 · MIA: modelo y documento
+
+Las cifras salen de `resultados/resultados.json`, bloque `modelo_ia` (ejecución del notebook en la rama `fix/mia`). El resto de bloques no cambia. `docs/generar_mia.py` lee ese fichero y escribe `docs/propuesta-modelo-ia.md`, `docs/MIA_Haizen_Lab.docx` y `.pdf`. Ninguna cifra del documento está escrita a mano. Si una cifra cambia y una frase deja de ser cierta, el script se para. `docs/generar_informe.py` solo cambia para que sus funciones de salida (Markdown, HTML y Word) acepten el contenido como parámetro; el informe SBD que genera no cambia.
+
+### Notebook: anexo del modelo de IA
+
+| Paso | Qué se hace | Resultado |
+|---|---|---|
+| Datos | Las 7 estaciones de dentro y de fuera; variables de tiempo atmosférico (temperatura, humedad, lluvia, viento), calendario (hora, día de la semana, mes, laborable, festivo) y estación | 118.804 horas-estación de entrenamiento y 27.613 de validación |
+| Validación temporal | Entrenar 01/01/2022 – 31/12/2023 y validar 01/01/2024 – 14/06/2024, ordenado por fecha; un `assert` comprueba que la validación es posterior | — |
+| Comparación | Base sin IA (NO₂ medio de cada estación a esa hora en ese mes), regresión lineal, Random Forest y Gradient Boosting | MAE en validación: 10,50 / 9,79 / 8,14 / 8,15 |
+| Modelo elegido | Menor MAE en validación | Random Forest (22,5 % menos error que la base) |
+| Efecto | (observado − predicho) dentro − fuera, por semanas, con bootstrap | −0,49 µg/m³ (de −0,86 a −0,12) |
+| Placebo | ZBE ficticia el 15/06/2023, solo con datos anteriores a la ZBE | +0,33 (de −0,23 a +0,96): incluye el cero |
+| Importancia | `permutation_importance` en la validación | Viento +2,48, hora +2,07, estación +1,87 µg/m³ de MAE |
+| Límite horario | Horas-estación con NO₂ > 200 µg/m³ | 0 en todos los años; máximo 168 µg/m³ |
+
+### EV-04
+- **Comentario:** «El problema no es solo una regresión: el objetivo es estimar el efecto de una política pública. Predecir bien el NO₂ no demuestra que la ZBE haya causado la reducción. No se concreta qué estaciones externas se usan como referencia, cómo se seleccionan ni si son comparables.»
+- **Qué se ha cambiado:**
+  - El modelo ya no mira solo dentro: el efecto es la diferencia (observado − predicho) dentro menos la de fuera. Así se descuenta lo que el modelo no conoce y pasa en toda la comarca: el modelo también se pasa fuera (−1,73).
+  - El documento explica por qué predecir no basta, nombra las 5 estaciones de control, el criterio de elección y en qué son comparables y en qué no (nivel distinto, tendencia previa +0,10 frente a −1,14, bajada de Europa).
+- **Dónde:** notebook, anexo A.3; MIA, sección 1.
+- **Por qué:** el modelo anterior atribuía a la ZBE también la bajada de toda la comarca.
+
+### EV-05 y EV-06
+- **Comentarios:** «Explicación superficial […]. No se desarrolla su funcionamiento ni el alcance de sus resultados.» · «Falta justificar en profundidad Gradient Boosting. La validación, la estimación de la incertidumbre y SHAP requieren explicación precisa. La comparación con DiD necesita desarrollar sus limitaciones.»
+- **Qué se ha cambiado:**
+  - Se explica cómo funciona cada modelo en una línea y cómo decide un árbol, con preguntas sobre nuestros datos.
+  - La elección se justifica con la tabla de métricas: gana Random Forest por 0,01 µg/m³ frente a Gradient Boosting; se dice que casi empatan y que el criterio (menor MAE en validación) estaba fijado de antemano.
+  - Validación temporal, intervalo bootstrap por semanas y placebo explicados en llano, con su resultado.
+  - SHAP se elimina del documento y del chatbot; en su lugar, importancia por permutación, que sí está calculada.
+  - Comparación con DiD: modelo −0,49 y DiD −1,63. Los intervalos no se solapan y se dice que el tamaño del efecto es incierto.
+- **Dónde:** notebook, anexo A.1-A.5; MIA, secciones 4, 5 y 8; `chatbot/main.py` (dos frases).
+- **Por qué:** el documento prometía técnicas que no estaban hechas y no explicaba las que sí.
+
+### EV-01, EV-02 y EV-03
+- **Comentarios:** aplicaciones sin sentido («¿cómo se resuelve "lanzar avisos"? ¿solo con modelos de predicción?») y sin casos reales · contrafactual sin explicar, familias como enumeración, «DiD no es IA. La automatización de tareas no es una técnica de IA» · «no se proponen elementos medibles».
+- **Qué se ha cambiado:**
+  - Cinco casos reales, con su fuente al final ([1]-[5]) y su relación con nuestro problema. Quedan como `[PENDIENTE DE VERIFICAR]` la página oficial de Google Project Green Light y la versión vigente del protocolo de Madrid, porque sus webs no se pudieron consultar.
+  - Avisos: la cadena predicción (IA) → umbral (regla) → aviso (regla). Con nuestros datos no hubo ninguna hora por encima de 200 µg/m³, así que se dice que esta aplicación tiene menos relación con la decisión.
+  - Familias en una tabla: qué son, un ejemplo ligado a los casos y si se usan aquí. La automatización (Node-RED) y DiD salen de las familias y se dice que no son IA.
+  - Tabla de 5 indicadores medibles: trabajo manual, tiempo hasta el panel, error del modelo, horas > 200 µg/m³ y efecto. El trabajo manual queda `[A COMPLETAR POR EL EQUIPO]` porque no se ha medido.
+- **Dónde:** MIA, secciones 2, 3 y 7.
+- **Por qué:** cada aplicación tenía que conectar con la decisión del cliente y poder medirse.
+
+### MIA-01, MIA-04, MIA-28 y MIA-29
+- **Comentarios:** cabecera del curso tachada · «ocho puntos del enunciado» → «??» · «Checklist de verificación» → «?» · «Demasiado complejo, tenéis que entenderlo vosotros primero».
+- **Qué se ha cambiado:** portada de cliente (cliente, equipo, periodo, fecha), sin curso, módulo, reto, enunciado ni checklist. Cada término técnico se define la primera vez. Se quitan «validez concluyente», «inversión térmica», «Abando», «2 km²» y «27 cámaras».
+- **Dónde:** MIA, portada y todo el documento.
+- **Por qué:** es un documento para el Ayuntamiento y el equipo tiene que poder defender cada frase.
+
+### MIA-02, MIA-03 y MIA-05
+- **Comentarios:** «Para saber si algo funciona o no» · «¿técnico o lenguaje coloquial?» · «objetivo final !!!», «no perdáis el foco».
+- **Qué se ha cambiado:** el objetivo es una frase: saber si la ZBE funciona y decidir si ampliarla, mantenerla o ajustarla. Se define «dentro» (estaciones situadas en la ZBE) y se concreta «todo lo demás» (tiempo atmosférico y renovación de coches). El documento cierra con «Qué significa para la decisión».
+- **Dónde:** MIA, secciones 1 y 8.
+- **Por qué:** todo el documento debe girar en torno a la decisión.
+
+### MIA-06
+- **Comentario:** «¿La ZBE es sólo NO₂? No se explica».
+- **Qué se ha cambiado:** se explica por qué el NO₂: sale sobre todo de los tubos de escape y tiene límites legales (40 µg/m³ de media anual y 200 en una hora). También por qué no los demás: el SO₂ se usa como comprobación (+0,33, no baja), las partículas tienen muchas otras fuentes, NO y NOx dirían lo mismo, y CO y benceno no los miden todas las estaciones (decisión 16).
+- **Dónde:** MIA, sección 1.
+- **Por qué:** no se justificaba la elección del contaminante.
+
+### MIA-07, MIA-08, MIA-09 y MIA-12
+- **Comentarios:** «¿qué tendencia traía la ciudad?» · contrafactual → «??» · entradas y salida → simplificar · «¿qué ruido? ¿por qué?».
+- **Qué se ha cambiado:**
+  - Tendencia: +0,10 dentro y −1,14 fuera de 2022 a 2023.
+  - Contrafactual con un ejemplo: después de la ZBE, dentro se midieron 21,91 µg/m³ y el modelo calcula unos 24,1 sin ZBE.
+  - Entradas y salida en una línea.
+  - Ruido: la variación que el modelo no explica (63 % de la variación horaria: atascos, obras, eventos, fallos del sensor). Importa porque el efecto es pequeño frente al error de 8,14 µg/m³ por hora.
+- **Dónde:** MIA, sección 1.
+- **Por qué:** eran términos sin definir.
+
+### MIA-10, MIA-11 y MIA-14
+- **Comentarios:** «habrá que comparar la predicción con la realidad y tener un indicador real» · «Temporal» (círculo) · «¿dónde hay overfitting?».
+- **Qué se ha cambiado:** el indicador real es el MAE en validación frente al modelo base (8,14 frente a 10,50). Se explica la validación temporal: no usar el futuro para predecir el pasado. Sobreajuste con cifras: Random Forest tiene 4,77 en entrenamiento y 8,14 en validación; se elige por el error en validación.
+- **Dónde:** notebook, anexo A.1; MIA, secciones 1, 2, 4 y 8.
+- **Por qué:** la validación antigua no era temporal y no había indicador.
+
+### MIA-13, MIA-15 y MIA-16
+- **Comentarios:** «cómo aplicáis a vuestro proyecto» · «leed los comentarios del excel» · DiD como técnica de IA → «IA?».
+- **Qué se ha cambiado:** la tabla de principios tiene una columna «En nuestro caso» con cifras. Las familias se relacionan con los casos (ver EV-01 y EV-02). DiD sale de las técnicas de IA.
+- **Dónde:** MIA, secciones 2 y 3.
+- **Por qué:** eran enumeraciones sin relación con el proyecto.
+
+### MIA-17, MIA-18, MIA-19 y MIA-20
+- **Comentarios:** SARIMAX «poco flexibles» → «?? por qué» · LSTM → «por qué?» · «¿no hay otros modelos que encajen con los que comparar?» · «no lineal» subrayado.
+- **Qué se ha cambiado:**
+  - Tres modelos de IA y una base, con la misma tabla de métricas.
+  - SARIMAX: el tiempo entra como una suma con peso fijo, como en la regresión lineal (MAE 9,79), y sus valores pasados de NO₂ ya llevan el efecto de la ZBE.
+  - LSTM: muchos parámetros para dos años de datos, difícil de explicar, más cálculo y el mismo problema que SARIMAX. Se dice que las dos se descartan sin probarlas.
+  - No linealidad con nuestros datos: NO₂ medio por tramo de viento (24,01 → 24,84 → 21,53 → 16,29 → 13,16 → 8,02). Entre 0-1 y 1-2 m/s sube 0,83; de 2-3 a 3-4 baja 5,24.
+- **Dónde:** notebook, anexo A.1 y A.2; MIA, secciones 4 y 5.
+- **Por qué:** faltaban argumentos concretos y modelos con los que comparar.
+
+### MIA-21 y MIA-26
+- **Comentarios:** «el efecto agregado por fase y franja» → «¿cómo?» · «Separa el efecto» (círculo).
+- **Qué se ha cambiado:** cuatro pasos en llano y la resta con nuestros números: −2,21 − (−1,73) = −0,49. Se explica cómo se separa: el modelo descuenta el tiempo y la resta con fuera descuenta lo demás. El modelo no desglosa por fase ni por franja; eso lo hacen P2 y P5 del informe.
+- **Dónde:** notebook, anexo A.3; MIA, secciones 5 y 8.
+- **Por qué:** no se decía cómo se calculaba.
+
+### MIA-22 y MIA-24
+- **Comentarios:** «¿entendéis esto?» (tendencias paralelas…) · «Contraste con DiD» → «¿por qué?».
+- **Qué se ha cambiado:** «Por qué DiD no es el modelo principal» en tres líneas: solo resta medias y no descuenta el tiempo hora a hora. Se usa para comparar porque es simple y no depende de ningún modelo. Se quitan «tendencias paralelas» y «corrección lineal».
+- **Dónde:** MIA, sección 8.
+- **Por qué:** el texto anterior no se podía defender oralmente.
+
+### MIA-23 y MIA-27
+- **Comentarios:** «Tres placebos» (círculo) · «Vale → ¿cómo lo medís?».
+- **Qué se ha cambiado:**
+  - Se define placebo con un ejemplo.
+  - Solo se citan las comprobaciones hechas: la fecha falsa (+0,33; de −0,23 a +0,96) y el SO₂ (+0,33; de −0,01 a +0,66).
+  - Se dice que el placebo se aleja de cero tanto como el efecto del modelo, así que ese efecto se da con cautela.
+  - Se quitan el placebo de «estaciones exteriores», que no estaba hecho, y la «regla de integridad».
+- **Dónde:** notebook, anexo A.4; MIA, sección 8 (tabla de riesgos con comprobación y resultado).
+- **Por qué:** cada riesgo tiene que llevar su comprobación y su cifra.
+
+### MIA-25
+- **Comentario:** «¿qué lo son? ¿el modelo?».
+- **Qué se ha cambiado:** el título dice «de la solución» y una frase aclara que se refiere al modelo más la comparación con las estaciones de fuera.
+- **Dónde:** MIA, sección 8.
+- **Por qué:** no estaba claro de qué eran las ventajas y los riesgos.
+
+### Cifras que cambian
+
+| Cifra | Antes | Ahora | Causa |
+|---|---|---|---|
+| Modelo | Gradient Boosting (provisional) | Random Forest | Menor MAE en validación temporal frente a 3 alternativas |
+| Error del modelo | MAE 7,53; R² 0,514 (validación no temporal) | MAE 8,14; R² 0,37 (validación temporal) | La validación anterior veía horas de la misma semana |
+| Efecto del modelo en el notebook | −2,77 µg/m³ (solo dentro, sin intervalo) | −0,49 (de −0,86 a −0,12), dentro − fuera | Se resta lo que pasó fuera |
+
+El chatbot (`chatbot/main.py` y `knowledge_base.json`) aún cita el −2,87 del modelo antiguo. Solo se le quita SHAP en esta fase; sus cifras se actualizan en la fase 6 (punto 4).

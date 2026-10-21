@@ -228,12 +228,12 @@ p("Todo el equipo conoce y puede explicar el trabajo completo; la asignación in
 
 
 # ---------------------------------------------------------------------------
-def a_markdown():
+def a_markdown(bloques=B, portada=portada, nombre=NOMBRE, script="docs/generar_informe.py"):
     out = [f"# {portada['titulo']}", f"### {portada['subtitulo']}", ""]
     out += [f"**{k}:** {v}  " for k, v in portada["filas"]]
-    out += ["", f"Versión para imprimir: [{NOMBRE}.docx]({NOMBRE}.docx) · [{NOMBRE}.pdf]({NOMBRE}.pdf). "
-            "Este fichero lo genera `docs/generar_informe.py` a partir de `resultados/resultados.json`.", ""]
-    for b in B:
+    out += ["", f"Versión para imprimir: [{nombre}.docx]({nombre}.docx) · [{nombre}.pdf]({nombre}.pdf). "
+            f"Este fichero lo genera `{script}` a partir de `resultados/resultados.json`.", ""]
+    for b in bloques:
         if b[0] == "h":
             out += [f"## {b[1]}", ""]
         elif b[0] == "p":
@@ -263,7 +263,7 @@ def html_inline(t):
     return t
 
 
-def a_html():
+def a_html(bloques=B, portada=portada):
     css = """
     body, p, li, td, th { font-family: Arial; font-size: 11pt; }
     p { margin: 0 0 4pt 0; }
@@ -284,7 +284,7 @@ def a_html():
         out.append(f"<tr><td style='padding:5pt 12pt; font-weight:bold; font-size:12pt'>{k}</td>"
                    f"<td style='padding:5pt 12pt; font-size:12pt'>{html.escape(v)}</td></tr>")
     out.append("</table><br clear=all style='page-break-before:always'>")
-    for b in B:
+    for b in bloques:
         if b[0] == "h":
             out.append(f"<h2>{html.escape(b[1])}</h2>")
         elif b[0] == "p":
@@ -335,9 +335,9 @@ try {
 """
 
 
-def a_word(html_texto):
-    docx = DIR_DOCS / f"{NOMBRE}.docx"
-    pdf = DIR_DOCS / f"{NOMBRE}.pdf"
+def a_word(html_texto, nombre=NOMBRE):
+    docx = DIR_DOCS / f"{nombre}.docx"
+    pdf = DIR_DOCS / f"{nombre}.pdf"
     with tempfile.TemporaryDirectory() as tmp:
         f_html = Path(tmp) / "informe.html"
         f_html.write_text(html_texto, encoding="utf-8")
