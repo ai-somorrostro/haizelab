@@ -502,7 +502,7 @@ No se ha vuelto a ejecutar el notebook: `resultados/resultados.json` no cambia. 
 
 ### Estado de todas las correcciones
 
-Están los 57 IDs de `CORRECCIONES.md`. 55 están resueltos; EV-11 y EV-12 siguen pendientes.
+Están los 57 IDs de `CORRECCIONES.md`. Tras la fase 5 están resueltos los 57 (EV-11 y EV-12 en la fase 5, más abajo).
 
 | ID | Estado | Fase |
 |---|---|---|
@@ -515,9 +515,9 @@ Están los 57 IDs de `CORRECCIONES.md`. 55 están resueltos; EV-11 y EV-12 sigue
 | EV-07 | Resuelto | 1, 2, 3, 6 |
 | EV-08 | Resuelto | 1, 2 |
 | EV-09 | Resuelto | 2 |
-| EV-10 | Resuelto en la parte de crudo frente a limpio | 1 |
-| **EV-11** | **Pendiente** (ver abajo) | 5, no hecha |
-| **EV-12** | **Pendiente** (ver abajo) | 5, no hecha |
+| EV-10 | Resuelto: crudo frente a limpio (fase 1) y CSV de la demo de NO₂ (fase 5) | 1, 5 |
+| EV-11 | Resuelto | 5 |
+| EV-12 | Resuelto | 5 |
 | SBD-01 | Resuelto | 3 |
 | SBD-02 | Resuelto. La fuente oficial de los festivos queda `[PENDIENTE DE VERIFICAR]` | 2, 3, 4 |
 | SBD-03 a SBD-10 | Resueltos | 1, 2, 3 |
@@ -529,8 +529,7 @@ Están los 57 IDs de `CORRECCIONES.md`. 55 están resueltos; EV-11 y EV-12 sigue
 | MIA-29 | Resuelto | 4 |
 
 ### No resueltas y por qué
-- **EV-11** («revisar», InfluxDB). Corresponde a la fase 5, que no se ha hecho. Sigue pendiente quitar el field string `fecha_original` de `aire_demo` (`nodered/flows.json` y organigrama) y comprobar que `docs/organigrama-datos.md` coincide 1:1 con lo que escriben `flows.json` y `carga_historica.py`. Lo único hecho es que el README ya pone la carga del bucket `aire` como paso obligatorio con su comando.
-- **EV-12** («Falta comprobar alertas y permisos por organización, equipo y usuario»). También es de la fase 5. La alerta «> 40 µg/m³ límite EU» sigue evaluándose sobre valores horarios, aunque 40 es el límite de la media anual, y no existen `docs/alertas.md` ni `docs/permisos-grafana.md`. Por eso el README no describe las alertas.
+Al cerrar la fase 6 quedaban EV-11 y EV-12, que eran de la fase 5. Se resuelven en la fase 5 (ver la sección siguiente a esta fase).
 
 ### Ajustes antes del merge (revisión del equipo)
 
@@ -545,5 +544,68 @@ Están los 57 IDs de `CORRECCIONES.md`. 55 están resueltos; EV-11 y EV-12 sigue
 | — | «5 contenedores» pasa a 7: `docker compose up -d --build` levanta 6 contenedores permanentes y `influxdb_setup`, que crea los buckets y los tokens y se cierra. | `presentacion/index.html` (diapositivas 1 y 8) | No coincidía con `docker-compose.yml` |
 | SBD-16 | El equipo confirma que el reparto de tareas de la sección 8 del informe es el real. Pasa a resuelto. | Este fichero | Confirmación del equipo |
 
-### Pendiente en la presentación
-- La diapositiva 9 dice «NO₂ por encima de 25, 40 y 200 µg/m³»: se cambia en la fase 5, cuando se corrijan las alertas.
+La diapositiva de alertas se actualiza en la fase 5.
+
+---
+
+## Fase 5 · BDA, y fase 6 (puntos 1, 2 y 7)
+
+Rama `fix/bda-revision`. `resultados/resultados.json` no cambia: el notebook se ha vuelto a ejecutar entero y da las mismas cifras.
+
+### EV-11
+- **Comentario:** «revisar» (InfluxDB).
+- **Qué se ha cambiado:**
+  - **Fechas del histórico (error encontrado).** Con pandas 3, `carga_historica.py` enviaba las fechas en microsegundos y InfluxDB las leía como nanosegundos: los 325.421 puntos de NO₂ del bucket `aire` y el histórico de `meteo` quedaban en enero de 1970, fuera de cualquier panel. Ahora la fecha se pasa a nanosegundos antes de enviarla. Comprobado en InfluxDB: los puntos de `aire` van del 01/01/2022 al 20/10/2026 y no queda ninguno antes de 2021.
+  - **`fecha_original`.** Node-RED ya no escribe ese field de texto en `aire_demo`; el bucket solo guarda `no2`.
+  - **Bucket `aire`.** La carga histórica es el paso 4, obligatorio, del arranque en el README, con el comando exacto. Se añade `--build` para que no se use una imagen antigua: la que había en local no tenía `requests` y la carga fallaba.
+  - **Organigrama 1:1.** Se ha consultado InfluxDB después de un arranque limpio y se ha corregido el documento: los fields de `trafico` son `float` (no `int`); `codigo_seccion` es un tag de texto; `lluvia_mm` solo llega en tiempo real; `batch-write` escribe en `aire` y `meteo`; los nombres de estación no son ASCII («Mª Díaz de Haro»). Los permisos de los 4 tokens coinciden con lo documentado. Se quita la frase sobre la nota de la evaluación.
+- **Dónde:** `ingesta/carga_historica.py` (`ts_a_nanosegundos`); `nodered/flows.json` (función «Siguiente hora NO2»); `docs/organigrama-datos.md`; `README.md` (pasos 4 y 6); `influxdb/init-influxdb.sh` (comentario).
+- **Por qué:** el bucket `aire` parecía cargado pero no se podía consultar, y el organigrama no coincidía con lo que se escribe.
+
+### EV-10 (demo de NO₂)
+- **Comentario:** «Posibles inconsistencias entre los datos limpios y los datos en crudo.»
+- **Qué se ha cambiado:** el CSV que reproduce Node-RED en `aire_demo` venía de una versión anterior de la limpieza. De sus 158.901 filas, 6.178 tenían un NO₂ distinto del dato limpio de esa misma hora y 28 no estaban en el dato limpio. Ahora lo genera `guardar_demo_aire()` a partir de `data/clean/calidad_aire_limpio.csv` (160.410 filas, columna `ts_gmt`). Se ha generado una vez con los datos que ya había, sin descargar ni limpiar de nuevo (decisión 13 del equipo).
+- **Dónde:** `ingesta/descargar_y_limpiar.py` (`guardar_demo_aire`, llamada en `ejecutar_pipeline_completo`); `ingesta/no2_demo_reducido.csv`.
+- **Por qué:** la demo de Grafana tiene que enseñar los mismos datos que el análisis (decisión 12 del equipo).
+
+### EV-12
+- **Comentario:** «Falta comprobar alertas y permisos por organización, equipo y usuario.»
+- **Qué se ha cambiado:**
+  - **Alertas.** La regla «> 40 µg/m³ límite EU» comparaba la media de la última hora con un límite de media anual: se quita. Quedan 3 reglas:
+    - **Valor horario > 200 µg/m³:** límite horario de la UE, una alerta por estación.
+    - **Media de las últimas 24 horas > 25 µg/m³:** aviso preventivo; 25 es la guía diaria de la OMS de 2021.
+    - **Ocupación media del tráfico > 35 %:** criterio propio.
+  - **Consultas de las alertas (error encontrado).** Con las primeras consultas, Grafana no podía evaluar las reglas de NO₂: una daba error («got type long») y la otra siempre «sin datos». Se han ajustado las columnas que devuelve cada consulta. Comprobado en Grafana: las 3 reglas se evalúan sin error, con un resultado por estación, y el aviso de 24 horas llegó a dispararse para Europa con los datos de la demo.
+  - **`docs/alertas.md`:** umbral, ventana, `for`, frecuencia de evaluación, gravedad y destinatario de cada regla, y cómo comprobarlo. Se aclara que sin SMTP configurado las alertas se ven en Grafana pero no se envía correo.
+  - **Paneles.** Dos descripciones del Monitor ZBE llamaban «superación» a un valor horario > 40. Ahora dicen que 25 y 40 son referencias y que el límite horario es 200.
+  - **Permisos.** Comprobados por API para los 14 usuarios y `admin` después de un arranque limpio: Dirección ve los dos dashboards y no edita; Análisis solo ve el suyo y entra directo en él; IT ve y edita todo. La tabla y los pasos para comprobarlo están en `docs/permisos-grafana.md`. No ha hecho falta cambiar `setup-access.sh`.
+  - **Presentación.** La diapositiva de Grafana describe las 3 reglas nuevas.
+- **Dónde:** `grafana/provisioning/alerting/alerting.yaml`; `grafana/dashboards/haizelab-overview.json`; `docs/alertas.md`; `docs/permisos-grafana.md`; `docs/infraestructura-explicada.md`; `presentacion/index.html` (diapositiva 9); `README.md`.
+- **Por qué:** 40 µg/m³ es un límite de media anual y no se puede evaluar con valores horarios; los permisos no se habían comprobado usuario por usuario.
+
+### Fase 6, puntos 1 y 2 (higiene del repositorio)
+
+| Qué se ha cambiado | Dónde | Por qué |
+|---|---|---|
+| Se quitan `opencode.json`, `.agents/`, `presentacion/assets/veredicto.mp4` y su imagen de portada `veredicto-portada.jpg` (solo servía para el vídeo, que ya no se enlaza). Se añaden `opencode.json`, `.agents/` y `*.mp4` a `.gitignore`. `mcp/README.md` explica que la configuración de los clientes MCP es local de cada persona. | Raíz del repositorio; `presentacion/assets/`; `.gitignore`; `mcp/README.md` | Configuración personal y un vídeo con cifras antiguas no deben estar en el repositorio |
+| El correo personal por defecto de las alertas pasa a `alertas@example.com`. | `docker-compose.yml` (servicio `grafana`); `.env.example` | No se publican datos personales |
+
+### Fase 6, punto 7 (verificación final)
+
+| Comprobación | Resultado |
+|---|---|
+| `docker compose down -v` y `docker compose up -d --build` | Los 7 servicios en `healthy` e `influxdb_setup` en `Exited (0)`. La presentación no tenía healthcheck y se le añade uno. |
+| Carga histórica (`docker compose run --rm --build carga-historica`) | 325.421 puntos de NO₂ en `aire` y 41.664 de meteorología en `meteo`, con sus fechas reales. |
+| Grafana muestra datos | Las consultas de los 14 paneles (10 del Monitor ZBE y 4 del de Análisis) devuelven datos. El panel de diferencias en diferencias funciona con `aire_demo` y con `aire`. |
+| Notebook de principio a fin (`docker compose run --rm --build sbd-notebook`) | 28 celdas de código ejecutadas sin error. Las salidas son idénticas a las versionadas y `resultados.json` no cambia. |
+| Chatbot leyendo `resultados/` | Dentro del contenedor lee `/resultados/resultados.json`. Responde con esas cifras con Gemini y sin Gemini. |
+| `scripts_check/verificar_cifras.py` | 7 de 7 documentos cuadran con `resultados.json`: README, informe, MIA, presentación, chatbot y los 2 dashboards. El script comprueba que cada cifra existe en el fichero, que no vuelve ninguna cifra antigua y que están las cifras clave de cada documento. Se ha comprobado que detecta una cifra antigua y una inventada. |
+
+### Ajustes tras la revisión del equipo (fase 5)
+
+| ID | Qué se ha cambiado | Dónde | Por qué |
+|---|---|---|---|
+| EV-12 | Se explica que en la demo las alertas se ven en Grafana (*Alerting → Alert rules*) y que para recibirlas por correo hay que configurar el SMTP en el `.env` (`GF_SMTP_*` y `ALERT_EMAIL_TO`). | `docs/alertas.md` («Dónde se ven las alertas») | La demo no tiene servidor de correo |
+| EV-12 | La guía diaria de NO₂ (25 µg/m³) se cita con la fuente oficial: resumen ejecutivo de las guías de calidad del aire de la OMS de 2021, tabla 0.1, consultado en el repositorio de la OMS. La tabla aclara que es un percentil 99 (3-4 días al año por encima), lo que confirma que la regla es solo un aviso preventivo. | `docs/alertas.md` («Límites de referencia» y «Fuentes») | La cifra tenía que salir de una fuente verificada |
+| — | Se eliminan de `docs/img/` las 7 imágenes que no usa ningún documento, el notebook ni la presentación (se ha buscado cada nombre con su ruta): `arquitectura_haizelab_claro.png`, `arquitectura_tiempo_real.png`, `github_pr1_merge.png`, `grafana_relojes_no2.jpg`, `grafana_trafico_81tramos_antiguo.jpg`, `no2_mensual_dentro_vs_fuera.png` y `nodered_flujo_aire_demo.png`. La presentación usa sus propias copias de `presentacion/assets/`. | `docs/img/` | Fase 6, punto 1: quitar lo que no se usa |
+| EV-12 | Las alertas siguen enviándose por correo. `docker-compose.yml` ya pasaba a Grafana las variables SMTP y `ALERT_EMAIL_TO` desde el `.env`. `.env.example` las tiene ahora activas, con valores de ejemplo de `example.com` y una línea que explica cada una; `GF_SMTP_ENABLED=false` por defecto para que una copia nueva no intente enviar. `docs/alertas.md` explica cómo se configura y se prueba el correo. Prueba del punto de contacto por la API de Grafana con el `.env` local: estado `ok`. No hay ninguna dirección real en el repositorio. | `.env.example`; `docs/alertas.md` («Cómo se configura el correo») | El equipo decide mantener el aviso por correo; sustituye a la nota anterior de que la demo no enviaba correos |
