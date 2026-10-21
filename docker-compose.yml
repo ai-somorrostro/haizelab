@@ -128,7 +128,7 @@ services:
       - GF_SMTP_FROM_NAME=${GF_SMTP_FROM_NAME:-HaizeLab Alerting}
       - GF_SMTP_STARTTLS_POLICY=${GF_SMTP_STARTTLS_POLICY:-OpportunisticStartTLS}
       - GF_SMTP_SKIP_VERIFY=${GF_SMTP_SKIP_VERIFY:-false}
-      - ALERT_EMAIL_TO=${ALERT_EMAIL_TO:-alfred.ciuca-andrei06@somo.eus}
+      - ALERT_EMAIL_TO=${ALERT_EMAIL_TO:-alertas@example.com}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/entrypoint.sh:/entrypoint.sh:ro
