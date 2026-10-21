@@ -104,10 +104,10 @@ tabla(["", "Pregunta", "Prioridad", "Por qué"], [
 
 h("3. Datos: fuentes, tipos y calidad")
 tabla(["Fuente", "Quién la publica", "Formato y frecuencia", "Variables usadas", "Pregunta"], [
-    ["Calidad del aire", "Gobierno Vasco (Open Data Euskadi)", "CSV anual; horaria", "NO₂ y SO₂ (µg/m³), 8 estaciones", "P1-P5"],
+    ["Calidad del aire", "Gobierno Vasco (Open Data Euskadi)", "CSV; datos horarios por estación, según los propios ficheros descargados", "NO₂ y SO₂ (µg/m³), 8 estaciones", "P1-P5"],
     ["Meteorología", "Open-Meteo (modelo meteorológico, no una estación)", "JSON de una API; horaria", "Velocidad del viento", "P3"],
     ["Calendario", "Elaboración propia: fases y festivos de Bilbao [PENDIENTE DE VERIFICAR la fuente de los festivos]", "CSV; diaria", "Laborable, fase de la ZBE", "P2, P5"],
-], [3, 6, 3, 4, 2])
+], [3, 5, 5, 3, 2])
 p("**Tipos de datos.** Cada fila es una estación en una hora, con datos numéricos (NO₂, SO₂, viento), categóricos (estación, "
   "grupo, fase), lógicos (laborable, en horario ZBE) y de fecha y hora.")
 ul(
@@ -157,7 +157,7 @@ p(f"**P1. ¿Bajó el NO₂ dentro más que fuera?** Dentro: {es(p1['dentro_pre']
   f"fuera; la parte propia de dentro, {es(abs(p1['efecto_neto_did']))}, es la que se asocia a la ZBE. Es una estimación aproximada: "
   f"de 2022 a 2023 el NO₂ cambió {es(cambio_previo_dentro, signo=True)} dentro y {es(cambio_previo_fuera, signo=True)} fuera, "
   "así que antes de la ZBE no iban del todo en paralelo.")
-img("img/p1_evolucion_mensual_no2.png", "Figura 1. La distancia entre la línea roja y la azul se reduce después de la fase 1.", 15)
+img("img/p1_evolucion_mensual_no2.png", "Figura 1. La distancia entre la línea roja y la azul se reduce después de la fase 1.", 14)
 
 p(f"**P2. ¿Se concentra en el horario de la ZBE?** En horario ZBE el NO₂ bajó {es(abs(p2['en_horario']['dentro_caida_bruta']))} "
   f"dentro y {es(abs(p2['en_horario']['fuera_caida_bruta']))} fuera: efecto neto **{es(p2['efecto_neto_en_horario_zbe'])}** "

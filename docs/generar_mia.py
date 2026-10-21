@@ -266,8 +266,7 @@ tabla(["Indicador", "Cómo se mide", "Valor"], [
      "el notebook (un comando). Se cronometran las dos formas.",
      "A medir en la puesta en marcha."],
     ["Tiempo hasta tener el panel actualizado", "Frecuencia de ingesta de Node-RED en InfluxDB.",
-     f"Tiempo atmosférico cada {min_meteo} min y tráfico cada {min_trafico} min. Calidad del aire oficial: según publique el "
-     "Gobierno Vasco [PENDIENTE DE VERIFICAR]."],
+     f"Tiempo atmosférico cada {min_meteo} min y tráfico cada {min_trafico} min. Calidad del aire oficial: datos horarios por estación, según los propios ficheros descargados."],
     ["Error del modelo", "MAE en validación cada vez que se reentrena.",
      f"{es(met[el]['mae_val'])} µg/m³ (base sin IA: {es(met[BASE]['mae_val'])}). Debe seguir por debajo de la base."],
     ["Horas al año por encima de 200 µg/m³", "Contar horas-estación con NO₂ > 200.",

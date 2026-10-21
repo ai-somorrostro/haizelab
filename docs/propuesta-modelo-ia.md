@@ -131,7 +131,7 @@ Cada flecha es un paso automático: los datos los descarga y limpia un script, e
 | Indicador | Cómo se mide | Valor |
 |---|---|---|
 | Horas de trabajo manual para actualizar el análisis | Horas de una persona para actualizar el análisis con datos nuevos: a mano (descargar, limpiar y calcular) frente a con el notebook (un comando). Se cronometran las dos formas. | A medir en la puesta en marcha. |
-| Tiempo hasta tener el panel actualizado | Frecuencia de ingesta de Node-RED en InfluxDB. | Tiempo atmosférico cada 15 min y tráfico cada 5 min. Calidad del aire oficial: según publique el Gobierno Vasco [PENDIENTE DE VERIFICAR]. |
+| Tiempo hasta tener el panel actualizado | Frecuencia de ingesta de Node-RED en InfluxDB. | Tiempo atmosférico cada 15 min y tráfico cada 5 min. Calidad del aire oficial: datos horarios por estación, según los propios ficheros descargados. |
 | Error del modelo | MAE en validación cada vez que se reentrena. | 8,14 µg/m³ (base sin IA: 10,50). Debe seguir por debajo de la base. |
 | Horas al año por encima de 200 µg/m³ | Contar horas-estación con NO<sub>2</sub> > 200. | 0 en todos los años de 2022 a 2026; máximo horario 168 µg/m³. |
 | Efecto de la ZBE | Repetir el apartado 5 con cada año de datos nuevos. | −0,49 µg/m³ (de −0,86 a −0,12). |
