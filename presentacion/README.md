@@ -1,5 +1,7 @@
 # Presentación HaizeLab · Reto 0
 
+**Descarga rápida:** [`HaizeLab_Reto0_ZBE_Bilbao.pptx`](HaizeLab_Reto0_ZBE_Bilbao.pptx) — misma presentación en PowerPoint, editable, con notas del orador. La demo de Grafana va como captura.
+
 Versión web de la presentación: un `index.html` y la carpeta `assets/`, sin dependencias.
 
 ## Controles
