@@ -3,2244 +3,626 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HaizeLab · ¿Ha funcionado la ZBE de Bilbao?</title>
-<meta name="description" content="Reto 0 · Evaluación de la Zona de Bajas Emisiones de Bilbao. Alfred, Iñigo y Kerman.">
+<title>HaizeLab · ¿Funciona la ZBE de Bilbao?</title>
+<meta name="description" content="Evaluación de la Zona de Bajas Emisiones de Bilbao con los datos de calidad del aire 2022-2026.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
-/* Base: mismas reglas que el formato de diapositivas (lienzo fijo 1920x1080) */
-* { box-sizing: border-box; margin: 0; }
-html, body { height: 100%; }
-body { background: #141414; overflow: hidden; font-family: 'Bricolage Grotesque', Arial, sans-serif; }
-#viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
-#stage { position: relative; width: 1920px; height: 1080px; flex: none; transform-origin: center center; }
-section { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; display: flex; flex-direction: column; visibility: hidden; }
-section.saliente { visibility: visible; z-index: 0; }
-section.activa { visibility: visible; z-index: 1; }
-section div { display: flex; flex-direction: column; }
-h1 { font-size: 96px; font-weight: 600; line-height: 1.1; }
-h2 { font-size: 64px; font-weight: 600; line-height: 1.15; }
-h3 { font-size: 44px; font-weight: 600; line-height: 1.2; }
-p { font-size: 32px; font-weight: 400; line-height: 1.4; }
-img, svg, video { display: block; }
-[hidden] { display: none !important; }
-x-connector { display: block; }
+/* Colores: todo sale de aquí */
+:root {
+  --fondo: #FFFFFF;
+  --tinta: #111827;
+  --suave: #4B5563;
+  --tenue: #9CA3AF;
+  --linea: #E5E7EB;
+  --panel: #F5F7FA;
+  --dentro: #1D4ED8;   /* estaciones dentro de la ZBE */
+  --fuera: #E8833A;    /* estaciones de control, fuera */
+  --ok: #15803D;
+  --no: #B45309;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--fondo); }
+body { overflow: hidden; font-family: 'Inter', Arial, sans-serif; color: var(--tinta); }
+
+/* Lienzo fijo 1920x1080 que se escala a la pantalla */
+#viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--fondo); }
+#stage { position: relative; width: 1920px; height: 1080px; flex: none; transform-origin: center center; background: var(--fondo); }
+section { position: absolute; inset: 0; padding: 96px 120px 120px; display: none; flex-direction: column; gap: 48px; background: var(--fondo); }
+section.activa { display: flex; }
+
+/* Texto */
+.etiqueta { font-size: 26px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--dentro); }
+h1 { font-size: 104px; font-weight: 800; line-height: 1.05; letter-spacing: -3px; }
+h2 { font-size: 72px; font-weight: 800; line-height: 1.1; letter-spacing: -2px; }
+h3 { font-size: 40px; font-weight: 700; line-height: 1.2; }
+p, li { font-size: 34px; line-height: 1.4; color: var(--suave); }
+b { color: var(--tinta); font-weight: 700; }
+.fila { display: flex; gap: 40px; }
+.col { display: flex; flex-direction: column; gap: 24px; }
+.crece { flex: 1; }
+.num { font-variant-numeric: tabular-nums; }
+.pie { position: absolute; left: 120px; right: 120px; bottom: 44px; display: flex; justify-content: space-between; font-size: 22px; color: var(--tenue); border-top: 2px solid var(--linea); padding-top: 18px; }
+
+/* Tarjetas */
+.tarjeta { background: var(--panel); border-radius: 24px; padding: 40px 44px; display: flex; flex-direction: column; gap: 14px; }
+.tarjeta .grande { font-size: 76px; font-weight: 800; letter-spacing: -2px; line-height: 1; color: var(--tinta); }
+.tarjeta .rotulo { font-size: 28px; color: var(--suave); line-height: 1.3; }
+.marca { display: inline-flex; align-items: center; gap: 10px; font-size: 28px; font-weight: 700; }
+.marca.ok { color: var(--ok); }
+.marca.no { color: var(--no); }
+.punto { display: inline-block; width: 22px; height: 22px; border-radius: 6px; vertical-align: middle; margin-right: 10px; }
+
+/* Gráficos */
+.barras { display: flex; flex-direction: column; gap: 30px; }
+.barra { display: grid; grid-template-columns: 380px 1fr 170px; align-items: center; gap: 24px; font-size: 32px; }
+.barra .riel { height: 64px; position: relative; }
+.barra .relleno { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 6px 6px 0; }
+.barra .valor { font-weight: 800; font-size: 40px; text-align: right; }
+.barra .nombre { color: var(--tinta); font-weight: 600; }
+.barra[title] { cursor: default; }
+svg text { font-family: 'Inter', Arial, sans-serif; }
+
+/* Diagrama de flujo */
+.flujo { display: flex; align-items: stretch; gap: 0; }
+.caja { flex: 1; border: 3px solid var(--tinta); border-radius: 20px; padding: 32px; display: flex; flex-direction: column; gap: 10px; background: var(--fondo); }
+.caja h3 { font-size: 36px; }
+.caja p { font-size: 28px; }
+.flecha { width: 70px; display: flex; align-items: center; justify-content: center; font-size: 48px; color: var(--tenue); }
+
+/* Tablas */
+table { border-collapse: collapse; width: 100%; font-size: 30px; }
+th { text-align: left; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; color: var(--tenue); font-weight: 600; padding: 0 20px 16px; border-bottom: 3px solid var(--tinta); }
+td { padding: 22px 20px; border-bottom: 2px solid var(--linea); color: var(--suave); }
+td:first-child { color: var(--tinta); font-weight: 700; }
+
+/* Grafana en directo */
+.gf-barra { display: flex; gap: 14px; align-items: center; }
+.gf-btn { font: 600 24px 'Inter', Arial, sans-serif; background: var(--fondo); color: var(--tinta); border: 2px solid var(--tinta); border-radius: 999px; padding: 8px 22px; cursor: pointer; }
+.gf-btn.activo { background: var(--tinta); color: var(--fondo); }
+.gf-estado { position: absolute; right: 16px; bottom: 14px; z-index: 2; font-size: 20px; font-weight: 600; color: #fff; background: rgba(17,24,39,.75); border-radius: 999px; padding: 6px 16px; }
+.gf-btn { font-size: 22px !important; padding: 6px 18px !important; }
+.gf-hueco:fullscreen { border: 0; border-radius: 0; }
+.gf-hueco { flex: 1; border: 2px solid var(--linea); border-radius: 20px; overflow: hidden; position: relative; background: var(--panel); }
+.gf-hueco iframe, .gf-hueco img { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: contain; background: #181B1F; }
+
+
+/* Diagrama de arquitectura (diapositiva 8) */
+.arq { position: relative; width: 1680px; height: 640px; }
+.arq-svg { position: absolute; left: 0; top: 0; }
+.arq-pill { position: absolute; top: 0; width: 160px; text-align: center; font: 700 22px ui-monospace, Menlo, Consolas, monospace; letter-spacing: 2px; color: #fff; background: var(--tinta); border-radius: 999px; padding: 6px 0; }
+.arq-caja { position: absolute; background: #fff; border: 3px solid var(--tinta); border-radius: 14px; box-shadow: 7px 7px 0 var(--tinta); padding: 20px 24px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.arq-caja b { font-size: 32px; font-weight: 800; color: var(--tinta); }
+.arq-caja span { font-size: 26px; line-height: 1.3; color: var(--tinta); }
+.arq-caja code { white-space: nowrap; font: 400 20px ui-monospace, Menlo, Consolas, monospace; color: var(--suave); }
+.arq-caja.grande b { font-size: 44px; }
+.arq-docker { position: absolute; left: 0; right: 0; top: 560px; height: 80px; background: var(--tinta); border-radius: 14px; box-shadow: 0 7px 0 #86EFAC; display: flex; flex-direction: row; align-items: center; gap: 32px; padding: 0 32px; }
+.arq-docker code { font: 700 30px ui-monospace, Menlo, Consolas, monospace; color: #86EFAC; white-space: nowrap; }
+.arq-docker span { font-size: 26px; color: #fff; }
+
+
+/* Fichas de InfluxDB / Node-RED (diapositiva 9) */
+.ficha { border: 3px solid var(--tinta); border-radius: 16px; box-shadow: 7px 7px 0 var(--tinta); overflow: hidden; background: #fff; }
+.ficha-cab { display: flex; align-items: baseline; gap: 18px; padding: 14px 26px; border-bottom: 3px solid var(--tinta); }
+.ficha-cab b { font-size: 38px; font-weight: 800; }
+.ficha-cab span { font: 600 22px ui-monospace, Menlo, Consolas, monospace; color: var(--tinta); }
+.ficha-fila { display: flex; align-items: center; gap: 24px; padding: 11px 26px; border-bottom: 2px solid var(--linea); }
+.ficha-fila:last-child { border-bottom: 0; }
+.ficha-fila code { font: 700 26px ui-monospace, Menlo, Consolas, monospace; width: 250px; flex: none; }
+.ficha-fila span { font-size: 26px; color: var(--suave); flex: 1; }
+.cad { font-style: normal; font-weight: 700; font-size: 22px; background: #D1FAE5; border: 2px solid var(--tinta); border-radius: 999px; padding: 2px 14px; white-space: nowrap; }
+.nr-flujo { display: flex; align-items: center; gap: 14px; padding: 12px 26px; border-bottom: 2px solid var(--linea); font-size: 24px; }
+.nr-flujo:last-child { border-bottom: 0; }
+.nr-flujo .nr-t { font: 700 26px ui-monospace, Menlo, Consolas, monospace; width: 180px; flex: none; }
+.nr-flujo i { font-style: normal; background: var(--panel); border: 2px solid var(--linea); border-radius: 10px; padding: 4px 14px; color: var(--tinta); }
+.nr-flujo i.nr-out { background: #D1FAE5; border-color: var(--tinta); font-weight: 700; }
+.nr-flujo em { font-style: normal; color: var(--tenue); font-size: 28px; }
+
+/* Grafana: roles y alertas (diapositiva 10) */
+.rol { background: var(--panel); border-radius: 18px; padding: 20px 26px; display: flex; flex-direction: column; gap: 4px; }
+.rol b { font-size: 32px; font-weight: 800; }
+.rol span { font-size: 25px; color: var(--suave); }
+.alertas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.alertas div { border: 2px solid var(--tinta); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.alertas b { font-size: 30px; font-weight: 800; }
+.alertas span { font-size: 19px; color: var(--suave); line-height: 1.25; }
+
+
+/* Capturas (diapositiva 10) */
+.cap { width: 100%; border: 2px solid var(--linea); border-radius: 12px; }
+.cap-tit { font-size: 26px; color: var(--suave); }
+.cap-tit code { font: 700 26px ui-monospace, Menlo, Consolas, monospace; color: var(--tinta); margin-right: 10px; }
 
 /* Navegación */
-#nav { position: fixed; right: 16px; bottom: 14px; display: flex; gap: 8px; align-items: center; z-index: 10; opacity: .25; transition: opacity .2s; font-family: 'Space Mono', monospace; }
+#nav { position: fixed; right: 18px; bottom: 14px; display: flex; gap: 8px; align-items: center; z-index: 10; opacity: .2; transition: opacity .2s; }
 #nav:hover { opacity: 1; }
-#nav button { font: 700 16px 'Space Mono', monospace; background: #FFF6E5; color: #141414; border: 2px solid #141414; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
-#contador { color: #FFF6E5; font-size: 14px; background: #141414; border-radius: 999px; padding: 4px 10px; }
-
-/* Grafana en directo (diapositiva 9) */
-.gf-tabs { flex: 1; display: flex !important; flex-direction: row !important; gap: 10px; align-items: center; justify-content: center; }
-.gf-btn { font: 700 22px 'Space Mono', monospace; background: #FFFFFF; color: #141414; border: 2px solid #141414; border-radius: 999px; padding: 2px 14px; cursor: pointer; }
-.gf-btn.activo { background: #141414; color: #FFF6E5; }
-.gf-estado { font: 400 20px 'Space Mono', monospace; color: #4A4A55; }
-.gf-slot { position: relative; width: 938px; height: 400px; background: #181B1F; }
-.gf-slot img { width: 938px; height: 400px; object-fit: cover; }
-.gf-frame { flex: 1; width: 100%; height: 100%; border: 0; display: block; background: #181B1F; }
-.gf-cerrar { display: none; position: absolute; right: 18px; top: 18px; z-index: 2; font: 700 28px 'Space Mono', monospace; background: #FFD23F; border: 3px solid #141414; border-radius: 50%; width: 56px; height: 56px; cursor: pointer; box-shadow: 4px 4px 0 #141414; }
-.gf-slot.full { position: absolute !important; left: 0; top: 0; width: 1920px; height: 1080px; z-index: 50; }
-.gf-slot.full img { width: 1920px; height: 1080px; object-fit: contain; }
-.gf-slot.full .gf-cerrar { display: block; }
-
-/* Transiciones */
-#progreso { position: absolute; left: 0; top: 0; width: 1920px; height: 8px; background: #141414; transform: scaleX(0); transform-origin: left center; transition: transform .7s cubic-bezier(.22,1,.36,1); z-index: 60; pointer-events: none; }
-.cortina-capa, .cortina { position: absolute; inset: 0; z-index: 100; visibility: hidden; pointer-events: none; }
-.cortina-capa { background: #FFD23F; }
-.cortina { background: #141414; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; }
-.cortina-pill { font: 700 32px 'Space Mono', 'Courier New', monospace; letter-spacing: 4px; color: #141414; background: #FFD23F; border: 3px solid #FFF6E5; border-radius: 999px; padding: 10px 30px; box-shadow: 6px 6px 0 #FFF6E5; }
-.cortina-titulo { font: 800 120px 'Bricolage Grotesque', Arial, sans-serif; line-height: 1.05; letter-spacing: -4px; color: #FFF6E5; text-align: center; max-width: 1600px; }
-
-
-/* Infraestructura interactiva (diapositiva 11: InfluxDB y Node-RED) */
-.infra-btn { font: 700 22px 'Space Mono', monospace; background: #FFFFFF; color: #141414; border: 2px solid #141414; border-radius: 999px; padding: 4px 18px; cursor: pointer; transition: all .15s ease; }
-.infra-btn:hover { background: #F0EDE6; }
-.infra-btn.activa { background: #141414; color: #FFF6E5; }
-.influx-tab-btn, .nr-tab-btn { font: 700 20px 'Space Mono', monospace; background: #FFFFFF; color: #141414; border: 2px solid #141414; border-radius: 999px; padding: 2px 14px; cursor: pointer; }
-.influx-tab-btn.activo, .nr-tab-btn.activo { background: #141414; color: #FFF6E5; }
-.infra-slot { position: relative; }
-.infra-slot.full { position: absolute !important; left: 0; top: 0; width: 1920px !important; height: 1080px !important; z-index: 50; }
-.infra-slot.full img { width: 1920px !important; height: 1080px !important; object-fit: contain !important; }
-/* ────────────────────────────────────────────────────────────────────────────
-   HaizeLab Chatbot Assistant Widget (Neubrutalism UI)
-   ──────────────────────────────────────────────────────────────────────────── */
-/* ────────────────────────────────────────────────────────────────────────────
-   HaizeLab Chatbot Assistant Widget (Inspirado en la estética Claude)
-   Paleta: Cálido Grafito (#1e1e1c / #262522), Terracota Anthropic (#d97757),
-   Texto Crema (#FAF9F5 / #ece8df) y tipografía cuidada de 12.5px.
-   ──────────────────────────────────────────────────────────────────────────── */
-#haizelab-chat-btn {
-  position: fixed;
-  right: 24px;
-  bottom: 64px;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: #d97757;
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 24px rgba(217, 119, 87, 0.45);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
-  outline: none;
-}
-#haizelab-chat-btn svg {
-  fill: #ffffff;
-  stroke: none;
-}
-#haizelab-chat-btn:hover {
-  transform: translateY(-2px) scale(1.06);
-  background: #e28a6d;
-  box-shadow: 0 10px 30px rgba(217, 119, 87, 0.55);
-}
-#haizelab-chat-btn:active {
-  transform: scale(0.96);
-}
-
-#haizelab-chat-panel {
-  position: fixed;
-  right: 24px;
-  bottom: 124px;
-  width: var(--chat-w, 360px);
-  height: var(--chat-h, 510px);
-  min-width: 290px;
-  max-width: min(580px, calc(100vw - 20px));
-  min-height: 380px;
-  max-height: calc(100vh - 140px);
-  background: #1e1e1c;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-  z-index: 10000;
-  overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  transform-origin: bottom right;
-  transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .22s ease;
-}
-#haizelab-chat-panel.oculto {
-  opacity: 0;
-  transform: scale(0.85) translateY(20px);
-  pointer-events: none;
-}
-
-.haize-chat-header {
-  background: #262522;
-  color: #f4efe6;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  user-select: none;
-  gap: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-}
-.haize-chat-title-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.haize-claude-spark {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: rgba(217, 119, 87, 0.18);
-  color: #d97757;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.haize-chat-title {
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  color: #FAF9F5;
-  white-space: nowrap;
-}
-.haize-chat-badge {
-  font-size: 10px;
-  font-weight: 500;
-  background: rgba(217, 119, 87, 0.2);
-  color: #e5987d;
-  border: 1px solid rgba(217, 119, 87, 0.35);
-  padding: 1px 7px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-}
-.haize-chat-badge.offline {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.35);
-}
-.haize-chat-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.haize-slider-container {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  padding: 2px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-.haize-slider-icon {
-  font-size: 10px;
-  color: #9c978b;
-  line-height: 1;
-}
-#haize-chat-size-slider {
-  width: 50px;
-  height: 4px;
-  cursor: ew-resize;
-  accent-color: #d97757;
-  outline: none;
-}
-.haize-chat-close {
-  background: transparent;
-  border: none;
-  color: #9c978b;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  line-height: 1;
-  transition: color .15s, transform .15s;
-}
-.haize-chat-close:hover {
-  color: #FAF9F5;
-  transform: scale(1.1);
-}
-
-.haize-chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #1e1e1c;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
-.haize-chat-messages::-webkit-scrollbar {
-  width: 5px;
-}
-.haize-chat-messages::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
-}
-
-.haize-chat-msg {
-  font-size: 12.5px !important;
-  line-height: 1.55 !important;
-  word-break: break-word;
-}
-.haize-chat-msg p {
-  font-size: 12.5px !important;
-  line-height: 1.55 !important;
-  margin: 0 0 6px 0 !important;
-  color: inherit !important;
-  font-weight: 400 !important;
-}
-.haize-chat-msg strong {
-  font-size: 12.5px !important;
-  font-weight: 600 !important;
-  color: #ffffff !important;
-}
-.haize-chat-msg code {
-  font-family: 'Space Mono', monospace !important;
-  font-size: 11px !important;
-  background: #141413 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #e5987d !important;
-  padding: 1px 5px !important;
-  border-radius: 4px !important;
-}
-.haize-chat-msg.asistente {
-  align-self: flex-start;
-  width: 100%;
-  color: #ece8df !important;
-  padding: 2px 0;
-  font-size: 12.5px !important;
-}
-.haize-chat-msg.asistente a {
-  color: #d97757 !important;
-  text-decoration: underline !important;
-  font-size: 12.5px !important;
-}
-.haize-chat-msg.usuario {
-  align-self: flex-end;
-  margin-left: auto;
-  background: #2c2b27 !important;
-  color: #FAF9F5 !important;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 16px 16px 4px 16px;
-  padding: 9px 13px;
-  max-width: 82%;
-  font-size: 12.5px !important;
-  line-height: 1.45 !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-}
-.haize-chat-msg.usuario p {
-  color: #FAF9F5 !important;
-  font-size: 12.5px !important;
-  line-height: 1.45 !important;
-  margin: 0 !important;
-}
-.haize-chat-msg .fuente-tag {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 2px 8px;
-  font-size: 10.5px !important;
-  color: #d97757 !important;
-  background: rgba(217, 119, 87, 0.1);
-  border: 1px solid rgba(217, 119, 87, 0.25);
-  border-radius: 6px;
-}
-
-.haize-chat-sugerencias {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
-}
-.haize-sug-btn {
-  background: #262522;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 7px 11px;
-  font-size: 12px;
-  color: #d6d0c4;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: all .15s ease;
-}
-.haize-sug-btn:hover {
-  background: #2e2d29;
-  border-color: #d97757;
-  color: #FAF9F5;
-  transform: translateY(-1px);
-}
-
-.haize-chat-typing {
-  align-self: flex-start;
-  padding: 6px 8px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #9c978b;
-  font-size: 12px;
-}
-.haize-dot {
-  width: 5px;
-  height: 5px;
-  background: #d97757;
-  border-radius: 50%;
-  animation: haize-bounce 1.4s infinite ease-in-out both;
-}
-.haize-dot:nth-child(1) { animation-delay: -0.32s; }
-.haize-dot:nth-child(2) { animation-delay: -0.16s; }
-@keyframes haize-bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
-}
-
-.haize-chat-input-box {
-  background: #262522;
-  padding: 10px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.haize-chat-reset-btn {
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  background: #2c2b27;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #d97757;
-  flex-shrink: 0;
-  transition: all .15s ease;
-}
-.haize-chat-reset-btn:hover {
-  border-color: #d97757;
-  background: rgba(217, 119, 87, 0.15);
-}
-.haize-chat-input-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  height: 40px;
-  padding: 0 6px 0 12px;
-  background: #1e1e1c;
-  transition: border-color .15s, box-shadow .15s;
-}
-.haize-chat-input-wrapper:focus-within {
-  border-color: #d97757;
-  box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.2);
-}
-.haize-chat-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 13px;
-  color: #FAF9F5;
-  font-family: inherit;
-  padding: 0;
-}
-.haize-chat-input::placeholder {
-  color: #78756d;
-}
-.haize-chat-send {
-  background: #d97757;
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  color: #ffffff;
-  flex-shrink: 0;
-  transition: transform .12s, background .15s;
-}
-.haize-chat-send:hover {
-  background: #e28a6d;
-  transform: scale(1.08);
-}
-.haize-chat-send svg {
-  stroke: #ffffff;
-}
-
-@media (max-width: 600px) {
-  #haizelab-chat-btn {
-    right: 14px;
-    bottom: 56px;
-    width: 48px;
-    height: 48px;
-  }
-  #haizelab-chat-panel {
-    right: 8px;
-    bottom: 70px;
-    width: calc(100vw - 16px);
-    height: 72vh;
-  }
-}
-
+#nav button { font: 600 15px 'Inter', Arial, sans-serif; background: #fff; color: var(--tinta); border: 1px solid var(--tenue); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+#contador { font: 500 14px 'Inter', Arial, sans-serif; color: var(--suave); }
+#progreso { position: fixed; left: 0; top: 0; height: 6px; background: var(--dentro); transition: width .3s ease; z-index: 10; }
 </style>
 </head>
 <body>
+<div id="progreso"></div>
 <div id="viewport"><div id="stage">
-<section id="portada" data-bloque="A" data-bloque-titulo="Planteamiento y resultado" data-transition="fade" style="background:#FFD23F;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:112px 128px;display:flex;flex-direction:row;gap:72px;align-items:center">
-<div style="position:absolute;left:1380px;top:560px;width:480px;height:480px;border-radius:50%;background:#FFFFFF;opacity:0.55"></div>
-<div style="position:absolute;left:1180px;top:72px;width:150px;height:150px;border-radius:50%;background:#FF8A7A"></div>
-<div style="position:absolute;left:40px;top:860px;width:180px;height:180px;border-radius:50%;background:#9FD8FF"></div>
-<div style="flex:1;display:flex;flex-direction:column;gap:32px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;background:#FFFFFF;border:3px solid #141414;border-radius:999px;padding:10px 24px;box-shadow:4px 4px 0 #141414;align-self:flex-start;transform:rotate(-3deg)">RETO 0 · HERE WE GO</p>
-<h1 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:100px;font-weight:800;line-height:1;letter-spacing:-3px">¿Ha funcionado la Zona de Bajas Emisiones de Bilbao?</h1>
-<p style="font-size:32px;font-weight:500;line-height:1.3">Lo que dice el aire del centro, descontando el tiempo y la tendencia.</p>
-<div style="display:flex;flex-direction:row;flex-wrap:wrap;gap:14px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFFFFF;border:3px solid #141414;border-radius:999px;padding:8px 20px">Node-RED</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFFFFF;border:3px solid #141414;border-radius:999px;padding:8px 20px">InfluxDB</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFFFFF;border:3px solid #141414;border-radius:999px;padding:8px 20px">Grafana</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFFFFF;border:3px solid #141414;border-radius:999px;padding:8px 20px">pandas</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFFFFF;border:3px solid #141414;border-radius:999px;padding:8px 20px">Docker</p>
-</div>
-<div style="display:flex;flex-direction:row;align-items:center;gap:24px">
-<p style="font-size:56px;font-weight:800;line-height:1;letter-spacing:-1.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.3">Iñigo · Kerman · Alfred · 19 oct 2026</p>
-</div>
-</div>
-<div style="width:440px;display:flex;flex-direction:column;gap:18px;background:#FFFFFF;border:3px solid #141414;border-radius:24px;box-shadow:10px 10px 0 #141414;padding:32px 36px;transform:rotate(2deg)">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 18px;align-self:flex-start">EL SISTEMA</p>
-<div style="display:flex;flex-direction:column;gap:2px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">cliente</p>
-<p style="font-size:30px;font-weight:800;line-height:1.2">Ayto. de Bilbao</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:2px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">datos</p>
-<p style="font-size:30px;font-weight:800;line-height:1.2">2022 – 2026</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:2px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">estaciones</p>
-<p style="font-size:30px;font-weight:800;line-height:1.2">8, hora a hora</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:2px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">contenedores</p>
-<p style="font-size:30px;font-weight:800;line-height:1.2">7, con un comando</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:2px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">efecto neto</p>
-<p style="font-size:30px;font-weight:800;line-height:1.2;color:#C21F12">−1,63 µg/m³ de NO₂</p>
-</div>
-</div>
 
-</section>
-
-<section id="zbe" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:32px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#FFD23F"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">01 · PLANTEAMIENTO</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">La ZBE en 30 segundos</h2>
-</div>
-<div style="display:flex;flex-direction:row;gap:32px">
-<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#9FD8FF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:44px 36px">
-<p style="font-size:120px;font-weight:800;line-height:1;letter-spacing:-4px">2</p>
-<p style="font-size:30px;font-weight:600;line-height:1.3">fases, en junio de 2024 y de 2025</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#FFD23F;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:44px 36px">
-<p style="font-size:120px;font-weight:800;line-height:1;letter-spacing:-4px">NO₂</p>
-<p style="font-size:30px;font-weight:600;line-height:1.3">el contaminante que se mide: sale sobre todo de los tubos de escape diésel</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#7BE3B5;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:44px 36px">
-<p style="font-size:120px;font-weight:800;line-height:1;letter-spacing:-4px">7–20 h</p>
-<p style="font-size:30px;font-weight:600;line-height:1.3">de lunes a viernes</p>
-</div>
-</div>
-<div style="flex:1"></div>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#4A4A55">CALENDARIO DE LA MEDIDA</p>
-<div style="display:flex;flex-direction:row;gap:16px;align-items:center">
-<div style="flex:1;display:flex;flex-direction:column;gap:6px;background:#FFFFFF;border:3px solid #141414;border-radius:20px;padding:20px 26px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#4A4A55">ANTES</p>
-<p style="font-size:30px;font-weight:800;line-height:1.2">Ene 2022 – 14 jun 2024</p>
-<p style="font-size:24px;line-height:1.3;color:#4A4A55">Sin restricción</p>
-</div>
-<svg width="44" height="28" viewBox="0 0 44 28"><path d="M3 14 H38 M28 4 L40 14 L28 24" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<div style="flex:1;display:flex;flex-direction:column;gap:6px;background:#DCEBFF;border:3px solid #141414;border-radius:20px;padding:20px 26px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#1F5FD6">FASE 1</p>
-<p style="font-size:30px;font-weight:800;line-height:1.2">Desde el 15 jun 2024</p>
-<p style="font-size:24px;line-height:1.3;color:#4A4A55">Fuera los vehículos sin etiqueta</p>
-</div>
-<svg width="44" height="28" viewBox="0 0 44 28"><path d="M3 14 H38 M28 4 L40 14 L28 24" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<div style="flex:1;display:flex;flex-direction:column;gap:6px;background:#1F5FD6;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:20px 26px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5">FASE 2</p>
-<p style="font-size:30px;font-weight:800;line-height:1.2;color:#FFFFFF">Desde el 16 jun 2025</p>
-<p style="font-size:24px;line-height:1.3;color:#FFFFFF">Fuera también la etiqueta B de no residentes</p>
-</div>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">02</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Planteamiento</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
-</section>
-
-<section id="titular" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:32px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#9FD8FF"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">01 · PLANTEAMIENTO</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">El titular fácil</h2>
-</div>
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center">
-<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFE1DC;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:28px 36px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;background:#FF8A7A;border:3px solid #141414;border-radius:999px;padding:6px 18px;align-self:flex-start">DENTRO DE LA ZONA</p>
-<p style="font-size:150px;font-weight:800;line-height:1;letter-spacing:-5px;color:#C21F12">−3,59</p>
-<div style="display:flex;flex-direction:row;gap:12px">
-<div style="flex:1;display:flex;flex-direction:column;gap:2px;background:#FFFFFF;border:2px solid #141414;border-radius:14px;padding:12px 18px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;color:#4A4A55">antes</p>
-<p style="font-size:32px;font-weight:800;line-height:1.2">25,50 µg/m³</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:2px;background:#FFFFFF;border:2px solid #141414;border-radius:14px;padding:12px 18px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;color:#4A4A55">después</p>
-<p style="font-size:32px;font-weight:800;line-height:1.2">21,91 µg/m³</p>
-</div>
-</div>
-</div>
-<p style="width:110px;height:110px;font-size:40px;font-weight:800;line-height:104px;text-align:center;background:#FFD23F;border:3px solid #141414;border-radius:50%;box-shadow:4px 4px 0 #141414;transform:rotate(-8deg)">VS</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#DCEBFF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:28px 36px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;background:#9FD8FF;border:3px solid #141414;border-radius:999px;padding:6px 18px;align-self:flex-start">FUERA, SIN RESTRICCIÓN</p>
-<p style="font-size:150px;font-weight:800;line-height:1;letter-spacing:-5px;color:#1F5FD6">−1,96</p>
-<div style="display:flex;flex-direction:row;gap:12px">
-<div style="flex:1;display:flex;flex-direction:column;gap:2px;background:#FFFFFF;border:2px solid #141414;border-radius:14px;padding:12px 18px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;color:#4A4A55">antes</p>
-<p style="font-size:32px;font-weight:800;line-height:1.2">18,25 µg/m³</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:2px;background:#FFFFFF;border:2px solid #141414;border-radius:14px;padding:12px 18px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;color:#4A4A55">después</p>
-<p style="font-size:32px;font-weight:800;line-height:1.2">16,29 µg/m³</p>
-</div>
-</div>
-</div>
-</div>
-<div style="flex:1"></div>
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:20px 32px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFD23F;border:3px solid #141414;border-radius:999px;padding:6px 18px;transform:rotate(-4deg);white-space:nowrap">¡OJO!</p>
-<p style="flex:1;font-size:30px;font-weight:700;line-height:1.3">Comparar solo antes y después atribuye a la ZBE lo que también hicieron el tiempo y los coches nuevos.</p>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">03</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Planteamiento</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
-</section>
-
-<section id="diseno" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:32px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#FFD23F"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">02 · MÉTODO Y DATOS</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">El diseño: tres grupos de estaciones</h2>
-</div>
-<div style="display:flex;flex-direction:row;gap:32px">
-<div style="flex:1;display:flex;flex-direction:column;background:#FFFFFF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;overflow:hidden">
-<div style="height:16px;background:#FF8A7A"></div>
-<div style="display:flex;flex-direction:column;gap:18px;padding:24px 30px 30px">
-<div style="display:flex;flex-direction:row;gap:22px;align-items:center">
-<p style="width:112px;height:112px;font-size:68px;font-weight:800;line-height:106px;text-align:center;background:#FF8A7A;border:3px solid #141414;border-radius:50%">2</p>
-<div style="display:flex;flex-direction:column;gap:2px">
-<h3 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:48px;font-weight:800;line-height:1.1">Dentro</h3>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.3;color:#C21F12">grupo tratado</p>
-</div>
-</div>
-<p style="font-size:26px;font-weight:500;line-height:1.35;color:#4A4A55">Reciben la restricción.</p>
-<div style="display:flex;flex-direction:row;flex-wrap:wrap;gap:10px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFE1DC;border:2px solid #141414;border-radius:999px;padding:6px 14px">Mazarredo</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFE1DC;border:2px solid #141414;border-radius:999px;padding:6px 14px">Mª Díaz de Haro</p>
-</div>
-</div>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;background:#FFFFFF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;overflow:hidden">
-<div style="height:16px;background:#9FD8FF"></div>
-<div style="display:flex;flex-direction:column;gap:18px;padding:24px 30px 30px">
-<div style="display:flex;flex-direction:row;gap:22px;align-items:center">
-<p style="width:112px;height:112px;font-size:68px;font-weight:800;line-height:106px;text-align:center;background:#9FD8FF;border:3px solid #141414;border-radius:50%">5</p>
-<div style="display:flex;flex-direction:column;gap:2px">
-<h3 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:48px;font-weight:800;line-height:1.1">Control</h3>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.3;color:#1F5FD6">Gran Bilbao</p>
-</div>
-</div>
-<p style="font-size:26px;font-weight:500;line-height:1.35;color:#4A4A55">Mismo tiempo y mismos coches nuevos, sin restricción.</p>
-<div style="display:flex;flex-direction:row;flex-wrap:wrap;gap:10px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#DCEBFF;border:2px solid #141414;border-radius:999px;padding:6px 14px">Europa</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#DCEBFF;border:2px solid #141414;border-radius:999px;padding:6px 14px">Barakaldo</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#DCEBFF;border:2px solid #141414;border-radius:999px;padding:6px 14px">Basauri</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#DCEBFF;border:2px solid #141414;border-radius:999px;padding:6px 14px">Erandio</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#DCEBFF;border:2px solid #141414;border-radius:999px;padding:6px 14px">Castrejana</p>
-</div>
-</div>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;background:#FFFFFF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;overflow:hidden">
-<div style="height:16px;background:#C9C9D2"></div>
-<div style="display:flex;flex-direction:column;gap:18px;padding:24px 30px 30px">
-<div style="display:flex;flex-direction:row;gap:22px;align-items:center">
-<p style="width:112px;height:112px;font-size:68px;font-weight:800;line-height:106px;text-align:center;background:#E6E6EC;border:3px solid #141414;border-radius:50%">1</p>
-<div style="display:flex;flex-direction:column;gap:2px">
-<h3 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:48px;font-weight:800;line-height:1.1">Fondo</h3>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.3;color:#4A4A55">nivel de base</p>
-</div>
-</div>
-<p style="font-size:26px;font-weight:500;line-height:1.35;color:#4A4A55">Lejos del tráfico: marca el nivel de base.</p>
-<div style="display:flex;flex-direction:row;flex-wrap:wrap;gap:10px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#E6E6EC;border:2px solid #141414;border-radius:999px;padding:6px 14px">Monte Arraiz</p>
-</div>
-</div>
-</div>
-</div>
-<div style="flex:1"></div>
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center;background:#FFD23F;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:22px 32px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFFFFF;border:3px solid #141414;border-radius:999px;padding:6px 18px;transform:rotate(-4deg);white-space:nowrap">LA FÓRMULA</p>
-<p style="flex:1;font-size:44px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Efecto ZBE = lo que baja <span style="color:#C21F12">dentro</span> − lo que baja el <span style="color:#1F5FD6">control</span></p>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">04</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Método y datos</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
-</section>
-
-<section id="datos" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:32px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#FFD23F"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">02 · MÉTODO Y DATOS</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">Los datos: cuatro fuentes, un cruce</h2>
-</div>
-<div style="display:flex;flex-direction:row;gap:44px">
-<div style="width:560px;display:flex;flex-direction:column;gap:22px">
-<div style="display:flex;flex-direction:column;gap:8px;background:#FFD23F;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:28px 32px">
-<p style="font-size:136px;font-weight:800;line-height:1;letter-spacing:-5px">41.615</p>
-<p style="font-size:26px;font-weight:600;line-height:1.35">horas por estación, de enero de 2022 a septiembre de 2026</p>
-</div>
-<div style="display:flex;flex-direction:row;gap:16px">
-<div style="flex:1;display:flex;flex-direction:column;gap:2px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:14px 8px">
-<p style="font-size:64px;font-weight:800;line-height:1.05;color:#1F5FD6">8</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3">estaciones</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:2px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:14px 8px">
-<p style="font-size:64px;font-weight:800;line-height:1.05;color:#0E7A4C">4</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3">fuentes</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:2px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:14px 8px">
-<p style="font-size:64px;font-weight:800;line-height:1.05;color:#6A3FD1">0</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3">duplicados</p>
-</div>
-</div>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:14px">
-<div style="display:flex;flex-direction:row;gap:20px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:14px 22px">
-<p style="width:56px;height:56px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:50px;text-align:center;background:#FF8A7A;border:3px solid #141414;border-radius:50%">01</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:2px">
-<p style="font-size:28px;font-weight:800;line-height:1.25">Calidad del aire <span style="color:#4A4A55">· Open Data Euskadi</span></p>
-<p style="font-size:24px;line-height:1.3;color:#4A4A55">NO₂ y SO₂</p>
-</div>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFE1DC;border:2px solid #141414;border-radius:999px;padding:4px 14px;white-space:nowrap">horaria</p>
-</div>
-<div style="display:flex;flex-direction:row;gap:20px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:14px 22px">
-<p style="width:56px;height:56px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:50px;text-align:center;background:#9FD8FF;border:3px solid #141414;border-radius:50%">02</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:2px">
-<p style="font-size:28px;font-weight:800;line-height:1.25">Meteorología <span style="color:#4A4A55">· Open-Meteo</span></p>
-<p style="font-size:24px;line-height:1.3;color:#4A4A55">Viento, lluvia, temperatura y humedad</p>
-</div>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#DCEBFF;border:2px solid #141414;border-radius:999px;padding:4px 14px;white-space:nowrap">horaria</p>
-</div>
-<div style="display:flex;flex-direction:row;gap:20px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:14px 22px">
-<p style="width:56px;height:56px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:50px;text-align:center;background:#FFD23F;border:3px solid #141414;border-radius:50%">03</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:2px">
-<p style="font-size:28px;font-weight:800;line-height:1.25">Tráfico <span style="color:#4A4A55">· Diputación de Bizkaia y Bilbao Open Data</span></p>
-<p style="font-size:24px;line-height:1.3;color:#4A4A55">81 tramos, solo para Grafana (no entra en el análisis)</p>
-</div>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFF0B8;border:2px solid #141414;border-radius:999px;padding:4px 14px;white-space:nowrap">5 min</p>
-</div>
-<div style="display:flex;flex-direction:row;gap:20px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:14px 22px">
-<p style="width:56px;height:56px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:50px;text-align:center;background:#7BE3B5;border:3px solid #141414;border-radius:50%">04</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:2px">
-<p style="font-size:28px;font-weight:800;line-height:1.25">Calendario de la ZBE <span style="color:#4A4A55">· tabla propia</span></p>
-<p style="font-size:24px;line-height:1.3;color:#4A4A55">Fases, horario y festivos</p>
-</div>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#D7F7E8;border:2px solid #141414;border-radius:999px;padding:4px 14px;white-space:nowrap">diaria</p>
-</div>
-</div>
-</div>
-<div style="flex:1"></div>
-<div style="display:flex;flex-direction:row;gap:14px;align-items:center;flex-wrap:wrap">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 18px">LIMPIEZA</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:8px 16px;transform:rotate(-2deg)">coma decimal</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:8px 16px;transform:rotate(2deg)">hora 24:00</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:8px 16px;transform:rotate(-2deg)">GMT → hora local</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:8px 16px;transform:rotate(2deg)">valores negativos</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:8px 16px;transform:rotate(-2deg)">horas sin dato</p>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">05</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Método y datos</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
-</section>
-
-<section id="resultado" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:28px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#FF8A7A"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">03 · RESULTADO</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">El resultado: lo que la ZBE añade</h2>
-</div>
-<div style="display:flex;flex-direction:row;gap:40px">
-<div style="width:1048px;display:flex;flex-direction:column;gap:10px;background:#FFFFFF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:18px 21px">
-<img src="assets/p1_evolucion_mensual_no2.png" alt="NO₂ medio de cada mes, dentro y fuera de la ZBE y en el fondo, de enero de 2022 a septiembre de 2026, con el inicio de las fases 1 y 2" style="width:1000px;height:auto;display:block">
-<div style="display:flex;flex-direction:row;gap:44px;align-items:center">
-<div style="display:flex;flex-direction:row;gap:12px;align-items:center">
-<div style="width:32px;height:8px;border-radius:4px;background:#E2382A"></div>
-<p style="font-size:24px;font-weight:600;line-height:1.3;white-space:nowrap">Dentro: de 25,50 a 21,91</p>
-</div>
-<div style="display:flex;flex-direction:row;gap:12px;align-items:center">
-<div style="width:32px;height:8px;border-radius:4px;background:#1F5FD6"></div>
-<p style="font-size:24px;font-weight:600;line-height:1.3;white-space:nowrap">Control: de 18,25 a 16,29</p>
-</div>
-</div>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:16px">
-<div style="display:flex;flex-direction:column;gap:4px;align-items:center;background:#FFE1DC;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:18px 24px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FF8A7A;border:3px solid #141414;border-radius:999px;padding:4px 16px">EFECTO NETO</p>
-<p style="font-size:128px;font-weight:800;line-height:1.05;letter-spacing:-4px;color:#C21F12">−1,63</p>
-<p style="font-size:30px;font-weight:700;line-height:1.2">µg/m³ de NO₂</p>
-</div>
-<div style="display:flex;flex-direction:column;background:#FFFFFF;border:3px solid #141414;border-radius:18px;overflow:hidden">
-<div style="display:flex;flex-direction:row;justify-content:space-between;padding:9px 18px;border-bottom:2px solid #141414">
-<p style="font-size:24px;font-weight:700;line-height:1.3;color:#C21F12">Baja dentro</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.3">−3,59</p>
-</div>
-<div style="display:flex;flex-direction:row;justify-content:space-between;padding:9px 18px;border-bottom:2px solid #141414">
-<p style="font-size:24px;font-weight:700;line-height:1.3;color:#1F5FD6">Baja el control</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.3">−1,96</p>
-</div>
-<div style="display:flex;flex-direction:row;justify-content:space-between;padding:9px 18px;border-bottom:2px solid #141414">
-<p style="font-size:24px;font-weight:700;line-height:1.3">Intervalo del 95 %</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.3">−2,38 a −0,94</p>
-</div>
-<div style="display:flex;flex-direction:row;justify-content:space-between;padding:9px 18px">
-<p style="font-size:24px;font-weight:700;line-height:1.3">Sobre el nivel inicial</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.3">6,4 %</p>
-</div>
-</div>
-<div style="flex:1"></div>
-<div style="display:flex;flex-direction:column;gap:8px;background:#7BE3B5;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:14px 22px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2">VEREDICTO</p>
-<p style="font-size:30px;font-weight:800;line-height:1.2">Señal a favor de la ZBE, pequeña.</p>
-</div>
-</div>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">06</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Resultado</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
-</section>
-
-<section id="comprobaciones" data-bloque="B" data-bloque-titulo="Prueba y demostración" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:32px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#FF8A7A"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">03 · RESULTADO</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">Cuatro pruebas: ¿aguanta el resultado?</h2>
-</div>
-<div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:28px">
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center;background:#DCEBFF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:24px 30px">
-<div style="width:270px;display:flex;flex-direction:column;gap:10px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px;align-self:flex-start">1 · HORARIO</p>
-<p style="font-size:80px;font-weight:800;line-height:1;letter-spacing:-2px;white-space:nowrap">−2,93</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:8px">
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">µg/m³ netos con la norma activa. El resto del tiempo, −0,85.</p>
-<p style="font-size:28px;font-weight:800;line-height:1.2">Baja más cuando la norma está activa.</p>
-</div>
-</div>
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center;background:#D7F7E8;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:24px 30px">
-<div style="width:270px;display:flex;flex-direction:column;gap:10px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px;align-self:flex-start">2 · CALMA</p>
-<p style="font-size:80px;font-weight:800;line-height:1.2;letter-spacing:-2px;white-space:nowrap">−1,23</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:8px">
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">µg/m³ netos solo en las horas con viento en calma (menos de 2 m/s).</p>
-<p style="font-size:28px;font-weight:800;line-height:1.2">El viento no explica la bajada.</p>
-</div>
-</div>
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center;background:#ECE4FF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:24px 30px">
-<div style="width:270px;display:flex;flex-direction:column;gap:10px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px;align-self:flex-start">3 · PLACEBO</p>
-<p style="font-size:80px;font-weight:800;line-height:1;letter-spacing:-2px;white-space:nowrap">+0,33</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:8px">
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">µg/m³ netos de SO₂, que no viene de los coches.</p>
-<p style="font-size:28px;font-weight:800;line-height:1.2">El método no inventa bajadas.</p>
-</div>
-</div>
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center;background:#FFF0B8;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;padding:24px 30px">
-<div style="width:270px;display:flex;flex-direction:column;gap:10px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px;align-self:flex-start">4 · FASE 2</p>
-<p style="font-size:80px;font-weight:800;line-height:1;letter-spacing:-2px;white-space:nowrap">−0,52</p>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:8px">
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">µg/m³ netos de la fase 2 frente a la fase 1 (de −1,72 a 0,74).</p>
-<p style="font-size:28px;font-weight:800;line-height:1.2">No se distingue de cero.</p>
-</div>
-</div>
-</div>
-<div style="flex:1"></div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">07</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Resultado</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
-</section>
-
-<section id="arquitectura" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:24px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#7BE3B5"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">04 · INFRAESTRUCTURA</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">Del dato al panel, en tiempo real</h2>
-</div>
-<div style="position:relative;width:1664px;height:520px">
-<p style="position:absolute;left:110px;top:0;width:160px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:36px;text-align:center;color:#FFF6E5;background:#141414;border-radius:999px">FUENTES</p>
-<p style="position:absolute;left:590px;top:0;width:160px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:36px;text-align:center;color:#FFF6E5;background:#141414;border-radius:999px">INGESTA</p>
-<p style="position:absolute;left:1040px;top:0;width:160px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:36px;text-align:center;color:#FFF6E5;background:#141414;border-radius:999px">ALMACÉN</p>
-<p style="position:absolute;left:1452px;top:0;width:160px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:36px;text-align:center;color:#FFF6E5;background:#141414;border-radius:999px">PANELES</p>
-<div style="position:absolute;left:0;top:50px;width:380px;height:124px;display:flex;flex-direction:column;justify-content:center;gap:4px;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:0 24px">
-<p style="font-size:30px;font-weight:800;line-height:1.2">Open-Meteo</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">tiempo · cada 15 min</p>
-</div>
-<div style="position:absolute;left:0;top:198px;width:380px;height:124px;display:flex;flex-direction:column;justify-content:center;gap:4px;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:0 24px">
-<p style="font-size:30px;font-weight:800;line-height:1.2">Bilbao Open Data</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">81 tramos · cada 5 min</p>
-</div>
-<div style="position:absolute;left:0;top:346px;width:380px;height:124px;display:flex;flex-direction:column;justify-content:center;gap:4px;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:0 24px">
-<p style="font-size:30px;font-weight:800;line-height:1.2">Histórico de NO₂</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">1 hora cada 5 s · demo</p>
-</div>
-<div style="position:absolute;left:520px;top:138px;width:300px;height:244px;display:flex;flex-direction:column;justify-content:center;gap:10px;background:#C7B3FF;border:3px solid #141414;border-radius:22px;box-shadow:8px 8px 0 #141414;padding:0 28px">
-<h3 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:42px;font-weight:800;line-height:1.1">Node-RED</h3>
-<p style="font-size:24px;font-weight:600;line-height:1.35">3 flujos: consulta, ordena y escribe</p>
-</div>
-<div style="position:absolute;left:960px;top:138px;width:320px;height:244px;display:flex;flex-direction:column;justify-content:center;gap:10px;background:#7BE3B5;border:3px solid #141414;border-radius:22px;box-shadow:8px 8px 0 #141414;padding:0 28px">
-<h3 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:42px;font-weight:800;line-height:1.1">InfluxDB</h3>
-<p style="font-size:24px;font-weight:600;line-height:1.35">4 buckets de series temporales</p>
-</div>
-<div style="position:absolute;left:1400px;top:138px;width:264px;height:244px;display:flex;flex-direction:column;justify-content:center;gap:10px;background:#FFD23F;border:3px solid #141414;border-radius:22px;box-shadow:8px 8px 0 #141414;padding:0 28px">
-<h3 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:42px;font-weight:800;line-height:1.1">Grafana</h3>
-<p style="font-size:24px;font-weight:600;line-height:1.35">paneles, alertas y roles</p>
-</div>
-<div style="position:absolute;left:520px;top:420px;width:300px;height:100px;display:flex;flex-direction:column;justify-content:center;gap:2px;background:#9FD8FF;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:0 24px">
-<p style="font-size:30px;font-weight:800;line-height:1.2">pandas</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3">por lotes</p>
-</div>
-<div style="position:absolute;left:1400px;top:420px;width:264px;height:100px;display:flex;flex-direction:column;justify-content:center;gap:2px;background:#FFA8D9;border:3px solid #141414;border-radius:18px;box-shadow:4px 4px 0 #141414;padding:0 24px">
-<p style="font-size:30px;font-weight:800;line-height:1.2">MCP</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3">solo lectura</p>
-</div>
-<x-connector x1="380" y1="112" x2="520" y2="220" style="color:#141414;border-width:3px"></x-connector>
-<x-connector x1="380" y1="260" x2="520" y2="260" style="color:#141414;border-width:3px"></x-connector>
-<x-connector x1="380" y1="408" x2="520" y2="300" style="color:#141414;border-width:3px"></x-connector>
-<x-connector x1="820" y1="260" x2="960" y2="260" style="color:#141414;border-width:4px"></x-connector>
-<x-connector x1="1280" y1="260" x2="1400" y2="260" style="color:#141414;border-width:4px"></x-connector>
-<x-connector x1="820" y1="470" x2="1070" y2="382" route="hv" style="color:#141414;border-width:3px"></x-connector>
-<x-connector x1="1190" y1="382" x2="1400" y2="470" route="vh" style="color:#141414;border-width:3px"></x-connector>
-<p style="position:absolute;left:830px;top:212px;width:120px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:34px;text-align:center">escribe</p>
-<p style="position:absolute;left:1290px;top:212px;width:100px;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:34px;text-align:center">lee</p>
-</div>
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center;background:#141414;border:3px solid #141414;border-radius:18px;box-shadow:6px 6px 0 #7BE3B5;padding:14px 26px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:28px;font-weight:700;line-height:1.3;color:#7BE3B5;white-space:nowrap">$ docker compose up -d --build</p>
-<p style="flex:1;font-size:24px;line-height:1.3;color:#FFF6E5">7 contenedores (uno solo crea buckets y tokens) · puertos solo en 127.0.0.1</p>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">08</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Infraestructura</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
-</section>
-
-<section id="demo" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:32px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#7BE3B5"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">04 · INFRAESTRUCTURA</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">Demo en vivo: Grafana por roles</h2>
-</div>
-<div style="display:flex;flex-direction:row;gap:40px">
-<div style="width:680px;display:flex;flex-direction:column;gap:16px">
-<div style="display:flex;flex-direction:column;gap:6px;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:5px 5px 0 #141414;padding:16px 24px">
-<div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:16px">
-<p style="font-size:30px;font-weight:800;line-height:1.25">Dirección</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#9FD8FF;border:2px solid #141414;border-radius:999px;padding:4px 14px">viewer</p>
-</div>
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">Ve todos los paneles. No edita.</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:6px;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:5px 5px 0 #141414;padding:16px 24px">
-<div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:16px">
-<p style="font-size:30px;font-weight:800;line-height:1.25">Análisis · 6 personas</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#9FD8FF;border:2px solid #141414;border-radius:999px;padding:4px 14px">viewer</p>
-</div>
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">Solo ve. Al entrar va directo a su panel.</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:6px;background:#FFFFFF;border:3px solid #141414;border-radius:18px;box-shadow:5px 5px 0 #141414;padding:16px 24px">
-<div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:16px">
-<p style="font-size:30px;font-weight:800;line-height:1.25">IT · 3 personas</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#7BE3B5;border:2px solid #141414;border-radius:999px;padding:4px 14px">admin / editor</p>
-</div>
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">Ve y edita paneles, fuentes de datos y alertas.</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:6px;background:#FFE1DC;border:3px solid #141414;border-radius:18px;box-shadow:5px 5px 0 #141414;padding:16px 24px">
-<div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:16px">
-<p style="font-size:30px;font-weight:800;line-height:1.25">Alertas</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FF8A7A;border:2px solid #141414;border-radius:999px;padding:4px 14px">3 reglas</p>
-</div>
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">Un valor horario de NO₂ &gt; 200 µg/m³ (límite horario UE). Media de 24 h &gt; 25 µg/m³ (guía OMS). Tráfico con ocupación media &gt; 35 %.</p>
-</div>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:20px">
-<div style="display:flex;flex-direction:column;background:#FFFFFF;border:3px solid #141414;border-radius:20px;box-shadow:8px 8px 0 #141414;overflow:hidden">
-<div style="display:flex;flex-direction:row;align-items:center;gap:10px;background:#FFF6E5;padding:10px 18px;border-bottom:3px solid #141414">
-<div style="width:18px;height:18px;border-radius:50%;background:#FF8A7A;border:2px solid #141414"></div>
-<div style="width:18px;height:18px;border-radius:50%;background:#FFD23F;border:2px solid #141414"></div>
-<div style="width:18px;height:18px;border-radius:50%;background:#7BE3B5;border:2px solid #141414"></div>
-<div class="gf-tabs"><button class="gf-btn activo" data-uid="haizelab-overview">Monitor</button><button class="gf-btn" data-uid="haizelab-analisis">Análisis</button><button class="gf-btn" data-act="reload" title="Recargar">↻</button><button class="gf-btn" data-act="full" title="Pantalla completa (G)">⤢</button><span class="gf-estado">comprobando…</span></div>
-</div>
-<div class="gf-slot"><iframe class="gf-frame" title="Grafana en directo" hidden></iframe><img src="assets/grafana-relojes-no2.jpg" alt="Panel de Grafana con cuatro relojes de NO₂, uno por estación: Arraiz 4, Europa 34, Mazarredo 8 y Mª Díaz de Haro 39 µg/m³" style="width:938px;height:400px;object-fit:cover"><button class="gf-cerrar" data-act="full" title="Salir (Esc)">✕</button></div>
-</div>
-<div style="display:flex;flex-direction:row;gap:18px;align-items:center;background:#FFF0B8;border:3px solid #141414;border-radius:18px;padding:14px 22px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFD23F;border:2px solid #141414;border-radius:999px;padding:4px 14px;transform:rotate(-4deg);white-space:nowrap">¡OJO!</p>
-<p style="flex:1;font-size:24px;font-weight:600;line-height:1.35">Estos relojes leen aire_demo: histórico reproducido deprisa, una hora cada 5 s. No es el aire de ahora.</p>
-</div>
-</div>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">09</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Infraestructura</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
-</section>
-
-<section id="almacenamiento" data-bloque="C" data-bloque-titulo="Cómo está hecho y qué se recomienda" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:24px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#7BE3B5"></div>
-<div style="display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between">
-  <div style="display:flex;flex-direction:column;gap:12px">
-    <p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">04 · INFRAESTRUCTURA</p>
-    <h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">InfluxDB y Node-RED: dónde y quién entra</h2>
+<!-- 1 · PORTADA -->
+<section id="portada" style="justify-content:center;gap:56px">
+  <div class="etiqueta">HaizeLab · Para el Ayuntamiento de Bilbao</div>
+  <h1 style="font-size:132px;max-width:1500px">¿Funciona la Zona de Bajas Emisiones?</h1>
+  <p style="font-size:40px;max-width:1300px">Lo que dicen cuatro años de datos del aire del centro de Bilbao.</p>
+  <div class="fila" style="gap:24px;align-items:center;margin-top:24px">
+    <span style="font-size:30px;font-weight:700">Iñigo · Kerman · Alfred</span>
+    <span style="font-size:30px;color:var(--tenue)">22 de octubre de 2026</span>
   </div>
-  <div class="infra-nav" style="display:flex;flex-direction:row;gap:12px;margin-bottom:8px">
-    <button class="infra-btn activa" data-view="resumen">Arquitectura</button>
-    <button class="infra-btn" data-view="influx">InfluxDB (:8086)</button>
-    <button class="infra-btn" data-view="nodered">Node-RED (:1880)</button>
-  </div>
-</div>
+</section>
 
-<div id="infra-resumen" style="display:flex;flex-direction:column;gap:28px">
-  <div style="display:flex;flex-direction:row;gap:36px">
-    <div style="flex:1;display:flex;flex-direction:column;background:#FFFFFF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;overflow:hidden">
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;background:#7BE3B5;padding:16px 26px;border-bottom:3px solid #141414">
-        <p style="font-size:44px;font-weight:800;line-height:1.1">4 buckets</p>
-        <p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2">· carpetas con caducidad</p>
-      </div>
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;padding:16px 26px;border-bottom:2px solid #141414">
-        <p style="width:190px;font-family:'Space Mono', 'Courier New', monospace;font-size:26px;font-weight:700;line-height:1.3">aire</p>
-        <p style="flex:1;font-size:24px;line-height:1.3;color:#4A4A55">histórico de NO₂</p>
-        <p style="font-size:24px;font-weight:800;line-height:1.2;background:#D7F7E8;border:2px solid #141414;border-radius:999px;padding:3px 14px;white-space:nowrap">no caduca</p>
-      </div>
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;padding:16px 26px;border-bottom:2px solid #141414">
-        <p style="width:190px;font-family:'Space Mono', 'Courier New', monospace;font-size:26px;font-weight:700;line-height:1.3">meteo</p>
-        <p style="flex:1;font-size:24px;line-height:1.3;color:#4A4A55">tiempo, vivo e histórico</p>
-        <p style="font-size:24px;font-weight:800;line-height:1.2;background:#D7F7E8;border:2px solid #141414;border-radius:999px;padding:3px 14px;white-space:nowrap">no caduca</p>
-      </div>
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;padding:16px 26px;border-bottom:2px solid #141414">
-        <p style="width:190px;font-family:'Space Mono', 'Courier New', monospace;font-size:26px;font-weight:700;line-height:1.3">trafico</p>
-        <p style="flex:1;font-size:24px;line-height:1.3;color:#4A4A55">81 tramos cada 5 min</p>
-        <p style="font-size:24px;font-weight:800;line-height:1.2;background:#FFF0B8;border:2px solid #141414;border-radius:999px;padding:3px 14px;white-space:nowrap">30 días</p>
-      </div>
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;padding:16px 26px">
-        <p style="width:190px;font-family:'Space Mono', 'Courier New', monospace;font-size:26px;font-weight:700;line-height:1.3">aire_demo</p>
-        <p style="flex:1;font-size:24px;line-height:1.3;color:#4A4A55">NO₂ reproducido</p>
-        <p style="font-size:24px;font-weight:800;line-height:1.2;background:#FFE1DC;border:2px solid #141414;border-radius:999px;padding:3px 14px;white-space:nowrap">7 días</p>
+<!-- 2 · LA DECISIÓN -->
+<section id="decision">
+  <div class="etiqueta">El problema</div>
+  <h2>El Ayuntamiento tiene que decidir:<br><span style="color:var(--dentro)">¿ampliar, mantener o cambiar la ZBE?</span></h2>
+  <div class="fila" style="margin-top:12px">
+    <div class="tarjeta crece"><div class="grande">15 jun 2024</div><div class="rotulo"><b>Fase 1.</b> No entran los coches sin etiqueta.</div></div>
+    <div class="tarjeta crece"><div class="grande">16 jun 2025</div><div class="rotulo"><b>Fase 2.</b> Tampoco la etiqueta B de quien no vive dentro.</div></div>
+    <div class="tarjeta crece"><div class="grande">L–V · 7–20 h</div><div class="rotulo"><b>Horario.</b> Fuera de esas horas no hay restricción.</div></div>
+  </div>
+  <p>Medimos el <b>NO₂</b> (dióxido de nitrógeno): el gas que sale sobre todo del tubo de escape de los coches diésel. Si la ZBE funciona, es el primero que tiene que bajar.</p>
+  <div class="pie"><span>HaizeLab</span><span>2</span></div>
+</section>
+
+<!-- 3 · LOS DATOS -->
+<section id="datos">
+  <div class="etiqueta">Los datos</div>
+  <h2>Hora a hora, de 2022 a 2026</h2>
+  <div class="fila">
+    <div class="tarjeta crece"><div class="grande num">8</div><div class="rotulo">estaciones de medida</div></div>
+    <div class="tarjeta crece"><div class="grande num">332.619</div><div class="rotulo">horas medidas, sin duplicados</div></div>
+    <div class="tarjeta crece"><div class="grande num">96,7 %</div><div class="rotulo">de las horas tienen dato válido</div></div>
+  </div>
+  <table>
+    <tr><th>Fuente</th><th>Qué aporta</th><th>Para qué</th></tr>
+    <tr><td>Open Data Euskadi</td><td>NO₂ y SO₂ cada hora</td><td>Lo que se mide</td></tr>
+    <tr><td>Open-Meteo</td><td>Viento, lluvia, temperatura</td><td>Descontar el tiempo</td></tr>
+    <tr><td>Calendario propio</td><td>Fases, horario y festivos</td><td>Saber cuándo actúa la ZBE</td></tr>
+    <tr><td>Bilbao Open Data</td><td>Tráfico cada 5 min</td><td>Solo para el panel en vivo</td></tr>
+  </table>
+  <div class="pie"><span>Limpio y crudo dan la misma media: la diferencia por estación es menor de 0,03 µg/m³</span><span>3</span></div>
+</section>
+
+<!-- 4 · POR QUÉ NO BASTA ANTES/DESPUÉS -->
+<section id="trampa">
+  <div class="etiqueta">La trampa</div>
+  <h2>Fuera de la ZBE el NO₂ también baja</h2>
+  <div class="fila" style="align-items:center;gap:72px">
+    <svg id="lineas" width="1080" height="560" viewBox="0 0 1080 560" role="img" aria-label="Media anual de NO2 dentro y fuera de la ZBE, 2022 a 2026"></svg>
+    <div class="col" style="width:520px;gap:36px">
+      <p><span class="punto" style="background:var(--dentro)"></span><b>Dentro</b> de la ZBE</p>
+      <p><span class="punto" style="background:var(--fuera)"></span><b>Fuera</b>, sin restricción</p>
+      <p>Los coches se renuevan y el tiempo cambia <b>en toda la comarca</b>.</p>
+      <p>Si solo miramos dentro, nos apuntaríamos una bajada que no es de la ZBE.</p>
+    </div>
+  </div>
+  <div class="pie"><span>Media anual de NO₂ en µg/m³. 2026: enero a septiembre.</span><span>4</span></div>
+</section>
+
+<!-- 5 · CÓMO COMPARAMOS -->
+<section id="metodo">
+  <div class="etiqueta">Cómo lo medimos</div>
+  <h2>Comparamos dentro con fuera</h2>
+  <div class="fila">
+    <div class="tarjeta crece" style="border-top:10px solid var(--dentro)"><div class="grande">2</div><h3>Dentro</h3><div class="rotulo">Mazarredo y Mª Díaz de Haro. Tienen la restricción.</div></div>
+    <div class="tarjeta crece" style="border-top:10px solid var(--fuera)"><div class="grande">5</div><h3>Fuera (control)</h3><div class="rotulo">Europa, Barakaldo, Basauri, Erandio y Castrejana. Mismo tiempo y mismos coches, sin restricción.</div></div>
+    <div class="tarjeta crece" style="border-top:10px solid var(--linea)"><div class="grande">1</div><h3>Fondo</h3><div class="rotulo">Monte Arraiz. Sin tráfico cerca: no entra en la cuenta.</div></div>
+  </div>
+  <div style="text-align:center;font-size:56px;font-weight:800;letter-spacing:-1px;margin-top:20px">
+    Efecto ZBE = <span style="color:var(--dentro)">lo que baja dentro</span> − <span style="color:var(--fuera)">lo que baja fuera</span>
+  </div>
+  <div class="pie"><span>Antes: enero 2022 – 14 junio 2024 · Después: 15 junio 2024 – septiembre 2026</span><span>5</span></div>
+</section>
+
+<!-- 6 · RESULTADO -->
+<section id="resultado">
+  <div class="etiqueta">Resultado</div>
+  <h2>La ZBE quita 1,6 µg/m³ de NO₂ en el centro</h2>
+  <div class="fila" style="align-items:center;gap:80px">
+    <div class="barras crece">
+      <div class="barra" title="Dentro: de 25,50 a 21,91 µg/m³"><span class="nombre">Baja dentro</span><div class="riel"><div class="relleno" style="width:89.75%;background:var(--dentro)"></div></div><span class="valor num">−3,59</span></div>
+      <div class="barra" title="Fuera: de 18,25 a 16,29 µg/m³"><span class="nombre">Baja fuera</span><div class="riel"><div class="relleno" style="width:49%;background:var(--fuera)"></div></div><span class="valor num">−1,96</span></div>
+      <div class="barra" title="−3,59 − (−1,96) = −1,63 µg/m³"><span class="nombre" style="font-weight:800">Efecto ZBE</span><div class="riel"><div class="relleno" style="width:40.75%;background:var(--tinta)"></div></div><span class="valor num">−1,63</span></div>
+    </div>
+    <div class="tarjeta" style="width:500px">
+      <div class="grande num" style="font-size:120px">−6 %</div>
+      <div class="rotulo">del NO₂ que había dentro antes de la ZBE (25,5 µg/m³).</div>
+      <div class="rotulo" style="margin-top:10px"><b>Margen:</b> entre −0,9 y −2,4.<br>No llega a cero.</div>
+    </div>
+  </div>
+  <div class="pie"><span>µg/m³ de NO₂, media antes frente a media después. Margen: intervalo del 95 % por semanas (bootstrap).</span><span>6</span></div>
+</section>
+
+<!-- 7 · COMPROBACIONES -->
+<section id="pruebas">
+  <div class="etiqueta">¿Seguro que es la ZBE?</div>
+  <h2>Cuatro comprobaciones</h2>
+  <div class="fila" style="gap:32px">
+    <div class="tarjeta crece">
+      <h3>Horario</h3>
+      <div class="grande num" style="color:var(--dentro)">−2,93</div>
+      <div class="rotulo">con la ZBE activa<br><b class="num">−0,85</b> sin ella</div>
+      <div class="marca ok" style="margin-top:20px">✓ Baja cuando actúa</div>
+    </div>
+    <div class="tarjeta crece">
+      <h3>Sin viento</h3>
+      <div class="grande num" style="color:var(--dentro)">−1,23</div>
+      <div class="rotulo">en horas de calma,<br>cuando el aire no se renueva</div>
+      <div class="marca ok" style="margin-top:20px">✓ No es el viento</div>
+    </div>
+    <div class="tarjeta crece">
+      <h3>SO₂</h3>
+      <div class="grande num">+0,33</div>
+      <div class="rotulo">un gas que no sale<br>de los coches: no baja</div>
+      <div class="marca ok" style="margin-top:20px">✓ El método no se inventa bajadas</div>
+    </div>
+    <div class="tarjeta crece">
+      <h3>Fase 2</h3>
+      <div class="grande num">−0,52</div>
+      <div class="rotulo">sobre la fase 1, con margen<br>de −1,72 a +0,74</div>
+      <div class="marca no" style="margin-top:20px">✗ Aún no se nota</div>
+    </div>
+  </div>
+  <p style="font-size:40px"><b>3 de 4 a favor.</b> La bajada aparece justo cuando la ZBE actúa. La fase 2 todavía no añade nada medible.</p>
+  <div class="pie"><span>Efecto ZBE en µg/m³ (dentro − fuera) en cada caso</span><span>7</span></div>
+</section>
+
+<!-- 8 · EL SISTEMA -->
+<section id="sistema" style="gap:40px">
+  <div class="etiqueta">El sistema</div>
+  <h2>Del dato al panel, en tiempo real</h2>
+  <div class="arq">
+    <!-- Cabeceras de columna -->
+    <span class="arq-pill" style="left:90px">FUENTES</span>
+    <span class="arq-pill" style="left:505px">INGESTA</span>
+    <span class="arq-pill" style="left:980px">ALMACÉN</span>
+    <span class="arq-pill" style="left:1450px">PANELES</span>
+
+    <!-- Flechas -->
+    <svg class="arq-svg" width="1680" height="640" viewBox="0 0 1680 640" aria-hidden="true">
+      <defs><marker id="pt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#111827"/></marker></defs>
+      <g stroke="#111827" stroke-width="3" fill="none" marker-end="url(#pt)">
+        <path d="M344,125 L426,225"/>
+        <path d="M344,265 L426,265"/>
+        <path d="M344,405 L426,305"/>
+        <path d="M744,265 L906,265"/>
+        <path d="M1214,265 L1376,265"/>
+        <path d="M744,470 L1010,470 L1010,364"/>
+        <path d="M1140,364 L1140,470 L1376,470"/>
+      </g>
+      <g font-family="ui-monospace,Menlo,Consolas,monospace" font-size="21" font-weight="700" fill="#111827" text-anchor="middle">
+        <text x="825" y="250">escribe</text>
+        <text x="1295" y="250">lee</text>
+      </g>
+      <g font-family="ui-monospace,Menlo,Consolas,monospace" font-size="18" fill="#4B5563" text-anchor="middle">
+        <text x="825" y="295">nodered-write</text>
+        <text x="1295" y="295">read-all</text>
+        <text x="877" y="458">batch-write</text>
+        <text x="1258" y="458">mcp-read-only</text>
+      </g>
+    </svg>
+
+    <!-- Fuentes -->
+    <div class="arq-caja" style="left:0;top:70px;width:340px;height:110px"><b>Open-Meteo</b><code>tiempo · cada 15 min</code></div>
+    <div class="arq-caja" style="left:0;top:210px;width:340px;height:110px"><b>Bilbao Open Data</b><code>81 tramos · cada 5 min</code></div>
+    <div class="arq-caja" style="left:0;top:350px;width:340px;height:110px"><b>Histórico de NO₂</b><code>1 hora cada 5 s · demo</code></div>
+
+    <!-- Ingesta, almacén y paneles -->
+    <div class="arq-caja grande" style="left:430px;top:170px;width:310px;height:190px;background:#EDE9FE"><b>Node-RED</b><span>3 flujos: consulta, ordena y escribe</span><code>:1880</code></div>
+    <div class="arq-caja grande" style="left:910px;top:170px;width:300px;height:190px;background:#D1FAE5"><b>InfluxDB</b><span>4 buckets de series temporales</span><code>:8086</code></div>
+    <div class="arq-caja grande" style="left:1380px;top:170px;width:300px;height:190px;background:#FEF3C7"><b>Grafana</b><span>paneles, alertas y roles</span><code>:3000</code></div>
+    <div class="arq-caja" style="left:430px;top:420px;width:310px;height:100px;background:#DBEAFE"><b>pandas</b><code>histórico por lotes</code></div>
+    <div class="arq-caja" style="left:1380px;top:420px;width:300px;height:100px;background:#FCE7F3"><b>MCP</b><code>solo lectura · :5001</code></div>
+
+    <!-- Docker -->
+    <div class="arq-docker"><code>$ docker compose up -d --build</code><span>7 contenedores · puertos solo en 127.0.0.1 · buckets y tokens se crean solos</span></div>
+  </div>
+  <div class="pie"><span>Cada flecha usa su propio token de InfluxDB. Los dos de escritura no los tiene Grafana ni el MCP.</span><span>8</span></div>
+</section>
+
+<!-- 9 · INFLUXDB Y NODE-RED -->
+<section id="almacen" style="gap:36px">
+  <div class="etiqueta">Por dentro</div>
+  <h2>InfluxDB y Node-RED: dónde y quién entra</h2>
+  <div class="fila" style="gap:40px">
+    <div class="ficha crece">
+      <div class="ficha-cab" style="background:#D1FAE5"><b>4 buckets</b><span>carpetas con caducidad</span></div>
+      <div class="ficha-fila"><code>aire</code><span>histórico de NO₂</span><i class="cad">no caduca</i></div>
+      <div class="ficha-fila"><code>meteo</code><span>tiempo, vivo e histórico</span><i class="cad">no caduca</i></div>
+      <div class="ficha-fila"><code>trafico</code><span>81 tramos cada 5 min</span><i class="cad" style="background:#FEF3C7">30 días</i></div>
+      <div class="ficha-fila"><code>aire_demo</code><span>NO₂ reproducido</span><i class="cad" style="background:#FCE7F3">7 días</i></div>
+    </div>
+    <div class="ficha crece">
+      <div class="ficha-cab" style="background:#DBEAFE"><b>4 tokens</b><span>ninguno en Git</span></div>
+      <div class="ficha-fila"><code>nodered-write</code><span>escribe lo que llega en vivo</span></div>
+      <div class="ficha-fila"><code>batch-write</code><span>escribe el histórico (pandas)</span></div>
+      <div class="ficha-fila"><code>read-all</code><span>solo lee · Grafana</span></div>
+      <div class="ficha-fila"><code>mcp-read-only</code><span>solo lee · MCP</span></div>
+    </div>
+  </div>
+  <div class="ficha">
+    <div class="ficha-cab" style="background:#EDE9FE"><b>3 flujos de Node-RED</b><span>consulta → ordena → escribe</span></div>
+    <div class="nr-flujo"><code class="nr-t">meteo</code><i>cada 15 min</i><em>→</em><i>GET Open-Meteo</i><em>→</em><i>parsear</i><em>→</em><i class="nr-out">bucket meteo</i></div>
+    <div class="nr-flujo"><code class="nr-t">trafico</code><i>cada 5 min</i><em>→</em><i>GET tráfico Bilbao (GeoJSON)</i><em>→</em><i>parsear tramos</i><em>→</em><i class="nr-out">bucket trafico</i></div>
+    <div class="nr-flujo"><code class="nr-t">aire_demo</code><i>cada 5 s</i><em>→</em><i>siguiente hora del histórico</i><em>→</em><i class="nr-out">bucket aire_demo</i></div>
+  </div>
+  <div class="pie"><span>Cada flujo tiene un nodo catch para errores. MCP: si intenta escribir, InfluxDB responde 403.</span><span>9</span></div>
+</section>
+
+<!-- 10 · CAPTURAS NODE-RED E INFLUXDB -->
+<section id="capturas" style="gap:32px">
+  <div class="etiqueta">Así se ve</div>
+  <h2>Los flujos y los datos, por dentro</h2>
+  <div class="fila" style="gap:48px;align-items:flex-start">
+    <div class="col" style="width:820px;gap:18px">
+      <div class="cap-tit"><code>meteo</code> cada 15 min</div>
+      <img class="cap" src="assets/nodered_meteo.jpg" alt="Flujo meteo de Node-RED">
+      <div class="cap-tit"><code>trafico</code> cada 5 min · 81 tramos</div>
+      <img class="cap" src="assets/nodered_trafico.jpg" alt="Flujo trafico de Node-RED" style="width:713px">
+      <div class="cap-tit"><code>aire_demo</code> cada 5 s · una hora del histórico</div>
+      <img class="cap" src="assets/nodered_aire_demo.jpg" alt="Flujo aire_demo de Node-RED" style="width:566px">
+    </div>
+    <div class="col crece" style="gap:18px">
+      <div class="cap-tit"><code>InfluxDB</code> bucket aire · últimos 30 días</div>
+      <img class="cap" src="assets/influxdb_aire_dentro_fuera.jpg" alt="Data Explorer de InfluxDB con el NO₂ de Barakaldo, Basauri y Mazarredo">
+      <p style="font-size:28px">Measurement <b>contaminantes</b>, campo <b>no2</b> y tags <b>estacion</b> y <b>zona</b> (dentro / fuera). Media por hora.</p>
+    </div>
+  </div>
+  <div class="pie"><span>Capturas del sistema funcionando. Cada flujo tiene su catch que registra los errores.</span><span>10</span></div>
+</section>
+
+<!-- 10 · GRAFANA: PERMISOS, ALERTAS Y DEMO EN VIVO -->
+<section id="demo" style="gap:32px">
+  <div class="etiqueta">Grafana en directo</div>
+  <h2>Cada uno ve lo suyo</h2>
+  <div class="fila" style="gap:40px;flex:1;min-height:0">
+    <div class="col" style="width:520px;gap:20px">
+      <div class="rol"><b>Dirección · 4</b><span>Ve todos los paneles. No edita.</span></div>
+      <div class="rol"><b>Análisis · 6</b><span>Solo su panel. No edita.</span></div>
+      <div class="rol"><b>IT · 3</b><span>Ve y edita todo, también alertas.</span></div>
+      <div style="margin-top:auto;font-size:24px;font-weight:700;letter-spacing:2px;color:var(--tenue)">3 ALERTAS</div>
+      <div class="alertas">
+        <div><b>&gt; 200</b><span>límite horario UE</span></div>
+        <div><b>&gt; 25</b><span>media 24 h · OMS</span></div>
+        <div><b>&gt; 35 %</b><span>ocupación tráfico</span></div>
       </div>
     </div>
-    <div style="flex:1;display:flex;flex-direction:column;background:#FFFFFF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;overflow:hidden">
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;background:#9FD8FF;padding:16px 26px;border-bottom:3px solid #141414">
-        <p style="font-size:44px;font-weight:800;line-height:1.1">4 tokens</p>
-        <p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2">· ninguno en Git</p>
+    <div class="col crece" style="gap:16px;min-width:0">
+      <div class="gf-barra">
+        <button class="gf-btn activo" data-vista="monitor">Grafana · Monitor</button>
+        <button class="gf-btn" data-vista="analisis">Grafana · Análisis</button>
+        <button class="gf-btn" data-vista="influx">InfluxDB</button>
+        <button class="gf-btn" data-vista="nodered">Node-RED</button>
+        <button class="gf-btn" id="gf-abrir" title="Abrir en una pestaña nueva">↗</button>
+        <button class="gf-btn" id="gf-full" title="Pantalla completa (G)">⤢</button>
       </div>
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;padding:16px 26px;border-bottom:2px solid #141414">
-        <p style="width:260px;font-family:'Space Mono', 'Courier New', monospace;font-size:26px;font-weight:700;line-height:1.3">nodered-write</p>
-        <p style="flex:1;font-size:24px;line-height:1.3;color:#4A4A55">escribe lo que llega en vivo</p>
-      </div>
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;padding:16px 26px;border-bottom:2px solid #141414">
-        <p style="width:260px;font-family:'Space Mono', 'Courier New', monospace;font-size:26px;font-weight:700;line-height:1.3">batch-write</p>
-        <p style="flex:1;font-size:24px;line-height:1.3;color:#4A4A55">escribe el histórico</p>
-      </div>
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;padding:16px 26px;border-bottom:2px solid #141414">
-        <p style="width:260px;font-family:'Space Mono', 'Courier New', monospace;font-size:26px;font-weight:700;line-height:1.3">read-all</p>
-        <p style="flex:1;font-size:24px;line-height:1.3;color:#4A4A55">solo lee · Grafana</p>
-      </div>
-      <div style="display:flex;flex-direction:row;align-items:center;gap:16px;padding:16px 26px">
-        <p style="width:260px;font-family:'Space Mono', 'Courier New', monospace;font-size:26px;font-weight:700;line-height:1.3">mcp-read-only</p>
-        <p style="flex:1;font-size:24px;line-height:1.3;color:#4A4A55">solo lee · MCP</p>
+      <div class="gf-hueco" id="gf-hueco">
+        <img id="gf-img" src="assets/grafana-monitor-completo.jpg" alt="Captura de respaldo">
+        <iframe id="gf-frame" title="Servicio en directo" hidden></iframe>
+        <span class="gf-estado" id="gf-estado">comprobando…</span>
       </div>
     </div>
   </div>
-  <div style="display:flex;flex-direction:row;gap:28px;align-items:center;background:#ECE4FF;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:18px 30px">
-    <p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#C7B3FF;border:3px solid #141414;border-radius:999px;padding:6px 18px;transform:rotate(-4deg);white-space:nowrap">SERVICIO MCP</p>
-    <p style="flex:1;font-size:28px;font-weight:700;line-height:1.3">Preguntas en lenguaje natural → consultas de solo lectura. Si intenta escribir, InfluxDB responde <span style="color:#C21F12">403</span>.</p>
-  </div>
-</div>
+  <div class="pie"><span>NO₂ en µg/m³; avisos por correo a IT. Los relojes reproducen el histórico: una hora cada 5 s.</span><span>11</span></div>
+</section>
 
-<div id="infra-influx" style="display:none;flex-direction:column;gap:16px">
-  <div style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;background:#FFFFFF;border:3px solid #141414;border-radius:18px;padding:12px 24px;box-shadow:6px 6px 0 #141414">
-    <div style="display:flex;align-items:center;gap:16px">
-      <span style="font-family:'Space Mono', monospace;font-size:22px;font-weight:700;background:#7BE3B5;border:2px solid #141414;border-radius:999px;padding:4px 16px">InfluxDB 2.9.1</span>
-      <div class="influx-tabs" style="display:flex;gap:8px">
-        <button class="influx-tab-btn activo" data-mode="live">⚡ En directo (Interactivo)</button>
-        <button class="influx-tab-btn" data-mode="static">Captura de respaldo</button>
+<!-- 11 · IA -->
+<section id="ia">
+  <div class="etiqueta">Modelo de IA</div>
+  <h2>La IA predice el NO₂ que habría sin ZBE</h2>
+  <div class="fila" style="gap:80px;align-items:flex-start">
+    <div class="col crece" style="gap:28px">
+      <p style="font-size:30px">Error medio por hora en meses que el modelo no vio (µg/m³). <b>Menos es mejor.</b></p>
+      <div class="barras" style="gap:22px">
+        <div class="barra" style="grid-template-columns:330px 1fr 120px"><span class="nombre">Sin IA (media)</span><div class="riel" style="height:52px"><div class="relleno" style="width:100%;background:var(--tenue)"></div></div><span class="valor num">10,5</span></div>
+        <div class="barra" style="grid-template-columns:330px 1fr 120px"><span class="nombre">Regresión lineal</span><div class="riel" style="height:52px"><div class="relleno" style="width:93.2%;background:var(--tenue)"></div></div><span class="valor num">9,8</span></div>
+        <div class="barra" style="grid-template-columns:330px 1fr 120px"><span class="nombre">Gradient Boosting</span><div class="riel" style="height:52px"><div class="relleno" style="width:77.6%;background:var(--tenue)"></div></div><span class="valor num">8,2</span></div>
+        <div class="barra" style="grid-template-columns:330px 1fr 120px"><span class="nombre" style="font-weight:800">Random Forest ✓</span><div class="riel" style="height:52px"><div class="relleno" style="width:77.5%;background:var(--dentro)"></div></div><span class="valor num">8,1</span></div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <a id="influx-external-link" href="http://localhost:8086" target="_blank" style="font-family:'Space Mono', monospace;font-size:20px;font-weight:700;text-decoration:none;color:#141414;background:#7BE3B5;border:2px solid #141414;border-radius:999px;padding:4px 16px">↗ Abrir InfluxDB</a>
-      <button class="infra-full-btn" data-target="influx-slot" style="font-family:'Space Mono', monospace;font-size:20px;font-weight:700;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:4px 16px;cursor:pointer">⤢ Pantalla completa</button>
+    <div class="col" style="width:600px;gap:24px">
+      <div class="tarjeta"><div class="rotulo"><b>Aprende</b> con 2022 y 2023: tiempo, hora, día y estación.</div></div>
+      <div class="tarjeta"><div class="rotulo"><b>Resultado:</b> −0,49 µg/m³ atribuibles a la ZBE. Misma dirección, más pequeño.</div></div>
+      <div class="tarjeta"><div class="rotulo"><b>Prueba:</b> con una ZBE falsa en 2023 sale +0,33, que no se distingue de cero.</div></div>
     </div>
   </div>
-  <div class="infra-slot" id="influx-slot" style="position:relative;width:1664px;height:520px;background:#181B1F;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;overflow:hidden">
-    <iframe id="influx-frame" class="gf-frame" title="InfluxDB en directo" allow="clipboard-write; fullscreen" style="width:100%;height:100%;border:0;display:block;background:#181B1F"></iframe>
-    <img id="influx-img" src="assets/influxdb_data_explorer.png" alt="InfluxDB Data Explorer con consulta Flux" style="display:none;width:100%;height:100%;object-fit:contain;background:#181B1F">
-    <button class="infra-cerrar" title="Salir (Esc)">✕</button>
-  </div>
-</div>
-
-<div id="infra-nodered" style="display:none;flex-direction:column;gap:16px">
-  <div style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;background:#FFFFFF;border:3px solid #141414;border-radius:18px;padding:12px 24px;box-shadow:6px 6px 0 #141414">
-    <div style="display:flex;align-items:center;gap:14px">
-      <span style="font-family:'Space Mono', monospace;font-size:22px;font-weight:700;background:#FF8A7A;border:2px solid #141414;border-radius:999px;padding:4px 16px">Node-RED 5.0.7</span>
-      <div class="nr-tabs" style="display:flex;gap:8px">
-        <button class="nr-tab-btn activo" data-mode="live">⚡ Editor en vivo (Interactivo)</button>
-        <button class="nr-tab-btn" data-img="assets/nodered_flujo_trafico.png">Tráfico (5 min)</button>
-        <button class="nr-tab-btn" data-img="assets/nodered_flujo_meteo.png">Meteo (15 min)</button>
-        <button class="nr-tab-btn" data-img="assets/nodered_flujo_aire_demo.png">Streaming NO₂ (5 s)</button>
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <a id="nr-external-link" href="http://localhost:1880" target="_blank" style="font-family:'Space Mono', monospace;font-size:20px;font-weight:700;text-decoration:none;color:#141414;background:#FFF0B8;border:2px solid #141414;border-radius:999px;padding:4px 16px">↗ Abrir Node-RED</a>
-      <button class="infra-full-btn" data-target="nr-slot" style="font-family:'Space Mono', monospace;font-size:20px;font-weight:700;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:4px 16px;cursor:pointer">⤢ Pantalla completa</button>
-    </div>
-  </div>
-  <div class="infra-slot" id="nr-slot" style="position:relative;width:1664px;height:520px;background:#FFFFFF;border:3px solid #141414;border-radius:24px;box-shadow:8px 8px 0 #141414;overflow:hidden">
-    <iframe id="nr-frame" class="gf-frame" title="Node-RED en directo" style="width:100%;height:100%;border:0;display:block;background:#FFFFFF"></iframe>
-    <img id="nr-img" src="assets/nodered_flujo_trafico.png" alt="Flujo Node-RED" style="display:none;width:100%;height:100%;object-fit:contain;background:#FFFFFF">
-    <button class="infra-cerrar" title="Salir (Esc)">✕</button>
-  </div>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">10</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Infraestructura</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
+  <div class="pie"><span>La comparación dentro − fuera es estadística, no IA: sirve para comprobar el modelo.</span><span>12</span></div>
 </section>
 
-<section id="ia" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:32px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#C7B3FF"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">05 · MODELOS DE IA</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">La propuesta de IA</h2>
-</div>
-<div style="display:flex;flex-direction:row;gap:14px;align-items:center">
-<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#9FD8FF;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:18px 22px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2">1 · DATOS</p>
-<p style="font-size:24px;font-weight:600;line-height:1.35">NO₂, meteorología y calendario, hora a hora</p>
-</div>
-<svg width="44" height="28" viewBox="0 0 44 28"><path d="M3 14 H38 M28 4 L40 14 L28 24" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#C7B3FF;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:18px 22px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2">2 · MODELO</p>
-<p style="font-size:24px;font-weight:600;line-height:1.35">Aprende solo con datos de antes de la ZBE</p>
-</div>
-<svg width="44" height="28" viewBox="0 0 44 28"><path d="M3 14 H38 M28 4 L40 14 L28 24" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#FFD23F;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:18px 22px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2">3 · RESULTADO</p>
-<p style="font-size:24px;font-weight:600;line-height:1.35">Lo observado menos lo esperado sin ZBE</p>
-</div>
-<svg width="44" height="28" viewBox="0 0 44 28"><path d="M3 14 H38 M28 4 L40 14 L28 24" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<div style="flex:1;display:flex;flex-direction:column;gap:8px;background:#7BE3B5;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:18px 22px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2">4 · DECISIÓN</p>
-<p style="font-size:24px;font-weight:600;line-height:1.35">Ampliar, mantener o ajustar la zona</p>
-</div>
-</div>
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center">
-<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#FFFFFF;border:3px solid #141414;border-radius:22px;box-shadow:6px 6px 0 #141414;padding:24px 28px">
-<div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:16px">
-<h3 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:32px;font-weight:800;line-height:1.2">A · Diferencias en diferencias</h3>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#E6E6EC;border:2px solid #141414;border-radius:999px;padding:4px 14px;white-space:nowrap">estadística, no IA</p>
-</div>
-<p style="font-size:24px;line-height:1.35">Compara el centro con las estaciones de control. Se explica en una frase.</p>
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">Riesgo: que el control no sea comparable.</p>
-</div>
-<p style="width:96px;height:96px;font-size:34px;font-weight:800;line-height:90px;text-align:center;background:#FFD23F;border:3px solid #141414;border-radius:50%;box-shadow:4px 4px 0 #141414;transform:rotate(-8deg)">VS</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#ECE4FF;border:3px solid #141414;border-radius:22px;box-shadow:10px 10px 0 #141414;padding:24px 28px">
-<div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:16px">
-<h3 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:32px;font-weight:800;line-height:1.2">B · Random Forest</h3>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#7BE3B5;border:3px solid #141414;border-radius:999px;padding:4px 16px;transform:rotate(4deg);white-space:nowrap">¡ELEGIDO!</p>
-</div>
-<p style="font-size:24px;line-height:1.35">Muchos árboles de decisión. Se equivoca 8,14 µg/m³ por hora; sin IA, 10,50.</p>
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">Riesgo: sobreajuste. Se valida con un periodo posterior que no ha visto.</p>
-</div>
-</div>
-<div style="flex:1"></div>
-<div style="display:flex;flex-direction:row;gap:28px;align-items:center;background:#FFD23F;border:3px solid #141414;border-radius:20px;box-shadow:6px 6px 0 #141414;padding:18px 30px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FFFFFF;border:3px solid #141414;border-radius:999px;padding:6px 18px;transform:rotate(-4deg);white-space:nowrap">RESULTADO</p>
-<p style="flex:1;font-size:30px;font-weight:800;line-height:1.3">Efecto con el modelo: −0,49 µg/m³. Con una ZBE ficticia en 2023: +0,33 (su intervalo incluye el cero).</p>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">11</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Modelos de IA</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
+<!-- 12 · CÓMO TRABAJAMOS -->
+<section id="trabajo">
+  <div class="etiqueta">Equipo</div>
+  <h2>Cómo trabajamos</h2>
+  <div class="flujo">
+    <div class="caja"><h3>feature/… · fix/…</h3><p>Una rama por tarea</p></div>
+    <div class="flecha">→</div>
+    <div class="caja"><h3>Pull request</h3><p>La revisa otro compañero</p></div>
+    <div class="flecha">→</div>
+    <div class="caja"><h3>develop</h3><p>Todo integrado</p></div>
+    <div class="flecha">→</div>
+    <div class="caja"><h3>main</h3><p>Solo lo estable</p></div>
+  </div>
+  <div class="fila">
+    <div class="tarjeta crece"><div class="grande num">3</div><div class="rotulo"><b>sprints</b> con Scrum Master rotatorio</div></div>
+    <div class="tarjeta crece"><div class="grande num">10 min</div><div class="rotulo"><b>daily</b> cada día de reto</div></div>
+    <div class="tarjeta crece"><div class="grande num">1</div><div class="rotulo"><b>fichero de cifras</b>: todo sale de una sola ejecución</div></div>
+  </div>
+  <div class="pie"><span>Repositorio: ai-somorrostro/haizelab</span><span>13</span></div>
 </section>
 
-<section id="trabajo" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:28px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#FFA8D9"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">06 · EQUIPO Y CIERRE</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">Cómo trabajamos</h2>
-</div>
-<div style="display:flex;flex-direction:row;gap:28px">
-<div style="flex:1;display:flex;flex-direction:row;gap:22px;align-items:center;background:#7BE3B5;border:3px solid #141414;border-radius:22px;box-shadow:6px 6px 0 #141414;padding:16px 26px">
-<p style="font-size:84px;font-weight:800;line-height:1;letter-spacing:-2px">2</p>
-<p style="flex:1;font-size:24px;font-weight:600;line-height:1.3">comandos: <span style="font-family:'Space Mono', 'Courier New', monospace">docker compose up -d --build</span> y la carga del histórico (<span style="font-family:'Space Mono', 'Courier New', monospace">docker compose run --rm carga-historica</span>)</p>
-</div>
-</div>
-<div style="display:flex;flex-direction:row;gap:32px">
-<div style="width:660px;display:flex;flex-direction:column;background:#141414;border:3px solid #141414;border-radius:20px;box-shadow:8px 8px 0 #9FD8FF;overflow:hidden">
-<div style="display:flex;flex-direction:row;align-items:center;gap:10px;padding:10px 18px;border-bottom:2px solid #3A3A44">
-<div style="width:16px;height:16px;border-radius:50%;background:#FF8A7A"></div>
-<div style="width:16px;height:16px;border-radius:50%;background:#FFD23F"></div>
-<div style="width:16px;height:16px;border-radius:50%;background:#7BE3B5"></div>
-<p style="flex:1;font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;color:#B8B8C4;text-align:center">bash</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:8px;padding:20px 26px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.4;color:#B8B8C4"># ai-somorrostro/haizelab</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.4;color:#7BE3B5">$ git checkout develop</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.4;color:#7BE3B5">$ cp .env.example .env</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.4;color:#7BE3B5">$ docker compose up -d --build</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.4;color:#7BE3B5">$ docker compose ps</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:22px;line-height:1.4;color:#7BE3B5;white-space:nowrap">$ docker compose run --rm carga-historica</p>
-</div>
-</div>
-<div style="flex:1;display:flex;flex-direction:column;background:#FFFFFF;border:3px solid #141414;border-radius:20px;box-shadow:8px 8px 0 #141414;overflow:hidden">
-<img src="assets/github-pr1.png" alt="Primer pull request del repositorio en GitHub, fusionado en develop desde la rama feature/analisis-multivariable-zbe" style="width:966px;height:300px;object-fit:contain;background:#0D1117">
-<p style="font-size:24px;font-weight:600;line-height:1.3;border-top:3px solid #141414;padding:10px 20px">Cada tarea en su rama feature, integrada en develop. A main solo llega lo estable.</p>
-</div>
-</div>
-<div style="flex:1"></div>
-<div style="display:flex;flex-direction:row;gap:14px;align-items:center">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 18px">SCRUM</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:8px 16px;transform:rotate(-2deg)">3 sprints</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:8px 16px;transform:rotate(2deg)">Scrum Master rotatorio</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:8px 16px;transform:rotate(-2deg)">daily de 10 min</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.2;background:#FFFFFF;border:2px solid #141414;border-radius:999px;padding:8px 16px;transform:rotate(2deg)">preguntas cruzadas</p>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">12</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Equipo y cierre</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
+<!-- 13 · VEREDICTO -->
+<section id="veredicto" style="justify-content:center;gap:40px">
+  <div class="etiqueta">Veredicto</div>
+  <h1 style="font-size:132px">Sí, funciona.<br><span style="color:var(--dentro)">Pero poco.</span></h1>
+  <p style="font-size:42px;max-width:1600px">El NO₂ del centro baja <b>1,6 µg/m³ más que fuera (−6 %)</b>, y casi <b>3</b> en el horario de la ZBE.</p>
+  <div class="fila" style="gap:32px">
+    <div class="tarjeta crece" style="background:var(--tinta)"><div class="grande" style="color:#fff;font-size:60px">Mantener</div><div class="rotulo" style="color:#D1D5DB">La ZBE y su horario. Es donde se ve el efecto.</div></div>
+    <div class="tarjeta crece"><div class="grande" style="font-size:60px">No ampliar aún</div><div class="rotulo">Primero medir en el borde: no sabemos si el tráfico se desvía.</div></div>
+    <div class="tarjeta crece"><div class="grande" style="font-size:60px">Revisar cada año</div><div class="rotulo">La fase 2 aún no se nota. El sistema lo recalcula solo.</div></div>
+  </div>
+  <div class="pie"><span>Límite: solo 2 estaciones dentro de la zona.</span><span>14</span></div>
 </section>
 
-<section id="cierre" data-transition="fade" style="background:#FFF6E5;color:#141414;font-family:'Bricolage Grotesque', Arial, sans-serif;padding:104px 128px 160px;display:flex;flex-direction:column;gap:32px">
-<div style="position:absolute;left:1690px;top:28px;width:180px;height:180px;border-radius:50%;background:#FFA8D9"></div>
-<div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:2px;color:#FFF6E5;background:#141414;border-radius:999px;padding:8px 20px;align-self:flex-start">06 · EQUIPO Y CIERRE</p>
-<h2 style="font-family:'Bricolage Grotesque', Arial, sans-serif;font-size:72px;font-weight:800;line-height:1.05;letter-spacing:-2px">Qué recomendamos al Ayuntamiento</h2>
-</div>
-<div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:28px">
-<div style="display:flex;flex-direction:row;gap:22px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:22px;box-shadow:6px 6px 0 #141414;padding:22px 26px">
-<p style="width:72px;height:72px;font-size:36px;font-weight:800;line-height:66px;text-align:center;background:#9FD8FF;border:3px solid #141414;border-radius:50%">1</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:6px">
-<p style="font-size:32px;font-weight:800;line-height:1.2">Mantener la ZBE y su horario.</p>
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">La señal es favorable y se concentra en las horas con norma.</p>
-</div>
-</div>
-<div style="display:flex;flex-direction:row;gap:22px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:22px;box-shadow:6px 6px 0 #141414;padding:22px 26px">
-<p style="width:72px;height:72px;font-size:36px;font-weight:800;line-height:66px;text-align:center;background:#7BE3B5;border:3px solid #141414;border-radius:50%">2</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:6px">
-<p style="font-size:32px;font-weight:800;line-height:1.2">Medir en el borde antes de ampliar.</p>
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">Sin sensores en el perímetro no se sabe si el tráfico se desplaza.</p>
-</div>
-</div>
-<div style="display:flex;flex-direction:row;gap:22px;align-items:center;background:#FFFFFF;border:3px solid #141414;border-radius:22px;box-shadow:6px 6px 0 #141414;padding:22px 26px">
-<p style="width:72px;height:72px;font-size:36px;font-weight:800;line-height:66px;text-align:center;background:#FFD23F;border:3px solid #141414;border-radius:50%">3</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:6px">
-<p style="font-size:32px;font-weight:800;line-height:1.2">Repetir la evaluación cada año.</p>
-<p style="font-size:24px;line-height:1.35;color:#4A4A55">El análisis ya es reproducible y los datos siguen entrando solos.</p>
-</div>
-</div>
-<div style="display:flex;flex-direction:row;gap:22px;align-items:center;background:#FFE1DC;border:3px solid #141414;border-radius:22px;box-shadow:6px 6px 0 #141414;padding:22px 26px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;background:#FF8A7A;border:3px solid #141414;border-radius:999px;padding:6px 14px;transform:rotate(-4deg);white-space:nowrap">LÍMITES</p>
-<div style="flex:1;display:flex;flex-direction:column;gap:4px">
-<p style="font-size:24px;font-weight:600;line-height:1.35">Solo dos estaciones dentro de la zona.</p>
-<p style="font-size:24px;font-weight:600;line-height:1.35">Un efecto pequeño frente al vaivén de cada año.</p>
-<p style="font-size:24px;font-weight:600;line-height:1.35">Otros cambios a la vez: coches nuevos, obras, transporte público.</p>
-</div>
-</div>
-</div>
-<div style="flex:1"></div>
-<div style="display:flex;flex-direction:row;align-items:center;gap:32px;background:#FFD23F;border:3px solid #141414;border-radius:26px;box-shadow:10px 10px 0 #141414;padding:22px 40px">
-<p style="font-size:96px;font-weight:800;line-height:1;letter-spacing:-3px">¿Preguntas?</p>
-<div style="flex:1"></div>
-<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-<p style="font-size:32px;font-weight:800;line-height:1.2">Iñigo · Kerman · Alfred</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.3">HaizeLab · Reto 0</p>
-</div>
-</div>
-<div style="position:absolute;left:128px;right:128px;bottom:56px;display:flex;flex-direction:row;align-items:center;gap:20px">
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;font-weight:700;line-height:1.2;color:#FFF6E5;background:#141414;border-radius:999px;padding:6px 16px">13</p>
-<p style="font-family:'Space Mono', 'Courier New', monospace;font-size:24px;line-height:1.3;color:#4A4A55">Equipo y cierre</p>
-<div style="flex:1"></div>
-<p style="font-size:28px;font-weight:800;line-height:1.2;letter-spacing:-0.5px">Haize<span style="color:#1F5FD6">Lab</span></p>
-</div>
-
+<!-- 14 · PREGUNTAS -->
+<section id="preguntas" style="justify-content:center;align-items:center;text-align:center">
+  <h1 style="font-size:150px">¿Preguntas?</h1>
+  <p style="font-size:36px">Iñigo · Kerman · Alfred — HaizeLab</p>
 </section>
 
 </div></div>
-<nav id="nav"><button id="prev" aria-label="Anterior">←</button><span id="contador">1 / 13</span><button id="next" aria-label="Siguiente">→</button><button id="fs" aria-label="Pantalla completa">⛶</button></nav>
 
-<!-- HaizeLab Chatbot Assistant Widget (UI estilo Claude Anthropic) -->
-<div id="haizelab-chat-widget">
-  <button id="haizelab-chat-btn" aria-label="Abrir asistente de HaizeLab" title="Pregunta a HaizeLab Assistant (Reto 0)">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2C12 2 13.5 7.5 15.5 9.5C17.5 11.5 23 12 23 12C23 12 17.5 12.5 15.5 14.5C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8.5 14.5C6.5 12.5 1 12 1 12C1 12 6.5 11.5 8.5 9.5C10.5 7.5 12 2 12 2Z"/>
-    </svg>
-  </button>
-
-  <div id="haizelab-chat-panel" class="oculto" role="dialog" aria-labelledby="chat-title" aria-modal="false">
-    <header class="haize-chat-header">
-      <div class="haize-chat-title-box">
-        <div class="haize-claude-spark" title="HaizeLab Assistant">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C12 2 13.5 7.5 15.5 9.5C17.5 11.5 23 12 23 12C23 12 17.5 12.5 15.5 14.5C13.5 16.5 12 22 12 22C12 22 10.5 16.5 8.5 14.5C6.5 12.5 1 12 1 12C1 12 6.5 11.5 8.5 9.5C10.5 7.5 12 2 12 2Z"/>
-          </svg>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span class="haize-chat-title" id="chat-title">HaizeLab Assistant</span>
-            <span class="haize-chat-badge" id="haize-status-badge">● Reto 0</span>
-          </div>
-          <span style="font-size:10px;color:#9c978b;line-height:1">ZBE Bilbao · Calidad del Aire</span>
-        </div>
-      </div>
-      <div class="haize-chat-actions">
-        <div class="haize-slider-container" title="Desliza para ajustar el ancho">
-          <span class="haize-slider-icon">↔</span>
-          <input type="range" id="haize-chat-size-slider" min="290" max="540" value="360" step="10" aria-label="Ajustar tamaño del chat" />
-        </div>
-        <button class="haize-chat-close" id="haize-chat-close-btn" aria-label="Cerrar chat" title="Cerrar">✕</button>
-      </div>
-    </header>
-
-    <div class="haize-chat-messages" id="haize-chat-msgs">
-      <div class="haize-chat-msg asistente">
-        <p>Hola. Soy el asistente de <strong>HaizeLab</strong> con razonamiento híbrido (Google Gemini + Servidor MCP InfluxDB).</p>
-        <p>Tengo acceso en directo a los datos de series temporales (calidad del aire en tiempo real, histórico 2022-2026, meteorología continua y tráfico vehicular en Bilbao).</p>
-        <p>¿Qué dato del proyecto deseas consultar?</p>
-        <div class="haize-chat-sugerencias">
-          <button class="haize-sug-btn" data-sug="¿Cuál es el nivel actual de NO2 en Mazarredo y en Europa según InfluxDB?">✦ NO₂ actual en Mazarredo y Europa (En vivo)</button>
-          <button class="haize-sug-btn" data-sug="¿Qué temperatura y viento hace ahora mismo según la monitorización en vivo?">✦ Clima y viento en directo (Meteo)</button>
-          <button class="haize-sug-btn" data-sug="¿Cuál fue el impacto neto de la ZBE según el modelo Diff-in-Diff?">✦ Impacto neto de la ZBE (−1,63 µg/m³)</button>
-          <button class="haize-sug-btn" data-sug="¿Quiénes son los desarrolladores y autores de este proyecto?">✦ Equipo y roles de HaizeLab</button>
-        </div>
-      </div>
-    </div>
-
-    <form class="haize-chat-input-box" id="haize-chat-form">
-      <button type="button" class="haize-chat-reset-btn" id="haize-chat-reset-btn" title="Reiniciar conversación" aria-label="Reiniciar conversación">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-        </svg>
-      </button>
-      <div class="haize-chat-input-wrapper">
-        <input type="text" class="haize-chat-input" id="haize-chat-input" placeholder="Pregunta sobre los datos del Reto 0..." autocomplete="off" maxlength="250" />
-        <button type="submit" class="haize-chat-send" id="haize-chat-send-btn" aria-label="Enviar consulta" title="Enviar">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="19" x2="12" y2="5"></line>
-            <polyline points="5 12 12 5 19 12"></polyline>
-          </svg>
-        </button>
-      </div>
-    </form>
-  </div>
+<div id="nav">
+  <button id="ant" aria-label="Anterior">←</button>
+  <span id="contador"></span>
+  <button id="sig" aria-label="Siguiente">→</button>
 </div>
+
 <script>
-// Transiciones de la presentación: revelado circular, entrada escalonada, cortina de bloque,
-// líneas que se dibujan solas y cifras que cuentan. Solo usa Web Animations API (sin librerías).
-// Se desactivan con ?anim=0 o si el sistema pide reducir el movimiento.
-const Transiciones = (function () {
-  const params = new URLSearchParams(location.search);
-  const activas = !(params.get('anim') === '0' || matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const stage = document.getElementById('stage');
-  const EASE = 'cubic-bezier(.77,0,.18,1)';
-  const SALIDA = 'cubic-bezier(.22,1,.36,1)';
-  let turno = 0;            // cada transición nueva invalida la anterior
-  const contadores = [];    // cifras a medio contar, para cerrarlas si se interrumpe
-  const bloquesVistos = new Set(['A']); // bloques ya mostrados para no repetir la cortina de 2s al navegar hacia atrás y volver
+// ---------- Escalado del lienzo 1920x1080 a la ventana ----------
+const stage = document.getElementById('stage');
+function escalar() {
+  const k = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  stage.style.transform = 'scale(' + k + ')';
+}
+window.addEventListener('resize', escalar);
+escalar();
 
-  // Cortina de bloque: capa amarilla y capa negra con el título del bloque
-  const capa = document.createElement('div');
-  capa.className = 'cortina-capa';
-  const cortina = document.createElement('div');
-  cortina.className = 'cortina';
-  cortina.innerHTML = '<p class="cortina-pill"></p><p class="cortina-titulo"></p>';
-  stage.append(capa, cortina);
-
-  const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
-  const anim = (el, frames, opts) => el.animate(frames, Object.assign({ fill: 'backwards' }, opts));
-
-  // Termina en seco todo lo que esté en marcha (navegación rápida)
-  function cortarTodo(de) {
-    turno++;
-    stage.getAnimations({ subtree: true }).forEach((a) => { try { a.cancel(); } catch (e) {} });
-    contadores.splice(0).forEach((c) => c());
-    capa.style.visibility = cortina.style.visibility = 'hidden';
-    capa.style.clipPath = cortina.style.clipPath = '';
-    cortina.getAnimations({ subtree: true }).concat(capa.getAnimations()).forEach((a) => { try { a.cancel(); } catch (e) {} });
-    stage.querySelectorAll('section').forEach((s) => {
-      s.style.clipPath = '';
-      s.style.opacity = '';
-      s.classList.remove('saliente');
+// ---------- Gráfico de líneas: media anual de NO2 (datos de resultados.json) ----------
+(function () {
+  const anios = ['2022', '2023', '2024', '2025', '2026'];
+  const series = [
+    { nombre: 'Dentro', color: 'var(--dentro)', v: [25.85, 25.95, 23.12, 22.22, 21.03] },
+    { nombre: 'Fuera',  color: 'var(--fuera)',  v: [19.09, 17.95, 16.98, 16.56, 15.50] }
+  ];
+  const svg = document.getElementById('lineas');
+  const W = 1080, H = 560, m = { l: 80, r: 40, t: 30, b: 70 };
+  const min = 10, max = 30;
+  const x = i => m.l + i * (W - m.l - m.r) / (anios.length - 1);
+  const y = v => m.t + (max - v) * (H - m.t - m.b) / (max - min);
+  const fmt = v => v.toFixed(1).replace('.', ',');
+  let s = '';
+  // Rejilla y eje
+  [10, 15, 20, 25, 30].forEach(v => {
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="#E5E7EB" stroke-width="2"/>`;
+    s += `<text x="${m.l - 16}" y="${y(v) + 9}" text-anchor="end" font-size="26" fill="#9CA3AF">${v}</text>`;
+  });
+  anios.forEach((a, i) => {
+    s += `<text x="${x(i)}" y="${H - 22}" text-anchor="middle" font-size="28" fill="#4B5563">${a}${a === '2026' ? '*' : ''}</text>`;
+  });
+  // Línea vertical: entrada de la ZBE (mitad de 2024)
+  const xz = x(1) + (x(2) - x(1)) * 0.45;
+  s += `<line x1="${xz}" x2="${xz}" y1="${m.t}" y2="${H - m.b}" stroke="#111827" stroke-width="2" stroke-dasharray="8 8"/>`;
+  s += `<text x="${xz + 12}" y="${m.t + 26}" font-size="26" font-weight="700" fill="#111827">Entra la ZBE</text>`;
+  // Series con etiqueta directa y tooltip por punto
+  series.forEach(se => {
+    s += `<polyline fill="none" stroke="${se.color}" stroke-width="5" stroke-linejoin="round" points="${se.v.map((v, i) => x(i) + ',' + y(v)).join(' ')}"/>`;
+    se.v.forEach((v, i) => {
+      s += `<g><title>${se.nombre} ${anios[i]}: ${fmt(v)} µg/m³</title><circle cx="${x(i)}" cy="${y(v)}" r="18" fill="transparent"/><circle cx="${x(i)}" cy="${y(v)}" r="9" fill="${se.color}" stroke="#fff" stroke-width="3"/></g>`;
     });
-    stage.querySelectorAll('section.activa').forEach((s) => { if (s !== de) s.classList.remove('activa'); });
-    if (de) {
-      de.classList.add('activa');
-      de.style.opacity = '';
-      de.style.clipPath = '';
-    }
-  }
-
-  // Centro del primer círculo decorativo de la diapositiva (de ahí sale el revelado circular)
-  function centroCirculo(sec) {
-    const c = Array.from(sec.children).find((d) => d.tagName === 'DIV' && d.style.position === 'absolute' && d.style.borderRadius === '50%');
-    if (!c) return '1780px 118px';
-    const x = parseFloat(c.style.left) + parseFloat(c.style.width) / 2;
-    const y = parseFloat(c.style.top) + parseFloat(c.style.height) / 2;
-    return `${x}px ${y}px`;
-  }
-
-  const esCard = (el) => /solid\s+(rgb\(20, 20, 20\)|#141414)/i.test(el.style.border || '') && el.tagName === 'DIV';
-  const esPegatina = (el) => /rotate\(/.test(el.style.transform || '');
-
-  // Entrada escalonada del contenido de una diapositiva
-  function entrada(sec, t0) {
-    let i = 0;
-    const paso = 70;
-    const hijos = Array.from(sec.children);
-    for (const h of hijos) {
-      if (h.tagName === 'ASIDE') continue;
-      const abs = h.style.position === 'absolute';
-      if (abs && h.style.borderRadius === '50%') {
-        // Círculos decorativos: aparecen con rebote
-        anim(h, [{ scale: '0' }, { scale: '1.12', offset: 0.7 }, { scale: '1' }], { duration: 700, delay: t0 + 80, easing: SALIDA });
-      } else if (abs && h.style.bottom) {
-        // Pie de página: entra al final
-        anim(h, [{ opacity: 0, translate: '0 20px' }, { opacity: 1, translate: '0 0' }], { duration: 500, delay: t0 + 450, easing: SALIDA });
-      } else if (h.querySelector('h1, h2') && !h.querySelector('img, svg, video, iframe') && h.children.length <= 3) {
-        // Cabecera: la píldora entra desde la izquierda y el título sube desvelándose
-        for (const c of h.children) {
-          if (/^H[12]$/.test(c.tagName)) {
-            anim(c, [{ opacity: 0, translate: '0 40px', clipPath: 'inset(0 0 100% 0)' }, { opacity: 1, translate: '0 0', clipPath: 'inset(0 0 -20% 0)' }],
-              { duration: 650, delay: t0 + i * paso, easing: SALIDA });
-          } else {
-            anim(c, [{ opacity: 0, translate: '-40px 0' }, { opacity: 1, translate: '0 0' }], { duration: 500, delay: t0 + i * paso, easing: SALIDA });
-          }
-          i++;
-        }
-      } else {
-        // Cuerpo: tarjetas con efecto "sello" (caen y aparece su sombra dura); el resto sube
-        const todas = Array.from(h.querySelectorAll('div')).filter((d) => esCard(d) && !esPegatina(d));
-        const cards = todas.filter((d) => !todas.some((o) => o !== d && o.contains(d)));
-        const objetivos = esCard(h) ? [h] : (cards.length ? cards : [h]);
-        for (const o of objetivos) {
-          if (esCard(o)) {
-            const sombra = getComputedStyle(o).boxShadow;
-            const conSombra = sombra && sombra !== 'none';
-            anim(o, [
-              Object.assign({ opacity: 0, scale: '1.05', translate: '-8px -14px' }, conSombra ? { boxShadow: '0 0 0 #141414' } : {}),
-              { opacity: 1, offset: 0.45 },
-              Object.assign({ opacity: 1, scale: '1', translate: '0 0' }, conSombra ? { boxShadow: sombra } : {}),
-            ], { duration: 620, delay: t0 + 120 + i * paso, easing: SALIDA });
-          } else {
-            anim(o, [{ opacity: 0, translate: '0 36px' }, { opacity: 1, translate: '0 0' }], { duration: 600, delay: t0 + 120 + i * paso, easing: SALIDA });
-          }
-          i++;
-        }
-      }
-    }
-    // Pegatinas giradas: golpe de sello (scale se compone con su rotate)
-    sec.querySelectorAll('p, div').forEach((p) => {
-      if (esPegatina(p)) anim(p, [{ opacity: 0, scale: '1.7' }, { opacity: 1, scale: '0.94', offset: 0.7 }, { scale: '1' }], { duration: 520, delay: t0 + 380 + i * paso, easing: 'ease-out' });
-    });
-    dibujarLineas(sec, t0 + 250);
-    contarCifras(sec, t0 + 300);
-  }
-
-  // Las líneas de gráficos y flechas se dibujan solas
-  function dibujarLineas(sec, retraso) {
-    sec.querySelectorAll('svg polyline').forEach((pl, k) => {
-      let L = 0;
-      try { L = pl.getTotalLength(); } catch (e) { return; }
-      if (!L) return;
-      const dash = pl.getAttribute('stroke-dasharray');
-      if (dash) return; // respeta las líneas discontinuas
-      anim(pl, [{ strokeDasharray: `${L} ${L}`, strokeDashoffset: L }, { strokeDasharray: `${L} ${L}`, strokeDashoffset: 0 }],
-        { duration: L > 600 ? 1600 : 650, delay: retraso + k * 120, easing: 'cubic-bezier(.45,0,.2,1)' });
-    });
-    // Puntas de flecha: aparecen cuando la línea llega
-    sec.querySelectorAll('svg polygon').forEach((pg, k) => {
-      anim(pg, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: retraso + 550 + k * 120 });
-    });
-  }
-
-  // Cifras grandes (≥ 96 px) que cuentan desde 0 hasta su valor exacto. Al acabar se restaura el texto original.
-  const RE = /^([−-]?)(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d+))?(\s*%)?$/;
-  function contarCifras(sec, retraso) {
-    sec.querySelectorAll('p').forEach((p) => {
-      const original = p.textContent.trim();
-      const m = original.match(RE);
-      if (!m || parseFloat(getComputedStyle(p).fontSize) < 96) return;
-      const signo = m[1], miles = m[2].includes('.'), decs = m[3] ? m[3].length : 0, pct = m[4] || '';
-      const valor = parseFloat(m[2].replace(/\./g, '') + (m[3] ? '.' + m[3] : ''));
-      const fmt = (v) => {
-        let [e, d] = v.toFixed(decs).split('.');
-        if (miles) e = e.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        return signo + e + (d ? ',' + d : '') + pct;
-      };
-      const mio = turno;
-      let fin = false;
-      const cerrar = () => { if (!fin) { fin = true; p.textContent = original; } };
-      contadores.push(cerrar);
-      p.textContent = fmt(0);
-      const inicio = performance.now() + retraso, dur = 1100;
-      const paso = (ahora) => {
-        if (fin || mio !== turno) return cerrar();
-        const t = Math.min(1, Math.max(0, (ahora - inicio) / dur));
-        const e = 1 - Math.pow(1 - t, 4);
-        p.textContent = fmt(valor * e);
-        if (t < 1) requestAnimationFrame(paso); else cerrar();
-      };
-      requestAnimationFrame(paso);
-    });
-  }
-
-  // Cortina de bloque (solo hacia delante, al empezar un bloque nuevo)
-  async function cortinaBloque(sec, dir, alCubrir) {
-    const mio = turno;
-    cortina.querySelector('.cortina-pill').textContent = 'BLOQUE ' + sec.dataset.bloque;
-    cortina.querySelector('.cortina-titulo').textContent = sec.dataset.bloqueTitulo || '';
-    const desde = dir > 0 ? 'inset(0 100% 0 0)' : 'inset(0 0 0 100%)';
-    const hasta = dir > 0 ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)';
-    const lleno = 'inset(0 0 0 0)';
-    capa.style.visibility = cortina.style.visibility = 'visible';
-    const o = { duration: 480, easing: EASE, fill: 'both' };
-    try {
-      capa.animate([{ clipPath: desde }, { clipPath: lleno }], o);
-      const t = cortina.querySelectorAll('p');
-      t.forEach((x, k) => x.animate([{ opacity: 0, translate: '0 50px' }, { opacity: 1, translate: '0 0' }], { duration: 600, delay: 380 + k * 90, easing: SALIDA, fill: 'both' }));
-      await cortina.animate([{ clipPath: desde }, { clipPath: lleno }], Object.assign({}, o, { delay: 90 })).finished.catch(() => {});
-      if (mio !== turno) return;
-      alCubrir();
-      await esperar(750);
-      if (mio !== turno) return;
-      const animCortina = cortina.animate([{ clipPath: lleno }, { clipPath: hasta }], o);
-      const animCapa = capa.animate([{ clipPath: lleno }, { clipPath: hasta }], Object.assign({}, o, { delay: 90 }));
-      await Promise.all([animCortina.finished, animCapa.finished]).catch(() => {});
-    } finally {
-      capa.style.visibility = cortina.style.visibility = 'hidden';
-      capa.style.clipPath = cortina.style.clipPath = '';
-      cortina.getAnimations({ subtree: true }).concat(capa.getAnimations()).forEach((a) => { try { a.cancel(); } catch (e) {} });
-    }
-  }
-
-  // Cambio normal: el círculo decorativo de la siguiente diapositiva se expande y la revela
-  function revelar(de, a) {
-    const mio = turno;
-    stage.querySelectorAll('section').forEach((s) => {
-      s.style.clipPath = '';
-      s.style.opacity = '';
-      s.classList.remove('saliente');
-    });
-    de.classList.add('saliente');
-    de.classList.remove('activa');
-    a.classList.add('activa');
-    a.style.clipPath = '';
-    const c = centroCirculo(a);
-    const revAnim = a.animate(
-      [{ clipPath: `circle(0px at ${c})` }, { clipPath: `circle(2300px at ${c})` }],
-      { duration: 750, easing: EASE }
-    );
-    revAnim.finished.then(() => {
-      if (mio === turno) {
-        de.classList.remove('saliente');
-        a.style.clipPath = '';
-      }
-    }).catch(() => {
-      a.style.clipPath = '';
-      de.classList.remove('saliente');
-    });
-    entrada(a, 220);
-  }
-
-  return {
-    activas,
-    // de y a son <section>; dir = +1 adelante, -1 atrás; salto = no son consecutivas
-    cambiar(de, a, dir, salto) {
-      if (!activas || de === a) {
-        stage.querySelectorAll('section.activa').forEach((s) => s.classList.remove('activa'));
-        stage.querySelectorAll('section').forEach((s) => { s.style.clipPath = ''; s.style.opacity = ''; s.classList.remove('saliente'); });
-        a.classList.add('activa');
-        return;
-      }
-      cortarTodo(de);
-
-      // Si entramos a un nuevo bloque hacia adelante por primera vez (no salto)
-      if (a.dataset.bloque && dir > 0 && !salto && !bloquesVistos.has(a.dataset.bloque)) {
-        bloquesVistos.add(a.dataset.bloque);
-        cortinaBloque(a, dir, () => {
-          stage.querySelectorAll('section.activa').forEach((s) => s.classList.remove('activa'));
-          stage.querySelectorAll('section').forEach((s) => { s.style.clipPath = ''; s.style.opacity = ''; s.classList.remove('saliente'); });
-          a.classList.add('activa');
-          entrada(a, 300);
-        });
-      } else {
-        de.classList.remove('activa');
-        revelar(de, a);
-      }
-    },
-    // Intro al abrir la presentación en la portada
-    intro(sec) {
-      if (!activas) return;
-      sec.dataset.bloque = sec.dataset.bloque || 'A';
-      bloquesVistos.add(sec.dataset.bloque);
-      cortinaBloque(sec, 1, () => entrada(sec, 300));
-    },
-  };
+    const n = se.v.length - 1;
+    const dy = se.nombre === 'Fuera' ? 48 : -22;   // Fuera: etiqueta debajo de la línea
+    s += `<text x="${x(0) + 30}" y="${y(se.v[0]) + dy}" text-anchor="middle" font-size="30" font-weight="800" fill="#111827">${fmt(se.v[0])}</text>`;
+    s += `<text x="${x(n)}" y="${y(se.v[n]) + dy}" text-anchor="middle" font-size="30" font-weight="800" fill="#111827">${fmt(se.v[n])}</text>`;
+  });
+  svg.innerHTML = s;
 })();
 
-// Presentación web de HaizeLab: navegación, escalado y Grafana en directo
-(function () {
-  const stage = document.getElementById('stage');
-  const slides = Array.from(stage.querySelectorAll('section'));
-  const contador = document.getElementById('contador');
-  let actual = 0;
-
-  // Escala el lienzo de 1920x1080 a la ventana
-  function escalar() {
-    const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-    stage.style.transform = `scale(${s})`;
-  }
-  window.addEventListener('resize', escalar);
-  escalar();
-
-  // Barra de progreso fina en la parte superior
-  const progreso = document.createElement('div');
-  progreso.id = 'progreso';
-  stage.appendChild(progreso);
-
-  function ir(n, sinTransicion) {
-    if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
-      document.activeElement.blur();
-      window.focus();
-    }
-    n = Math.max(0, Math.min(slides.length - 1, n));
-    const de = slides[actual], a = slides[n];
-    de.querySelectorAll('video').forEach((v) => v.pause());
-    if (sinTransicion) {
-      slides.forEach((s) => s.classList.remove('activa'));
-      a.classList.add('activa');
-    } else if (n !== actual) {
-      Transiciones.cambiar(de, a, n > actual ? 1 : -1, Math.abs(n - actual) > 1);
-    }
-    actual = n;
-    progreso.style.transform = `scaleX(${(actual + 1) / slides.length})`;
-    contador.textContent = `${actual + 1} / ${slides.length}`;
-    history.replaceState(null, '', `#${actual + 1}`);
-    if (slides[actual].id === 'demo') grafana.comprobar();
-    if (slides[actual].id === 'almacenamiento' && typeof infra !== 'undefined') infra.inicializarFrames();
-  }
-
-  document.getElementById('prev').onclick = () => ir(actual - 1);
-  document.getElementById('next').onclick = () => ir(actual + 1);
-  document.getElementById('fs').onclick = pantallaCompleta;
-  function pantallaCompleta() {
+// ---------- Navegación ----------
+const slides = Array.from(document.querySelectorAll('section'));
+let actual = 0;
+function ir(n) {
+  actual = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, i) => s.classList.toggle('activa', i === actual));
+  document.getElementById('contador').textContent = (actual + 1) + ' / ' + slides.length;
+  document.getElementById('progreso').style.width = ((actual + 1) / slides.length * 100) + '%';
+  history.replaceState(null, '', '#' + (actual + 1));
+  if (slides[actual].id === 'demo') grafana.comprobar();
+}
+document.addEventListener('keydown', e => {
+  if (['ArrowRight', ' ', 'PageDown', 'Enter'].includes(e.key)) { e.preventDefault(); ir(actual + 1); }
+  else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); ir(actual - 1); }
+  else if (e.key === 'Home') ir(0);
+  else if (e.key === 'End') ir(slides.length - 1);
+  else if ((e.key === 'g' || e.key === 'G') && slides[actual].id === 'demo') grafana.alternarCompleto();
+  else if (e.key === 'f' || e.key === 'F') {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
     else document.exitFullscreen();
   }
+});
+document.getElementById('ant').onclick = () => ir(actual - 1);
+document.getElementById('sig').onclick = () => ir(actual + 1);
 
-  document.addEventListener('keydown', (e) => {
-    // Si el usuario escribe en un input, textarea o está interactuando con el chatbot, no cambiar de diapositiva
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable || e.target.closest('#haizelab-chat-widget')) {
-      if (e.key === 'Escape' && window.haizelabChat) {
-        window.haizelabChat.cerrar();
-      }
-      return;
-    }
-    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); ir(actual + 1); }
-    else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); ir(actual - 1); }
-    else if (e.key === 'Home') ir(0);
-    else if (e.key === 'End') ir(slides.length - 1);
-    else if (e.key === 'f' || e.key === 'F') pantallaCompleta();
-    else if ((e.key === 'g' || e.key === 'G') && slides[actual].id === 'demo') grafana.alternarCompleto();
-    else if (e.key === 'Escape') {
-      grafana.salirCompleto();
-      if (window.haizelabChat) window.haizelabChat.cerrar();
-    }
-  });
+// ---------- Demo en vivo: Grafana, InfluxDB y Node-RED ----------
+// URLs: parámetros ?grafana= ?influx= ?nodered= > grafana.json > localhost.
+// Si el servicio no responde en 2,5 s se muestra la captura de respaldo.
+const grafana = (function () {
+  const q = new URLSearchParams(location.search);
+  const cfg = { grafana: 'http://localhost:3000', influx: 'http://localhost:8086', nodered: 'http://localhost:1880' };
+  const listo = fetch('grafana.json', { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : {})
+    .then(d => { if (d.base) cfg.grafana = d.base; if (d.influx) cfg.influx = d.influx; if (d.nodered) cfg.nodered = d.nodered; })
+    .catch(() => {})
+    .finally(() => { ['grafana', 'influx', 'nodered'].forEach(k => { if (q.get(k)) cfg[k] = q.get(k); cfg[k] = cfg[k].replace(/\/$/, ''); }); });
 
-  // Sustituto de <x-connector>: dibuja las flechas del diagrama de arquitectura
-  document.querySelectorAll('x-connector[x1]').forEach((c) => {
-    const g = (a) => parseFloat(c.getAttribute(a));
-    const x1 = g('x1'), y1 = g('y1'), x2 = g('x2'), y2 = g('y2');
-    const route = c.getAttribute('route') || 'straight';
-    const st = c.getAttribute('style') || '';
-    const col = (st.match(/(?:^|;)\s*color:\s*([^;]+)/) || [0, '#141414'])[1];
-    const bw = parseFloat((st.match(/border-width:\s*([\d.]+)/) || [0, 2])[1]);
-    let pts = [[x1, y1], [x2, y2]];
-    if (route === 'hv') pts = [[x1, y1], [x2, y1], [x2, y2]];
-    if (route === 'vh') pts = [[x1, y1], [x1, y2], [x2, y2]];
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('width', 1664); svg.setAttribute('height', 520);
-    svg.setAttribute('style', 'position:absolute;left:0;top:0;overflow:visible;pointer-events:none');
-    const pl = document.createElementNS(ns, 'polyline');
-    pl.setAttribute('points', pts.map((p) => p.join(',')).join(' '));
-    pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', col); pl.setAttribute('stroke-width', bw);
-    pl.setAttribute('stroke-linecap', 'round'); pl.setAttribute('stroke-linejoin', 'round');
-    svg.appendChild(pl);
-    const [ax, ay] = pts[pts.length - 2], [bx, by] = pts[pts.length - 1];
-    const ang = Math.atan2(by - ay, bx - ax), L = bw * 4.5;
-    const p = (a) => [bx - L * Math.cos(ang + a), by - L * Math.sin(ang + a)].join(',');
-    const tri = document.createElementNS(ns, 'polygon');
-    tri.setAttribute('points', `${bx},${by} ${p(0.45)} ${p(-0.45)}`);
-    tri.setAttribute('fill', col);
-    svg.appendChild(tri);
-    c.replaceWith(svg);
-  });
+  const VISTAS = {
+    monitor:  { srv: 'grafana', ruta: '/d/haizelab-overview?orgId=1&kiosk&refresh=5s', salud: '/api/health', img: 'assets/grafana-monitor-completo.jpg', nombre: 'Grafana' },
+    analisis: { srv: 'grafana', ruta: '/d/haizelab-analisis?orgId=1&kiosk&refresh=5s', salud: '/api/health', img: 'assets/p1_evolucion_mensual_no2.png', nombre: 'Grafana' },
+    influx:   { srv: 'influx',  ruta: '/', salud: '/health', img: 'assets/influxdb_aire_dentro_fuera.jpg', nombre: 'InfluxDB' },
+    nodered:  { srv: 'nodered', ruta: '/', salud: '/', img: 'assets/nodered_flujo_trafico.png', nombre: 'Node-RED' },
+  };
+  const frame = document.getElementById('gf-frame');
+  const img = document.getElementById('gf-img');
+  const estado = document.getElementById('gf-estado');
+  const hueco = document.getElementById('gf-hueco');
+  const vivo = {};          // servicio -> true/false tras comprobar
+  let vista = 'monitor';
 
-  // Grafana en directo.
-  // Orden de prioridad:
-  // 1. Si hay ?grafana=URL o valor guardado en localStorage, se respeta ese valor.
-  // 2. Si es entorno local (file://, localhost, 127.0.0.1), se prueba primero http://localhost:3000.
-  //    Si responde, se usa localhost sin túneles. Si no responde, se prueba el túnel de grafana.json.
-  // 3. Si es entorno remoto (HTTPS en Vercel), se usa el túnel seguro de grafana.json.
-  const grafana = (function () {
-    const params = new URLSearchParams(location.search);
-    const CLAVE = 'haizelab.grafana';
-    const guardar = (v) => { try { v ? localStorage.setItem(CLAVE, v) : localStorage.removeItem(CLAVE); } catch (e) {} };
-    const leer = () => { try { return localStorage.getItem(CLAVE); } catch (e) { return null; } };
-    let paramBase = params.get('grafana');
-    if (paramBase === 'reset') { guardar(null); paramBase = null; }
-    else if (paramBase) guardar(paramBase);
-
-    const esLocal = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    let base = (paramBase || leer() || (esLocal ? 'http://localhost:3000' : '')).replace(/\/$/, '');
-    let publicos = {};
-    let tunnelBase = '';
-
-    const demo = document.getElementById('demo');
-    if (!demo) return { comprobar() {}, alternarCompleto() {}, salirCompleto() {} };
-    const slot = demo.querySelector('.gf-slot');
-    const frame = demo.querySelector('.gf-frame');
-    const img = slot.querySelector('img');
-    const estado = demo.querySelector('.gf-estado');
-    let uid = 'haizelab-overview';
-    let vivo = false;
-
-    // Configuración opcional desplegada junto a la web
-    const cfgLista = fetch('grafana.json', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : {}))
-      .then((cfg) => {
-        publicos = cfg.publicos || {};
-        if (cfg.base) tunnelBase = cfg.base.replace(/\/$/, '');
-        if (!paramBase && !leer()) {
-          if (!esLocal && tunnelBase) {
-            base = tunnelBase;
-          } else if (!base) {
-            base = tunnelBase || 'http://localhost:3000';
-          }
-        }
-      })
-      .catch(() => {
-        if (!base) base = 'http://localhost:3000';
-      });
-
-    function url() {
-      if (esLocal || !publicos[uid]) {
-        return `${base}/d/${uid}?orgId=1&kiosk=tv&refresh=5s`;
-      }
-      return `${base}/public-dashboards/${publicos[uid]}?refresh=5s`;
-    }
-    function mostrarVivo() {
-      vivo = true;
-      frame.hidden = false; img.hidden = true;
+  function url() { const v = VISTAS[vista]; return cfg[v.srv] + v.ruta; }
+  function pintar() {
+    const v = VISTAS[vista];
+    if (vivo[v.srv]) {
       if (frame.dataset.src !== url()) { frame.src = url(); frame.dataset.src = url(); }
-      estado.textContent = '● en directo';
-      estado.style.color = '#0E7A4C';
+      frame.hidden = false; img.hidden = true;
+      estado.textContent = '● ' + v.nombre + ' en directo';
+    } else {
+      frame.hidden = true; img.hidden = false; img.src = v.img;
+      estado.textContent = vivo[v.srv] === false ? v.nombre + ' sin conexión · captura' : 'comprobando ' + v.nombre + '…';
     }
-    function mostrarCaptura() {
-      vivo = false;
-      frame.hidden = true; img.hidden = false;
-      estado.textContent = 'sin conexión · captura';
-      estado.style.color = '#C21F12';
-    }
-
-    async function probarSalud(targetUrl) {
-      if (!targetUrl) return false;
-      try {
-        const ctl = new AbortController();
-        const t = setTimeout(() => ctl.abort(), 3500);
-        await fetch(`${targetUrl}/api/health`, { mode: 'no-cors', cache: 'no-store', signal: ctl.signal });
-        clearTimeout(t);
-        return true;
-      } catch (e) {
-        return false;
-      }
-    }
-
-    function comprobar() {
-      if (location.protocol === 'file:') {
-        mostrarCaptura();
-        return;
-      }
-      estado.textContent = 'comprobando…'; estado.style.color = '#4A4A55';
-      cfgLista.then(async () => {
-        if (paramBase || leer()) {
-          const ok = await probarSalud(base);
-          if (ok) mostrarVivo(); else mostrarCaptura();
-          return;
-        }
-
-        if (esLocal) {
-          // 1. Probar localhost primero
-          const localOk = await probarSalud('http://localhost:3000');
-          if (localOk) {
-            base = 'http://localhost:3000';
-            mostrarVivo();
-            return;
-          }
-          // 2. Si localhost falla pero hay túnel configurado, probar túnel
-          if (tunnelBase) {
-            const tunOk = await probarSalud(tunnelBase);
-            if (tunOk) {
-              base = tunnelBase;
-              mostrarVivo();
-              return;
-            }
-          }
-          mostrarCaptura();
-        } else {
-          // Entorno remoto HTTPS (Vercel)
-          const target = tunnelBase || base;
-          if (target) {
-            const ok = await probarSalud(target);
-            if (ok) { base = target; mostrarVivo(); return; }
-          }
-          mostrarCaptura();
-        }
-      });
-    }
-    function alternarCompleto() { slot.classList.toggle('full'); }
-    function salirCompleto() { slot.classList.remove('full'); }
-
-    demo.querySelectorAll('[data-uid]').forEach((b) => b.addEventListener('click', () => {
-      demo.querySelectorAll('[data-uid]').forEach((x) => x.classList.remove('activo'));
-      b.classList.add('activo');
-      uid = b.dataset.uid;
-      if (vivo) { frame.src = url(); frame.dataset.src = url(); } else comprobar();
-    }));
-    demo.querySelectorAll('[data-act="reload"]').forEach((b) => b.addEventListener('click', () => {
-      if (vivo) { frame.src = url(); } else comprobar();
-    }));
-    demo.querySelectorAll('[data-act="full"]').forEach((b) => b.addEventListener('click', alternarCompleto));
-    return { comprobar, alternarCompleto, salirCompleto };
-  })();
-
-  // Control interactivo de infraestructura (diapositiva 11: InfluxDB y Node-RED)
-  const infra = (function () {
-    const sec = document.getElementById('almacenamiento');
-    if (!sec) return;
-    const btns = sec.querySelectorAll('.infra-btn');
-    const vResumen = document.getElementById('infra-resumen');
-    const vInflux = document.getElementById('infra-influx');
-    const vNodered = document.getElementById('infra-nodered');
-    const influxFrame = document.getElementById('influx-frame');
-    const influxImg = document.getElementById('influx-img');
-    const influxLink = document.getElementById('influx-external-link');
-    const nrFrame = document.getElementById('nr-frame');
-    const nrImg = document.getElementById('nr-img');
-    const nrLink = document.getElementById('nr-external-link');
-    const nrBtns = sec.querySelectorAll('.nr-tab-btn');
-    const influxBtns = sec.querySelectorAll('.influx-tab-btn');
-
-    const esLocal = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-
-    let cfg = {
-      influx: 'http://localhost:8086',
-      nodered: 'http://localhost:1880'
-    };
-
-    function resolverUrl(tipo, fallbackLocal) {
-      if (esLocal) {
-        return fallbackLocal;
-      }
-      return cfg[tipo] || fallbackLocal;
-    }
-
-    function inicializarFrames() {
-      const uInflux = resolverUrl('influx', 'http://localhost:8086');
-      const uNodered = resolverUrl('nodered', 'http://localhost:1880');
-      if (influxFrame && (!influxFrame.src || !influxFrame.src.includes(uInflux))) {
-        influxFrame.src = uInflux;
-      }
-      if (influxLink) influxLink.href = uInflux;
-      if (nrFrame && (!nrFrame.src || !nrFrame.src.includes(uNodered))) {
-        nrFrame.src = uNodered;
-      }
-      if (nrLink) nrLink.href = uNodered;
-    }
-
-    fetch('grafana.json', { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => {
-        if (d) {
-          if (d.influx) cfg.influx = d.influx;
-          if (d.nodered) cfg.nodered = d.nodered;
-          inicializarFrames();
-        }
-      })
-      .catch(() => inicializarFrames());
-
-    btns.forEach((b) => b.addEventListener('click', () => {
-      btns.forEach((x) => x.classList.remove('activa'));
-      b.classList.add('activa');
-      const v = b.dataset.view;
-      vResumen.style.display = (v === 'resumen') ? 'flex' : 'none';
-      vInflux.style.display = (v === 'influx') ? 'flex' : 'none';
-      vNodered.style.display = (v === 'nodered') ? 'flex' : 'none';
-      if (v === 'influx' || v === 'nodered') inicializarFrames();
-    }));
-
-    if (influxBtns) {
-      influxBtns.forEach((b) => b.addEventListener('click', () => {
-        influxBtns.forEach((x) => x.classList.remove('activo'));
-        b.classList.add('activo');
-        if (b.dataset.mode === 'live') {
-          if (influxFrame) influxFrame.style.display = 'block';
-          if (influxImg) influxImg.style.display = 'none';
-        } else {
-          if (influxFrame) influxFrame.style.display = 'none';
-          if (influxImg) influxImg.style.display = 'block';
-        }
-      }));
-    }
-
-    nrBtns.forEach((b) => b.addEventListener('click', () => {
-      nrBtns.forEach((x) => x.classList.remove('activo'));
-      b.classList.add('activo');
-      if (b.dataset.mode === 'live') {
-        if (nrFrame) nrFrame.style.display = 'block';
-        if (nrImg) nrImg.style.display = 'none';
-      } else if (b.dataset.img) {
-        if (nrFrame) nrFrame.style.display = 'none';
-        if (nrImg) {
-          nrImg.style.display = 'block';
-          nrImg.src = b.dataset.img;
-        }
-      }
-    }));
-
-    sec.querySelectorAll('.infra-full-btn').forEach((b) => b.addEventListener('click', () => {
-      const slot = document.getElementById(b.dataset.target);
-      if (slot) slot.classList.add('full');
-    }));
-
-    sec.querySelectorAll('.infra-cerrar').forEach((b) => b.addEventListener('click', (e) => {
-      const slot = e.target.closest('.infra-slot');
-      if (slot) slot.classList.remove('full');
-    }));
-
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        sec.querySelectorAll('.infra-slot.full').forEach((s) => s.classList.remove('full'));
-      }
-    });
-
-    inicializarFrames();
-  })();
-
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Asistente Chatbot HaizeLab (Reto 0)
-  // ────────────────────────────────────────────────────────────────────────────
-  const haizelabChat = (function () {
-    const btn = document.getElementById('haizelab-chat-btn');
-    const panel = document.getElementById('haizelab-chat-panel');
-    const closeBtn = document.getElementById('haize-chat-close-btn');
-    const resetBtn = document.getElementById('haize-chat-reset-btn');
-    const form = document.getElementById('haize-chat-form');
-    const input = document.getElementById('haize-chat-input');
-    const msgs = document.getElementById('haize-chat-msgs');
-    const badge = document.getElementById('haize-status-badge');
-
-    if (!btn || !panel) return { cerrar() {} };
-
-    const initialWelcomeHtml = msgs.innerHTML;
-
-    // Configuración de URL base del endpoint backend (Local directo)
-    const params = new URLSearchParams(location.search);
-    const esLocal = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    let apiBase = (params.get('chatbot') || 'http://localhost:8000').replace(/\/$/, '');
-    let conectado = false;
-    let historial = [];
-
-    // Cargar URL dinámica desde grafana.json si existe
-    fetch('grafana.json', { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => {
-        if (d && d.chatbot) apiBase = d.chatbot.replace(/\/$/, '');
-      })
-      .catch(() => {});
-
-    // Referencias de elementos de control
-    const sizeSlider = document.getElementById('haize-chat-size-slider');
-
-    function ajustarTamano(ancho) {
-      const w = Math.max(280, Math.min(520, parseInt(ancho, 10)));
-      const h = Math.round(w * 1.34);
-      panel.style.setProperty('--chat-w', `${w}px`);
-      panel.style.setProperty('--chat-h', `${h}px`);
-      if (sizeSlider) sizeSlider.value = w;
-      try { localStorage.setItem('haizelab_chat_w', w); } catch(e){}
-    }
-
-    const wGuardado = (function() {
-      try { return localStorage.getItem('haizelab_chat_w'); } catch(e){ return null; }
-    })() || '340';
-    ajustarTamano(wGuardado);
-
-    if (sizeSlider) {
-      sizeSlider.addEventListener('input', (e) => ajustarTamano(e.target.value));
-    }
-
-    // Fallback de conocimiento directo, breve y conciso si el backend local no responde
-    const CONOCIMIENTO_FALLBACK = {
-      zbe: "No puedo conectar con el asistente. Las cifras del análisis están en resultados/resultados.json y en el informe para el cliente.",
-      datos: "El análisis usa la calidad del aire horaria de 8 estaciones (Open Data Euskadi), la meteorología de Open-Meteo y el calendario de la ZBE.",
-      trafico: "El análisis no usa los aforos de tráfico. El tráfico de Bilbao se ve en directo en Grafana.",
-      tecnologia: "Arquitectura: InfluxDB 2.9 (series temporales), Node-RED (automatización, no IA), Grafana 11.2 (paneles) y Python (diferencias en diferencias y modelo de IA).",
-      equipo: "El equipo HaizeLab: **Alfred Gabriel** (Product Owner · Relación con el cliente y desarrollo), **Iñigo Guzmán** (Lead Data Engineer · Datos e infraestructura) y **Kerman Latorre** (Scrum Master · Análisis y modelado)."
-    };
-
-    function abrir() {
-      panel.classList.remove('oculto');
-      input.focus();
-      comprobarConexion();
-    }
-
-    function cerrar() {
-      panel.classList.add('oculto');
-    }
-
-    function alternar() {
-      if (panel.classList.contains('oculto')) abrir();
-      else cerrar();
-    }
-
-    async function probarEndpoint(url) {
-      try {
-        const ctl = new AbortController();
-        const t = setTimeout(() => ctl.abort(), 3500);
-        const res = await fetch(`${url}/health`, { signal: ctl.signal });
-        clearTimeout(t);
-        if (res.ok) {
-          const info = await res.json();
-          return info;
-        }
-      } catch (e) {}
-      return null;
-    }
-
-    async function comprobarConexion() {
-      let info = await probarEndpoint(apiBase);
-      
-      if (!info && !params.get('chatbot')) {
-        const alternativas = ['http://localhost:8000', 'http://127.0.0.1:8000'];
-
-        for (const alt of alternativas) {
-          if (alt && alt !== apiBase) {
-            info = await probarEndpoint(alt);
-            if (info) {
-              apiBase = alt;
-              break;
-            }
-          }
-        }
-      }
-
-      if (info) {
-        conectado = true;
-        const modName = (info.razonamiento_gemini && info.mcp_disponible) ? '● Gemini + MCP' : (info.razonamiento_gemini ? '● Gemini' : '● Local');
-        badge.textContent = modName;
-        badge.classList.remove('offline');
-        return;
-      }
-
-      conectado = false;
-      badge.textContent = '● Offline';
-      badge.classList.add('offline');
-    }
-
-    function renderMarkdown(txt) {
-      if (!txt) return '';
-      let escaped = txt
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      escaped = escaped.replace(/\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-      escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
-      escaped = escaped.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
-      return escaped;
-    }
-
-    function reiniciarChat() {
-      historial = [];
-      msgs.innerHTML = initialWelcomeHtml;
-      input.value = '';
-      input.focus();
-    }
-
-    function agregarMensaje(texto, remitente, fuentes = null, modelo = null) {
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `haize-chat-msg ${remitente}`;
-      let html = `<p>${renderMarkdown(texto)}</p>`;
-      if (fuentes && fuentes.length > 0 && fuentes[0] !== 'Conocimiento General') {
-        const modStr = modelo ? `<strong>${modelo}</strong> · ` : '';
-        html += `<span class="fuente-tag">⚡ ${modStr}${fuentes.slice(0, 2).join(' · ')}</span>`;
-      }
-      msgDiv.innerHTML = html;
-      msgs.appendChild(msgDiv);
-      msgs.scrollTop = msgs.scrollHeight;
-    }
-
-    function mostrarTyping() {
-      const typ = document.createElement('div');
-      typ.className = 'haize-chat-typing';
-      typ.id = 'haize-typing-indicator';
-      typ.innerHTML = '<span class="haize-dot"></span><span class="haize-dot"></span><span class="haize-dot"></span> <span style="font-size:11.5px;color:#555;font-family:\'Space Mono\',monospace;margin-left:4px">pensando respuesta rápida…</span>';
-      msgs.appendChild(typ);
-      msgs.scrollTop = msgs.scrollHeight;
-    }
-
-    function ocultarTyping() {
-      const el = document.getElementById('haize-typing-indicator');
-      if (el) el.remove();
-    }
-
-    async function enviarPregunta(texto) {
-      const q = texto.trim();
-      if (!q) return;
-
-      agregarMensaje(q, 'usuario');
-      historial.push({ role: 'user', content: q });
-      input.value = '';
-      mostrarTyping();
-
-      try {
-        const ctl = new AbortController();
-        const t = setTimeout(() => ctl.abort(), 35000);
-        const res = await fetch(`${apiBase}/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: q, history: historial.slice(-2) }),
-          signal: ctl.signal
-        });
-        clearTimeout(t);
-
-        ocultarTyping();
-
-        if (res.ok) {
-          const data = await res.json();
-          conectado = true;
-          badge.textContent = (data.modelo && data.modelo.includes('Gemini')) ? '● Gemini' : '● Local';
-          badge.classList.remove('offline');
-          agregarMensaje(data.respuesta, 'asistente', data.fuentes, data.modelo);
-          historial.push({ role: 'assistant', content: data.respuesta });
-          return;
-        }
-      } catch (err) {}
-
-      ocultarTyping();
-      conectado = false;
-      badge.textContent = '● Offline';
-      badge.classList.add('offline');
-
-      const qLower = q.toLowerCase();
-      let resp = "";
-      if (qLower.includes('calidad') || qLower.includes('zbe') || qLower.includes('mejorado') || qLower.includes('funcionado') || qLower.includes('no2') || qLower.includes('resultado')) {
-        resp = CONOCIMIENTO_FALLBACK.zbe;
-      } else if (qLower.includes('datos') || qLower.includes('fuentes') || qLower.includes('horas') || qLower.includes('estacion')) {
-        resp = CONOCIMIENTO_FALLBACK.datos;
-      } else if (qLower.includes('trafico') || qLower.includes('tráfico') || qLower.includes('san mames') || qLower.includes('san mamés') || qLower.includes('vehiculo')) {
-        resp = CONOCIMIENTO_FALLBACK.trafico;
-      } else if (qLower.includes('tecnolog') || qLower.includes('stack') || qLower.includes('docker') || qLower.includes('arquitectura') || qLower.includes('influx') || qLower.includes('grafana') || qLower.includes('node-red')) {
-        resp = CONOCIMIENTO_FALLBACK.tecnologia;
-      } else if (qLower.includes('autor') || qLower.includes('quien') || qLower.includes('quién') || qLower.includes('equipo') || qLower.includes('iñigo') || qLower.includes('kerman') || qLower.includes('alfred') || qLower.includes('somorrostro')) {
-        resp = CONOCIMIENTO_FALLBACK.equipo;
-      } else {
-        resp = "Solo puedo responder a preguntas relacionadas con el proyecto **HaizeLab (Reto 0)**: calidad del aire, impacto de la ZBE de Bilbao, meteorología, tráfico, arquitectura técnica o nuestro equipo de desarrollo.";
-      }
-
-      agregarMensaje(resp, 'asistente', ['Conocimiento Reto 0']);
-      historial.push({ role: 'assistant', content: resp });
-    }
-
-    btn.addEventListener('click', alternar);
-    closeBtn.addEventListener('click', cerrar);
-    if (resetBtn) resetBtn.addEventListener('click', reiniciarChat);
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      enviarPregunta(input.value);
-    });
-
-    msgs.addEventListener('click', (e) => {
-      const sugBtn = e.target.closest('.haize-sug-btn');
-      if (sugBtn && sugBtn.dataset.sug) {
-        enviarPregunta(sugBtn.dataset.sug);
-      }
-    });
-
-    input.addEventListener('keydown', (e) => {
-      e.stopPropagation();
-      if (e.key === 'Escape') {
-        cerrar();
-      }
-    });
-
-    comprobarConexion();
-
-    return { abrir, cerrar, alternar, enviarPregunta };
-  })();
-
-  window.haizelabChat = haizelabChat;
-
-  window.addEventListener('hashchange', () => {
-    const n = parseInt(location.hash.slice(1), 10) - 1;
-    if (!isNaN(n) && n !== actual) ir(n);
+  }
+  async function comprobar() {
+    await listo;
+    const v = VISTAS[vista];
+    pintar();
+    if (vivo[v.srv]) return;
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 2500);
+    try { await fetch(cfg[v.srv] + v.salud, { mode: 'no-cors', cache: 'no-store', signal: ctl.signal }); vivo[v.srv] = true; }
+    catch (e) { vivo[v.srv] = false; }
+    clearTimeout(t);
+    pintar();
+  }
+  function alternarCompleto() {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else hueco.requestFullscreen().catch(() => {});
+  }
+  document.querySelectorAll('.gf-btn[data-vista]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.gf-btn[data-vista]').forEach(o => o.classList.toggle('activo', o === b));
+    vista = b.dataset.vista;
+    comprobar();
   });
-
-  // Arranque en la diapositiva indicada en la URL (#n)
-  const inicial = parseInt((location.hash || '#1').slice(1), 10) - 1;
-  actual = isNaN(inicial) ? 0 : Math.max(0, Math.min(slides.length - 1, inicial));
-  ir(actual, true);
-  if (actual === 0) Transiciones.intro(slides[0]);
+  document.getElementById('gf-abrir').onclick = async () => { await listo; window.open(url(), '_blank', 'noopener'); };
+  document.getElementById('gf-full').onclick = alternarCompleto;
+  return { comprobar, alternarCompleto };
 })();
 
+// Abrir en la diapositiva de la URL (#n)
+ir((parseInt(location.hash.slice(1), 10) || 1) - 1);
 </script>
 </body>
 </html>
